@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <window title="iEngine(Alpha)" width="1280" height="720" framerate="60" />
+    <graphics clearColorR="45" clearColorG="45" clearColorB="50" />
+</config>
