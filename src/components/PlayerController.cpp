@@ -10,6 +10,7 @@
 #include "misc/Sprite.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
+#include "system/Renderer.h"
 
 #include <SFML/Graphics/Rect.hpp>
 #include <iostream>
@@ -86,20 +87,23 @@ void PlayerController::fire() {
 
     const float height = 16.0f;
     const float width = 16.0f;
+    const float renderScale = Renderer::getInstance().getRenderScale();
+    const float bulletWidth = (width / 2.0f) * renderScale;
+    const float bulletHeight = height * renderScale;
 
     Level& level = Level::getCurrentLevel();
     Entity& bulletEntity = level.createEntity();
 
     Sprite bullet(spriteSheetAsset->getTexture(), sf::FloatRect({width * 20.0f, height * 6.0f}, {width / 2.0f, height}));
-    bullet.setSize(Vector2F(32.0f, 64.0f));
+    bullet.setSize(Vector2F(bulletWidth, bulletHeight));
 
     bulletEntity.setName("Bullet" + std::to_string(firedBullets++));
     bulletEntity.setTag("Bullet");
     bulletEntity.addComponent<TransformComponent>(transform->getPosition(), transform->getRotation());
     bulletEntity.addComponent<SpriteComponent>(bullet);
     bulletEntity.addComponent<CollisionComponent>(
-        32.0f,
-        64.0f,
+        bulletWidth,
+        bulletHeight,
         CollisionComponent::BodyType::Dynamic,
         true,
         "Bullet"

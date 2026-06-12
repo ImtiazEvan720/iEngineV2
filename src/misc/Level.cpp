@@ -366,6 +366,61 @@ bool Level::loadFromAsset(LevelAsset& levelAsset) {
     return true;
 }
 
+void Level::printEntityPreviewFromAsset(LevelAsset& levelAsset) const {
+    if (!levelAsset.isLoaded() && !levelAsset.load()) {
+        std::cerr << "Cannot preview level asset entities because the asset failed to load: "
+                  << levelAsset.getPath() << std::endl;
+        return;
+    }
+
+    std::cout << "Level entity preview for " << levelAsset.getName() << std::endl;
+
+    int previewIndex = 0;
+    for (const LevelGroupInfo& group : levelAsset.getGroups()) {
+        const TileLayerInfo* tileLayer = group.tileLayers.empty() ? nullptr : &group.tileLayers.front();
+        std::cout << "  Group \"" << group.name << "\" objects=" << group.objects.size() << std::endl;
+
+        for (const ObjectInfo& object : group.objects) {
+            const int gid = tileLayer == nullptr ? 0 : getGidUnderObject(object, *tileLayer, levelAsset);
+            const TilesetInfo* tileset = gid == 0 ? nullptr : findTilesetForGid(levelAsset, gid);
+            const int localTileId = tileset == nullptr ? 0 : gid - tileset->firstGid;
+            const bool animated = tileset != nullptr && tileset->animations.find(localTileId) != tileset->animations.end();
+            const std::vector<std::string> customComponents = splitComponents(getStringProperty(object.properties, "components"));
+            const std::string parentName = getStringProperty(object.properties, "parent");
+
+            std::cout << "    [" << previewIndex++ << "] Entity name=\""
+                      << object.name << "\" tag=\""
+                      << (object.type.empty() ? object.name : object.type) << "\"" << std::endl;
+            std::cout << "        TransformComponent position=(" << object.x << ", " << object.y
+                      << ") rotation=" << object.rotation << std::endl;
+
+            if (gid == 0) {
+                std::cout << "        Visual: none, no non-zero tile under object" << std::endl;
+            } else if (animated) {
+                std::cout << "        AnimationComponent from gid=" << gid
+                          << " localTileId=" << localTileId << std::endl;
+            } else {
+                std::cout << "        SpriteComponent from gid=" << gid
+                          << " localTileId=" << localTileId << std::endl;
+            }
+
+            if (customComponents.empty()) {
+                std::cout << "        Custom components: none" << std::endl;
+            } else {
+                std::cout << "        Custom components:";
+                for (const std::string& component : customComponents) {
+                    std::cout << " " << component;
+                }
+                std::cout << std::endl;
+            }
+
+            if (!parentName.empty()) {
+                std::cout << "        Parent: " << parentName << std::endl;
+            }
+        }
+    }
+}
+
 void Level::update(float deltaTime) {
     for (Entity& entity : entities) {
         if (entity.isDestroyed()) {

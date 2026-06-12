@@ -11,10 +11,14 @@
 struct TileAnimationFrame {
     int tileId = 0;
     float durationSeconds = 0.0f;
+
+    std::string toString() const;
 };
 
 struct TileAnimation {
     std::vector<TileAnimationFrame> frames;
+
+    std::string toString() const;
 };
 
 struct TilesetInfo {
@@ -28,6 +32,8 @@ struct TilesetInfo {
     std::string imagePath;
     TextureAsset* textureAsset = nullptr;
     std::unordered_map<int, TileAnimation> animations;
+
+    std::string toString() const;
 };
 
 struct TileLayerInfo {
@@ -36,6 +42,8 @@ struct TileLayerInfo {
     int height = 0;
     bool visible = true;
     std::vector<int> gids;
+
+    std::string toString() const;
 };
 
 struct ObjectInfo {
@@ -47,12 +55,16 @@ struct ObjectInfo {
     float height = 0.0f;
     float rotation = 0.0f;
     std::unordered_map<std::string, std::string> properties;
+
+    std::string toString() const;
 };
 
 struct LevelGroupInfo {
     std::string name;
     std::vector<TileLayerInfo> tileLayers;
     std::vector<ObjectInfo> objects;
+
+    std::string toString() const;
 };
 
 class LevelAsset : public Asset {
@@ -68,6 +80,9 @@ public:
 
     const std::vector<TilesetInfo>& getTilesets() const;
     const std::vector<LevelGroupInfo>& getGroups() const;
+
+    std::string toString() const;
+    void print() const;
 
 private:
     int mapWidth = 0;

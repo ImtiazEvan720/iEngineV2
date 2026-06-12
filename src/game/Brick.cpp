@@ -7,6 +7,7 @@
 #include "components/SpriteComponent.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
+#include "system/Renderer.h"
 
 #include "Entity.h"
 
@@ -47,12 +48,13 @@ void Brick::onCollisionEnter(CollisionComponent& self, CollisionComponent& other
 
     const float width = 16.0f;
     const float height = 16.0f;
+    const float renderScale = Renderer::getInstance().getRenderScale();
 
     Animation animation(0.1f);
     Vector2F startIndex(16.0f, 8.0f); // Starting index for brick sprites in the sprite sheet
     for(int i = startIndex.x; i < startIndex.x + 3; ++i) {
         Sprite brickSprite(spriteSheetAsset->getTexture(), sf::FloatRect({width * i, height * startIndex.y}, {width, height}));
-        brickSprite.setSize(Vector2F(64.0f, 64.0f));
+        brickSprite.setSize(Vector2F(width * renderScale, height * renderScale));
         animation.addFrame(brickSprite);
     }
 

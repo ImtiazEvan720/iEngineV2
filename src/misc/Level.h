@@ -34,6 +34,7 @@ public:
     const std::deque<Entity>& getEntities() const;
 
     bool loadFromAsset(LevelAsset& levelAsset);
+    void printEntityPreviewFromAsset(LevelAsset& levelAsset) const;
     void update(float deltaTime);
 
 private:

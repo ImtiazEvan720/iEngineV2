@@ -132,20 +132,36 @@ int main() {
         return 1;
     }
 
+    LevelAsset* levelAsset = assetManager.getLevelAssetByName("custom.tmx");
+    if (levelAsset == nullptr) {
+        std::cerr << "Failed to find Custom.tmx level asset." << std::endl;
+        ImGui::SFML::Shutdown();
+        return 1;
+    }
+
+    Renderer& renderer = Renderer::getInstance();
+    renderer.setWindow(&window);
+    renderer.setRenderScale(2.0f);
+
     Level& level = Level::getCurrentLevel();
+    levelAsset->print();
+    level.printEntityPreviewFromAsset(*levelAsset);
+
     Entity& testEntity = level.createEntity();
     testEntity.setName("Player1");
     testEntity.setTag("Player");
     testEntity.addComponent<TransformComponent>(Vector2F(420.0f, 260.0f), 0.0f);
 
-    float height = 16.0f;
-    float width = 16.0f;
+    const float height = 16.0f;
+    const float width = 16.0f;
+    const float scaledWidth = width * renderer.getRenderScale();
+    const float scaledHeight = height * renderer.getRenderScale();
 
     Sprite testSprite(spriteSheetAsset->getTexture(), sf::FloatRect({width*0, height*0}, {width, height}));
-    testSprite.setSize(Vector2F(64.0f, 64.0f));
+    testSprite.setSize(Vector2F(scaledWidth, scaledHeight));
 
     Sprite testSprite2(spriteSheetAsset->getTexture(), sf::FloatRect({width*1, height*0}, {width, height}));
-    testSprite2.setSize(Vector2F(64.0f, 64.0f));
+    testSprite2.setSize(Vector2F(scaledWidth, scaledHeight));
 
 
     Animation anim = Animation(0.1f);
@@ -156,15 +172,17 @@ int main() {
     animationComponent.pause();
     testEntity.addComponent<PlayerController>();
 
+    
     #pragma region Add Brick Entity
+
     Entity& brick = level.createEntity();
     Sprite brickSprite(spriteSheetAsset->getTexture(), sf::FloatRect({width*16, height*0}, {width, height}));
-    brickSprite.setSize(Vector2F(64.0f, 64.0f));
+    brickSprite.setSize(Vector2F(scaledWidth, scaledHeight));
     brick.addComponent<SpriteComponent>(brickSprite);
     brick.addComponent<TransformComponent>(Vector2F(520.0f, 260.0f), 0.0f);
     brick.addComponent<CollisionComponent>(
-        64.0f,
-        64.0f,
+        scaledWidth,
+        scaledHeight,
         CollisionComponent::BodyType::Static,
         false,
         "Brick"
@@ -173,13 +191,12 @@ int main() {
 
     #pragma endregion
 
-    Renderer& renderer = Renderer::getInstance();
-    renderer.setWindow(&window);
-
     InputSystem& inputSystem = InputSystem::getInstance();
     for (Entity& entity : level.getEntities()) {
         entity.addInputListeners(inputSystem);
     }
+
+    renderer.buildTileLayerBatches(*levelAsset);
 
     sf::CircleShape greenCircle(100.0f);
     greenCircle.setFillColor(sf::Color::Green);
@@ -205,6 +222,7 @@ int main() {
 
         PhysicsSystem::getInstance().update(deltaTime);
         level.update(deltaTime);
+        renderer.update(deltaTime);
         ImGui::SFML::Update(window, dt);
 
         ImGui::Begin("Custom Integration Window");
@@ -223,6 +241,7 @@ int main() {
     }
 
     level.clearEntities();
+    renderer.clearTileLayerBatches();
     assetManager.clearAssets();
     ImGui::SFML::Shutdown();
 

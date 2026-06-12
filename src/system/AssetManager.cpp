@@ -54,6 +54,18 @@ std::unique_ptr<Asset> createAsset(const std::filesystem::path& assetPath, Asset
             return nullptr;
     }
 }
+
+bool loadAssetPath(std::vector<std::unique_ptr<Asset>>& assets, const std::filesystem::path& assetPath) {
+    const Asset::Type assetType = typeFromExtension(assetPath);
+    std::unique_ptr<Asset> asset = createAsset(assetPath, assetType);
+    if (asset == nullptr) {
+        return true;
+    }
+
+    const bool loaded = asset->load();
+    assets.push_back(std::move(asset));
+    return loaded;
+}
 }
 
 AssetManager& AssetManager::getInstance() {
@@ -72,7 +84,8 @@ bool AssetManager::loadAssets(const std::string& assetsDirectory) {
         return false;
     }
 
-    bool loadedAllKnownAssets = true;
+    std::vector<fs::path> regularAssetPaths;
+    std::vector<fs::path> levelAssetPaths;
 
     for (const fs::directory_entry& entry : fs::recursive_directory_iterator(rootPath)) {
         if (!entry.is_regular_file()) {
@@ -86,13 +99,26 @@ bool AssetManager::loadAssets(const std::string& assetsDirectory) {
             continue;
         }
 
-        std::unique_ptr<Asset> asset = createAsset(assetPath, assetType);
-        if (asset == nullptr) {
-            continue;
+        if (assetType == Asset::Type::Level) {
+            levelAssetPaths.push_back(assetPath);
+        } else {
+            regularAssetPaths.push_back(assetPath);
         }
+    }
 
-        loadedAllKnownAssets = asset->load() && loadedAllKnownAssets;
-        assets.push_back(std::move(asset));
+    std::sort(regularAssetPaths.begin(), regularAssetPaths.end());
+    std::sort(levelAssetPaths.begin(), levelAssetPaths.end());
+
+    bool loadedAllKnownAssets = true;
+
+    std::cout << "Loading regular assets..." << std::endl;
+    for (const fs::path& assetPath : regularAssetPaths) {
+        loadedAllKnownAssets = loadAssetPath(assets, assetPath) && loadedAllKnownAssets;
+    }
+
+    std::cout << "Loading level assets..." << std::endl;
+    for (const fs::path& assetPath : levelAssetPaths) {
+        loadedAllKnownAssets = loadAssetPath(assets, assetPath) && loadedAllKnownAssets;
     }
 
     std::cout << "Loaded " << assets.size() << " asset(s) from " << assetsDirectory << std::endl;
