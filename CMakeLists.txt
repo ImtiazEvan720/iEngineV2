@@ -83,6 +83,7 @@ add_executable(iEngineV2
     src/system/InputSystem.cpp
     src/system/PhysicsSystem.cpp
     src/system/Renderer.cpp
+    src/system/TileLayerRenderer.cpp
 )
 
 target_compile_features(iEngineV2 PRIVATE cxx_std_17)
