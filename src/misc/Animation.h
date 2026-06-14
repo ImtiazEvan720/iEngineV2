@@ -1,7 +1,6 @@
 #ifndef IENGINEV2_ANIMATION_H
 #define IENGINEV2_ANIMATION_H
 
-#include <SFML/Graphics/Rect.hpp>
 #include "misc/Sprite.h"
 
 #include <cstddef>

@@ -1,1 +1,1 @@
-./build/bin/iEngineV2
+./build/bin/iEngineV2 --sfml

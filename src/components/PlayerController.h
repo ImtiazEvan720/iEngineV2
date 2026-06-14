@@ -6,10 +6,10 @@
 
 class PlayerController : public Component, public InputListener {
 public:
-    void onKeyPressed(sf::Keyboard::Key key) override;
-    void onKeyReleased(sf::Keyboard::Key key) override;
-    void onMousePressed(sf::Mouse::Button button, int x, int y) override;
-    void onMouseReleased(sf::Mouse::Button button, int x, int y) override;
+    void onKeyPressed(InputKey key) override;
+    void onKeyReleased(InputKey key) override;
+    void onMousePressed(InputMouseButton button, int x, int y) override;
+    void onMouseReleased(InputMouseButton button, int x, int y) override;
     void onStart() override;
     void onUpdate(float deltaTime) override;
 

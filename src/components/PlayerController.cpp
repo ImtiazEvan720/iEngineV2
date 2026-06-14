@@ -28,44 +28,44 @@ void PlayerController::onStart() {
     }
 }
 
-void PlayerController::onKeyPressed(sf::Keyboard::Key key) {
+void PlayerController::onKeyPressed(InputKey key) {
     std::cout << "PlayerController key pressed: " << static_cast<int>(key) << std::endl;
-    if(key == sf::Keyboard::Key::W) {
+    if(key == InputKey::W) {
         isMovingUp = 1;
         isMovingLeft = 0;
         isMoving = true;
-    } else if(key == sf::Keyboard::Key::S) {
+    } else if(key == InputKey::S) {
         isMovingUp = -1;
         isMovingLeft = 0;
         isMoving = true;
-    } else if(key == sf::Keyboard::Key::A) {
+    } else if(key == InputKey::A) {
         isMovingLeft = 1;
         isMovingUp = 0;
         isMoving = true;
-    } else if(key == sf::Keyboard::Key::D) {
+    } else if(key == InputKey::D) {
         isMovingLeft = -1;
         isMovingUp = 0;
         isMoving = true;
-    } else if(key == sf::Keyboard::Key::Space) {
+    } else if(key == InputKey::Space) {
         fire();
     }
 }
 
-void PlayerController::onKeyReleased(sf::Keyboard::Key key) {
+void PlayerController::onKeyReleased(InputKey key) {
     std::cout << "PlayerController key released: " << static_cast<int>(key) << std::endl;
 
-    if(key == sf::Keyboard::Key::W || key == sf::Keyboard::Key::S || key == sf::Keyboard::Key::A || key == sf::Keyboard::Key::D) {
+    if(key == InputKey::W || key == InputKey::S || key == InputKey::A || key == InputKey::D) {
         isMoving = false;
     }
           
 }
 
-void PlayerController::onMousePressed(sf::Mouse::Button button, int x, int y) {
+void PlayerController::onMousePressed(InputMouseButton button, int x, int y) {
     std::cout << "PlayerController mouse pressed: " << static_cast<int>(button)
               << " at " << x << ", " << y << std::endl;
 }
 
-void PlayerController::onMouseReleased(sf::Mouse::Button button, int x, int y) {
+void PlayerController::onMouseReleased(InputMouseButton button, int x, int y) {
     std::cout << "PlayerController mouse released: " << static_cast<int>(button)
               << " at " << x << ", " << y << std::endl;
 }

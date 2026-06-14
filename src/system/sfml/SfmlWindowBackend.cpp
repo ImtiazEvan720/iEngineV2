@@ -8,11 +8,45 @@
 #include <SFML/Graphics/View.hpp>
 #include <SFML/Window/ContextSettings.hpp>
 #include <SFML/Window/Event.hpp>
+#include <SFML/Window/Keyboard.hpp>
+#include <SFML/Window/Mouse.hpp>
 #include <SFML/Window/VideoMode.hpp>
 #include <SFML/Window/WindowEnums.hpp>
 
 #include <memory>
 #include <optional>
+
+namespace {
+InputKey mapKey(sf::Keyboard::Key key) {
+    switch (key) {
+        case sf::Keyboard::Key::W:
+            return InputKey::W;
+        case sf::Keyboard::Key::A:
+            return InputKey::A;
+        case sf::Keyboard::Key::S:
+            return InputKey::S;
+        case sf::Keyboard::Key::D:
+            return InputKey::D;
+        case sf::Keyboard::Key::Space:
+            return InputKey::Space;
+        default:
+            return InputKey::Unknown;
+    }
+}
+
+InputMouseButton mapMouseButton(sf::Mouse::Button button) {
+    switch (button) {
+        case sf::Mouse::Button::Left:
+            return InputMouseButton::Left;
+        case sf::Mouse::Button::Right:
+            return InputMouseButton::Right;
+        case sf::Mouse::Button::Middle:
+            return InputMouseButton::Middle;
+        default:
+            return InputMouseButton::Unknown;
+    }
+}
+}
 
 SfmlWindowBackend::SfmlWindowBackend() = default;
 
@@ -70,7 +104,23 @@ void SfmlWindowBackend::pollEvents(InputSystem& inputSystem, IGuiBackend* guiBac
             guiBackend->processNativeEvent(&*event);
         }
 
-        inputSystem.processEvent(*event);
+        if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+            inputSystem.processKeyPressed(mapKey(keyPressed->code));
+        } else if (const auto* keyReleased = event->getIf<sf::Event::KeyReleased>()) {
+            inputSystem.processKeyReleased(mapKey(keyReleased->code));
+        } else if (const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()) {
+            inputSystem.processMousePressed(
+                mapMouseButton(mousePressed->button),
+                mousePressed->position.x,
+                mousePressed->position.y
+            );
+        } else if (const auto* mouseReleased = event->getIf<sf::Event::MouseButtonReleased>()) {
+            inputSystem.processMouseReleased(
+                mapMouseButton(mouseReleased->button),
+                mouseReleased->position.x,
+                mouseReleased->position.y
+            );
+        }
 
         if (event->is<sf::Event::Closed>()) {
             window->close();

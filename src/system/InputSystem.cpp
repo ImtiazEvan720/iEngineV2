@@ -3,6 +3,40 @@
 #include <algorithm>
 #include <sstream>
 
+namespace {
+const char* keyToString(InputKey key) {
+    switch (key) {
+        case InputKey::W:
+            return "W";
+        case InputKey::A:
+            return "A";
+        case InputKey::S:
+            return "S";
+        case InputKey::D:
+            return "D";
+        case InputKey::Space:
+            return "Space";
+        case InputKey::Unknown:
+        default:
+            return "Unknown";
+    }
+}
+
+const char* mouseButtonToString(InputMouseButton button) {
+    switch (button) {
+        case InputMouseButton::Left:
+            return "Left";
+        case InputMouseButton::Right:
+            return "Right";
+        case InputMouseButton::Middle:
+            return "Middle";
+        case InputMouseButton::Unknown:
+        default:
+            return "Unknown";
+    }
+}
+}
+
 InputSystem& InputSystem::getInstance() {
     static InputSystem instance;
     return instance;
@@ -22,41 +56,45 @@ void InputSystem::removeListener(InputListener* listener) {
     listeners.erase(std::remove(listeners.begin(), listeners.end(), listener), listeners.end());
 }
 
-void InputSystem::processEvent(const sf::Event& event) {
-    if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
-        std::ostringstream stream;
-        stream << "Key pressed: " << static_cast<int>(keyPressed->code);
-        lastInputText = stream.str();
+void InputSystem::processKeyPressed(InputKey key) {
+    std::ostringstream stream;
+    stream << "Key pressed: " << keyToString(key);
+    lastInputText = stream.str();
 
-        for (InputListener* listener : listeners) {
-            listener->onKeyPressed(keyPressed->code);
-        }
-    } else if (const auto* keyReleased = event.getIf<sf::Event::KeyReleased>()) {
-        std::ostringstream stream;
-        stream << "Key released: " << static_cast<int>(keyReleased->code);
-        lastInputText = stream.str();
+    for (InputListener* listener : listeners) {
+        listener->onKeyPressed(key);
+    }
+}
 
-        for (InputListener* listener : listeners) {
-            listener->onKeyReleased(keyReleased->code);
-        }
-    } else if (const auto* mousePressed = event.getIf<sf::Event::MouseButtonPressed>()) {
-        std::ostringstream stream;
-        stream << "Mouse pressed: " << static_cast<int>(mousePressed->button)
-               << " at " << mousePressed->position.x << ", " << mousePressed->position.y;
-        lastInputText = stream.str();
+void InputSystem::processKeyReleased(InputKey key) {
+    std::ostringstream stream;
+    stream << "Key released: " << keyToString(key);
+    lastInputText = stream.str();
 
-        for (InputListener* listener : listeners) {
-            listener->onMousePressed(mousePressed->button, mousePressed->position.x, mousePressed->position.y);
-        }
-    } else if (const auto* mouseReleased = event.getIf<sf::Event::MouseButtonReleased>()) {
-        std::ostringstream stream;
-        stream << "Mouse released: " << static_cast<int>(mouseReleased->button)
-               << " at " << mouseReleased->position.x << ", " << mouseReleased->position.y;
-        lastInputText = stream.str();
+    for (InputListener* listener : listeners) {
+        listener->onKeyReleased(key);
+    }
+}
 
-        for (InputListener* listener : listeners) {
-            listener->onMouseReleased(mouseReleased->button, mouseReleased->position.x, mouseReleased->position.y);
-        }
+void InputSystem::processMousePressed(InputMouseButton button, int x, int y) {
+    std::ostringstream stream;
+    stream << "Mouse pressed: " << mouseButtonToString(button)
+           << " at " << x << ", " << y;
+    lastInputText = stream.str();
+
+    for (InputListener* listener : listeners) {
+        listener->onMousePressed(button, x, y);
+    }
+}
+
+void InputSystem::processMouseReleased(InputMouseButton button, int x, int y) {
+    std::ostringstream stream;
+    stream << "Mouse released: " << mouseButtonToString(button)
+           << " at " << x << ", " << y;
+    lastInputText = stream.str();
+
+    for (InputListener* listener : listeners) {
+        listener->onMouseReleased(button, x, y);
     }
 }
 

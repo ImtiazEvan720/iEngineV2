@@ -7,21 +7,27 @@
 #include <memory>
 #include <string>
 
-namespace sf {
-class Texture;
-}
+struct SDL_Renderer;
+class ITextureResource;
+
+enum class TextureRenderBackend {
+    Sfml,
+    Sdl
+};
 
 class TextureAsset : public Asset {
 public:
     TextureAsset(std::string name, std::string path);
     ~TextureAsset() override;
 
+    static void setTextureRenderBackend(TextureRenderBackend backend, void* nativeContext);
+
     bool load() override;
 
     RenderTextureHandle getTextureHandle() const;
 
 private:
-    std::unique_ptr<sf::Texture> texture;
+    std::unique_ptr<ITextureResource> textureResource;
 };
 
 #endif

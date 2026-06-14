@@ -1,6 +1,12 @@
 #include "system/AssetManager.h"
 
+#ifndef __EMSCRIPTEN__
+#include "misc/MusicAsset.h"
+#include "misc/SoundAsset.h"
+#endif
+
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -21,6 +27,7 @@ Asset::Type typeFromExtension(const std::filesystem::path& path) {
         return Asset::Type::Texture;
     }
 
+#ifndef __EMSCRIPTEN__
     if (extension == ".wav") {
         return Asset::Type::Sound;
     }
@@ -28,6 +35,7 @@ Asset::Type typeFromExtension(const std::filesystem::path& path) {
     if (extension == ".ogg") {
         return Asset::Type::Music;
     }
+#endif
 
     if (extension == ".tmx") {
         return Asset::Type::Level;
@@ -43,10 +51,12 @@ std::unique_ptr<Asset> createAsset(const std::filesystem::path& assetPath, Asset
     switch (assetType) {
         case Asset::Type::Texture:
             return std::make_unique<TextureAsset>(name, path);
+#ifndef __EMSCRIPTEN__
         case Asset::Type::Sound:
             return std::make_unique<SoundAsset>(name, path);
         case Asset::Type::Music:
             return std::make_unique<MusicAsset>(name, path);
+#endif
         case Asset::Type::Level:
             return std::make_unique<LevelAsset>(name, path);
         case Asset::Type::Unknown:
@@ -158,19 +168,39 @@ const TextureAsset* AssetManager::getTextureAssetByName(const std::string& name)
 }
 
 SoundAsset* AssetManager::getSoundAssetByName(const std::string& name) {
+#ifndef __EMSCRIPTEN__
     return dynamic_cast<SoundAsset*>(getAssetByName(name));
+#else
+    (void)name;
+    return nullptr;
+#endif
 }
 
 const SoundAsset* AssetManager::getSoundAssetByName(const std::string& name) const {
+#ifndef __EMSCRIPTEN__
     return dynamic_cast<const SoundAsset*>(getAssetByName(name));
+#else
+    (void)name;
+    return nullptr;
+#endif
 }
 
 MusicAsset* AssetManager::getMusicAssetByName(const std::string& name) {
+#ifndef __EMSCRIPTEN__
     return dynamic_cast<MusicAsset*>(getAssetByName(name));
+#else
+    (void)name;
+    return nullptr;
+#endif
 }
 
 const MusicAsset* AssetManager::getMusicAssetByName(const std::string& name) const {
+#ifndef __EMSCRIPTEN__
     return dynamic_cast<const MusicAsset*>(getAssetByName(name));
+#else
+    (void)name;
+    return nullptr;
+#endif
 }
 
 LevelAsset* AssetManager::getLevelAssetByName(const std::string& name) {

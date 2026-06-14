@@ -2,8 +2,7 @@
 #define IENGINEV2_INPUTSYSTEM_H
 
 #include "system/InputListener.h"
-
-#include <SFML/Window/Event.hpp>
+#include "system/InputTypes.h"
 
 #include <string>
 #include <vector>
@@ -19,7 +18,10 @@ public:
 
     void addListener(InputListener* listener);
     void removeListener(InputListener* listener);
-    void processEvent(const sf::Event& event);
+    void processKeyPressed(InputKey key);
+    void processKeyReleased(InputKey key);
+    void processMousePressed(InputMouseButton button, int x, int y);
+    void processMouseReleased(InputMouseButton button, int x, int y);
 
     const std::string& getLastInputText() const;
 

@@ -3,9 +3,15 @@
 
 #include "misc/Asset.h"
 #include "misc/LevelAsset.h"
+#include "misc/TextureAsset.h"
+
+#ifndef __EMSCRIPTEN__
 #include "misc/MusicAsset.h"
 #include "misc/SoundAsset.h"
-#include "misc/TextureAsset.h"
+#else
+class MusicAsset;
+class SoundAsset;
+#endif
 
 #include <memory>
 #include <string>
