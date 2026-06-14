@@ -9,8 +9,6 @@
 #include "misc/Animation.h"
 #include "misc/Sprite.h"
 
-#include <SFML/Graphics/Rect.hpp>
-
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -119,14 +117,13 @@ Sprite createSpriteFromLocalTileId(const TilesetInfo& tileset, int localTileId) 
     const float sourceY = static_cast<float>((localTileId / tileset.columns) * tileset.tileHeight);
 
     return Sprite(
-        tileset.textureAsset->getTexture(),
-        sf::FloatRect(
-            {sourceX, sourceY},
-            {
-                static_cast<float>(tileset.tileWidth),
-                static_cast<float>(tileset.tileHeight)
-            }
-        )
+        tileset.textureAsset->getTextureHandle(),
+        RenderRect{
+            sourceX,
+            sourceY,
+            static_cast<float>(tileset.tileWidth),
+            static_cast<float>(tileset.tileHeight)
+        }
     );
 }
 
@@ -156,7 +153,7 @@ void addVisualFromGid(Entity& entity, const ObjectInfo& object, const LevelAsset
     }
 
     const TilesetInfo* tileset = findTilesetForGid(levelAsset, gid);
-    if (tileset == nullptr || tileset->textureAsset == nullptr || tileset->textureAsset->getTexture() == nullptr) {
+    if (tileset == nullptr || tileset->textureAsset == nullptr || tileset->textureAsset->getTextureHandle() == nullptr) {
         return;
     }
 

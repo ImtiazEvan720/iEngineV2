@@ -83,6 +83,9 @@ add_executable(iEngineV2
     src/system/InputSystem.cpp
     src/system/PhysicsSystem.cpp
     src/system/Renderer.cpp
+    src/system/sfml/SfmlGuiBackend.cpp
+    src/system/sfml/SfmlRenderBackend.cpp
+    src/system/sfml/SfmlWindowBackend.cpp
     src/system/TileLayerRenderer.cpp
 )
 

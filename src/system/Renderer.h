@@ -3,16 +3,14 @@
 
 #include "system/TileLayerRenderer.h"
 
-namespace sf {
-class RenderWindow;
-}
-
+class IWindowBackend;
 class LevelAsset;
 
 class Renderer {
 public:
     static Renderer& getInstance();
-    void setWindow(sf::RenderWindow* renderWindow);
+    void setRenderBackend(IRenderBackend* backend);
+    void setWindowBackend(IWindowBackend* backend);
     void setRenderScale(float scale);
     float getRenderScale() const;
     bool buildTileLayerBatches(LevelAsset& levelAsset);
@@ -29,7 +27,8 @@ private:
     Renderer() = default;
     ~Renderer() = default;
 
-    sf::RenderWindow* window = nullptr;
+    IRenderBackend* renderBackend = nullptr;
+    IWindowBackend* windowBackend = nullptr;
     float renderScale = 4.0f;
     TileLayerRenderer tileLayerRenderer;
 };

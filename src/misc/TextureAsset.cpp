@@ -1,6 +1,7 @@
 #include "misc/TextureAsset.h"
 
 #include <SFML/Graphics/Image.hpp>
+#include <SFML/Graphics/Texture.hpp>
 
 #include <iostream>
 #include <memory>
@@ -8,6 +9,8 @@
 
 TextureAsset::TextureAsset(std::string name, std::string path)
     : Asset(std::move(name), std::move(path), Type::Texture) {}
+
+TextureAsset::~TextureAsset() = default;
 
 bool TextureAsset::load() {
     sf::Image image;
@@ -30,10 +33,6 @@ bool TextureAsset::load() {
     return isLoaded();
 }
 
-sf::Texture* TextureAsset::getTexture() {
-    return texture.get();
-}
-
-const sf::Texture* TextureAsset::getTexture() const {
+RenderTextureHandle TextureAsset::getTextureHandle() const {
     return texture.get();
 }

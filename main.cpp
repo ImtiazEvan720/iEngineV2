@@ -1,5 +1,3 @@
-#include "imgui.h"
-#include "imgui-SFML.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "components/PlayerController.h"
@@ -13,12 +11,15 @@
 #include "system/InputSystem.h"
 #include "system/PhysicsSystem.h"
 #include "system/Renderer.h"
+#include "system/sfml/SfmlGuiBackend.h"
+#include "system/sfml/SfmlRenderBackend.h"
+#include "system/sfml/SfmlWindowBackend.h"
 #include "game/Brick.h"
 #include "misc/TextureAsset.h"
 #include <box2d/box2d.h>
-#include <SFML/Graphics.hpp>
-#include <SFML/Window/Event.hpp>
+#include <chrono>
 #include <iostream>
+#include <string>
 #include <tinyxml2.h>
 
 int main() {
@@ -65,7 +66,7 @@ int main() {
     int windowWidth = 1280;
     int windowHeight = 720;
     int framerateLimit = 60;
-    const char* windowTitle = "iEngine(Alpha)";
+    std::string windowTitle = "iEngine(Alpha)";
 
     tinyxml2::XMLDocument config;
     tinyxml2::XMLError loadResult = config.LoadFile("config.xml");
@@ -96,25 +97,14 @@ int main() {
     std::cout << "Loaded config.xml. Window: " << windowWidth << "x" << windowHeight
               << ", title: " << windowTitle << std::endl;
 
-    // 1. Create your SFML Window.
-    // SFML Graphics uses fixed-function OpenGL internally, so avoid a core profile here.
-    sf::ContextSettings settings;
-    settings.depthBits = 24;
-    settings.stencilBits = 8;
-    settings.majorVersion = 2;
-    settings.minorVersion = 1;
+    SfmlWindowBackend windowBackend;
+    if (!windowBackend.initialize(windowWidth, windowHeight, windowTitle, framerateLimit)) {
+        return 1;
+    }
 
-    sf::RenderWindow window(
-        sf::VideoMode({static_cast<unsigned int>(windowWidth), static_cast<unsigned int>(windowHeight)}),
-        windowTitle,
-        sf::Style::Default,
-        sf::State::Windowed,
-        settings
-    );
-
-    window.setFramerateLimit(static_cast<unsigned int>(framerateLimit));
-    
-    if (!ImGui::SFML::Init(window)) {
+    SfmlGuiBackend guiBackend;
+    if (!guiBackend.initialize(windowBackend)) {
+        windowBackend.shutdown();
         return 1;
     }
 
@@ -126,21 +116,26 @@ int main() {
     TextureAsset* spriteSheetAsset = assetManager.getTextureAssetByName(
         "NES - Battle City (JPN) - Miscellaneous - General Sprites.png"
     );
-    if (spriteSheetAsset == nullptr || spriteSheetAsset->getTexture() == nullptr) {
+    if (spriteSheetAsset == nullptr || spriteSheetAsset->getTextureHandle() == nullptr) {
         std::cerr << "Failed to find Battle City sprite sheet texture." << std::endl;
-        ImGui::SFML::Shutdown();
+        guiBackend.shutdown();
+        windowBackend.shutdown();
         return 1;
     }
 
     LevelAsset* levelAsset = assetManager.getLevelAssetByName("custom.tmx");
     if (levelAsset == nullptr) {
         std::cerr << "Failed to find Custom.tmx level asset." << std::endl;
-        ImGui::SFML::Shutdown();
+        guiBackend.shutdown();
+        windowBackend.shutdown();
         return 1;
     }
 
+    SfmlRenderBackend renderBackend(windowBackend);
+
     Renderer& renderer = Renderer::getInstance();
-    renderer.setWindow(&window);
+    renderer.setRenderBackend(&renderBackend);
+    renderer.setWindowBackend(&windowBackend);
     renderer.setRenderScale(2.0f);
 
     Level& level = Level::getCurrentLevel();
@@ -157,10 +152,16 @@ int main() {
     const float scaledWidth = width * renderer.getRenderScale();
     const float scaledHeight = height * renderer.getRenderScale();
 
-    Sprite testSprite(spriteSheetAsset->getTexture(), sf::FloatRect({width*0, height*0}, {width, height}));
+    Sprite testSprite(
+        spriteSheetAsset->getTextureHandle(),
+        RenderRect{width * 0.0f, height * 0.0f, width, height}
+    );
     testSprite.setSize(Vector2F(scaledWidth, scaledHeight));
 
-    Sprite testSprite2(spriteSheetAsset->getTexture(), sf::FloatRect({width*1, height*0}, {width, height}));
+    Sprite testSprite2(
+        spriteSheetAsset->getTextureHandle(),
+        RenderRect{width * 1.0f, height * 0.0f, width, height}
+    );
     testSprite2.setSize(Vector2F(scaledWidth, scaledHeight));
 
 
@@ -176,7 +177,10 @@ int main() {
     #pragma region Add Brick Entity
 
     Entity& brick = level.createEntity();
-    Sprite brickSprite(spriteSheetAsset->getTexture(), sf::FloatRect({width*16, height*0}, {width, height}));
+    Sprite brickSprite(
+        spriteSheetAsset->getTextureHandle(),
+        RenderRect{width * 16.0f, height * 0.0f, width, height}
+    );
     brickSprite.setSize(Vector2F(scaledWidth, scaledHeight));
     brick.addComponent<SpriteComponent>(brickSprite);
     brick.addComponent<TransformComponent>(Vector2F(520.0f, 260.0f), 0.0f);
@@ -198,52 +202,32 @@ int main() {
 
     renderer.buildTileLayerBatches(*levelAsset);
 
-    sf::CircleShape greenCircle(100.0f);
-    greenCircle.setFillColor(sf::Color::Green);
-    greenCircle.setPosition({200.0f, 160.0f});
+    auto previousTime = std::chrono::steady_clock::now();
 
-    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    while (windowBackend.isOpen()) {
+        const auto currentTime = std::chrono::steady_clock::now();
+        const float deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();
+        previousTime = currentTime;
 
-    sf::Clock deltaClock;
-
-    while (window.isOpen()) {
-
-        sf::Time dt = deltaClock.restart();
-        float deltaTime = dt.asSeconds();
-
-        while (const std::optional event = window.pollEvent()) {
-            ImGui::SFML::ProcessEvent(window, *event);
-            inputSystem.processEvent(*event);
-
-            if (event->is<sf::Event::Closed>()) {
-                window.close();
-            }
-        }
+        windowBackend.pollEvents(inputSystem, &guiBackend);
 
         PhysicsSystem::getInstance().update(deltaTime);
         level.update(deltaTime);
         renderer.update(deltaTime);
-        ImGui::SFML::Update(window, dt);
 
-        ImGui::Begin("Custom Integration Window");
-        ImGui::Text("Hello, World! I am running through ImGui-SFML.");
-        ImGui::Text("Input: %s", inputSystem.getLastInputText().c_str());
-        if (ImGui::Button("Test Click")) {
-            // Logic
-        }
-        ImGui::End();
+        guiBackend.update(deltaTime);
 
-        window.clear(sf::Color(45, 45, 50)); // Clear SFML Canvas
-        window.draw(greenCircle);
+        windowBackend.beginFrame(RenderColor{45, 45, 50, 255});
         renderer.render();
-        ImGui::SFML::Render(window);
-        window.display();
+        guiBackend.render(inputSystem);
+        windowBackend.endFrame();
     }
 
     level.clearEntities();
     renderer.clearTileLayerBatches();
     assetManager.clearAssets();
-    ImGui::SFML::Shutdown();
+    guiBackend.shutdown();
+    windowBackend.shutdown();
 
     return 0;
 }

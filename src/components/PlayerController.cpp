@@ -12,7 +12,6 @@
 #include "system/AssetManager.h"
 #include "system/Renderer.h"
 
-#include <SFML/Graphics/Rect.hpp>
 #include <iostream>
 
 void PlayerController::onStart() {
@@ -80,7 +79,7 @@ void PlayerController::fire() {
     TextureAsset* spriteSheetAsset = AssetManager::getInstance().getTextureAssetByName(
         "NES - Battle City (JPN) - Miscellaneous - General Sprites.png"
     );
-    if (spriteSheetAsset == nullptr || spriteSheetAsset->getTexture() == nullptr) {
+    if (spriteSheetAsset == nullptr || spriteSheetAsset->getTextureHandle() == nullptr) {
         std::cerr << "Cannot fire bullet because the sprite sheet texture was not found." << std::endl;
         return;
     }
@@ -94,7 +93,10 @@ void PlayerController::fire() {
     Level& level = Level::getCurrentLevel();
     Entity& bulletEntity = level.createEntity();
 
-    Sprite bullet(spriteSheetAsset->getTexture(), sf::FloatRect({width * 20.0f, height * 6.0f}, {width / 2.0f, height}));
+    Sprite bullet(
+        spriteSheetAsset->getTextureHandle(),
+        RenderRect{width * 20.0f, height * 6.0f, width / 2.0f, height}
+    );
     bullet.setSize(Vector2F(bulletWidth, bulletHeight));
 
     bulletEntity.setName("Bullet" + std::to_string(firedBullets++));

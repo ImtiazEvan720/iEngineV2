@@ -2,27 +2,25 @@
 #define IENGINEV2_SPRITE_H
 
 #include "math/Vector2F.h"
-
-#include <SFML/Graphics/Rect.hpp>
-#include <SFML/Graphics/Texture.hpp>
+#include "system/IRenderBackend.h"
 
 class Sprite {
 public:
-    Sprite(sf::Texture* texture, const sf::FloatRect& sourceRect);
+    Sprite(RenderTextureHandle texture, const RenderRect& sourceRect);
 
-    sf::Texture* getTexture() const;
-    const sf::FloatRect& getSourceRect() const;
+    RenderTextureHandle getTextureHandle() const;
+    const RenderRect& getSourceRect() const;
     const Vector2F& getOrigin() const;
     const Vector2F& getSize() const;
 
-    void setTexture(sf::Texture* texture);
-    void setSourceRect(const sf::FloatRect& sourceRect);
+    void setTextureHandle(RenderTextureHandle texture);
+    void setSourceRect(const RenderRect& sourceRect);
     void setOrigin(const Vector2F& origin);
     void setSize(const Vector2F& size);
 
 private:
-    sf::Texture* texture;
-    sf::FloatRect sourceRect;
+    RenderTextureHandle texture;
+    RenderRect sourceRect;
     Vector2F origin;
     Vector2F size;
 };

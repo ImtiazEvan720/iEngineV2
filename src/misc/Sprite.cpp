@@ -1,16 +1,16 @@
 #include "misc/Sprite.h"
 
-Sprite::Sprite(sf::Texture* texture, const sf::FloatRect& sourceRect)
+Sprite::Sprite(RenderTextureHandle texture, const RenderRect& sourceRect)
     : texture(texture),
       sourceRect(sourceRect),
-      origin(sourceRect.size.x/2, sourceRect.size.y/2),
-      size(sourceRect.size.x, sourceRect.size.y) {}
+      origin(sourceRect.width / 2.0f, sourceRect.height / 2.0f),
+      size(sourceRect.width, sourceRect.height) {}
 
-sf::Texture* Sprite::getTexture() const {
+RenderTextureHandle Sprite::getTextureHandle() const {
     return texture;
 }
 
-const sf::FloatRect& Sprite::getSourceRect() const {
+const RenderRect& Sprite::getSourceRect() const {
     return sourceRect;
 }
 
@@ -22,11 +22,11 @@ const Vector2F& Sprite::getSize() const {
     return size;
 }
 
-void Sprite::setTexture(sf::Texture* texture) {
+void Sprite::setTextureHandle(RenderTextureHandle texture) {
     this->texture = texture;
 }
 
-void Sprite::setSourceRect(const sf::FloatRect& sourceRect) {
+void Sprite::setSourceRect(const RenderRect& sourceRect) {
     this->sourceRect = sourceRect;
 }
 

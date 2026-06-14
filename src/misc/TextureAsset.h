@@ -2,20 +2,23 @@
 #define IENGINEV2_TEXTUREASSET_H
 
 #include "misc/Asset.h"
-
-#include <SFML/Graphics/Texture.hpp>
+#include "system/IRenderBackend.h"
 
 #include <memory>
 #include <string>
 
+namespace sf {
+class Texture;
+}
+
 class TextureAsset : public Asset {
 public:
     TextureAsset(std::string name, std::string path);
+    ~TextureAsset() override;
 
     bool load() override;
 
-    sf::Texture* getTexture();
-    const sf::Texture* getTexture() const;
+    RenderTextureHandle getTextureHandle() const;
 
 private:
     std::unique_ptr<sf::Texture> texture;

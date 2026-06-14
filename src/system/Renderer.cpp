@@ -4,10 +4,7 @@
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "misc/Level.h"
-
-#include <SFML/Graphics/Rect.hpp>
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/Graphics/Sprite.hpp>
+#include "system/IWindowBackend.h"
 
 #include <iostream>
 
@@ -16,8 +13,12 @@ Renderer& Renderer::getInstance() {
     return instance;
 }
 
-void Renderer::setWindow(sf::RenderWindow* renderWindow) {
-    window = renderWindow;
+void Renderer::setRenderBackend(IRenderBackend* backend) {
+    renderBackend = backend;
+}
+
+void Renderer::setWindowBackend(IWindowBackend* backend) {
+    windowBackend = backend;
 }
 
 void Renderer::setRenderScale(float scale) {
@@ -46,11 +47,11 @@ void Renderer::update(float deltaTime) {
 }
 
 void Renderer::render() {
-    if (window == nullptr) {
+    if (renderBackend == nullptr || windowBackend == nullptr) {
         return;
     }
 
-    tileLayerRenderer.render(*window);
+    tileLayerRenderer.render(*renderBackend, windowBackend->getViewport());
 
     const Level& level = Level::getCurrentLevel();
     for (const Entity& entity : level.getEntities()) {
@@ -77,27 +78,34 @@ void Renderer::render() {
             continue;
         }
 
-        sf::Texture* texture = engineSprite->getTexture();
+        RenderTextureHandle texture = engineSprite->getTextureHandle();
 
         if (texture == nullptr) {
             continue;
         }
 
-        sf::Sprite sfmlSprite(*texture);
-        sfmlSprite.setTextureRect(sf::IntRect(engineSprite->getSourceRect()));
-        sfmlSprite.setOrigin({engineSprite->getOrigin().x, engineSprite->getOrigin().y});
         const Vector2F worldPosition = transformComponent->getWorldPosition();
-        sfmlSprite.setPosition({worldPosition.x, worldPosition.y});
-        sfmlSprite.setRotation(sf::degrees(transformComponent->getWorldRotation()));
+        const auto& sourceRect = engineSprite->getSourceRect();
 
-        const sf::FloatRect sourceRect = engineSprite->getSourceRect();
-        if (sourceRect.size.x != 0.0f && sourceRect.size.y != 0.0f) {
-            sfmlSprite.setScale({
-                engineSprite->getSize().x / sourceRect.size.x,
-                engineSprite->getSize().y / sourceRect.size.y
-            });
-        }
-
-        window->draw(sfmlSprite);
+        renderBackend->drawTexture(
+            texture,
+            RenderRect{
+                sourceRect.x,
+                sourceRect.y,
+                sourceRect.width,
+                sourceRect.height
+            },
+            RenderRect{
+                worldPosition.x,
+                worldPosition.y,
+                engineSprite->getSize().x,
+                engineSprite->getSize().y
+            },
+            RenderVector2{
+                engineSprite->getOrigin().x,
+                engineSprite->getOrigin().y
+            },
+            transformComponent->getWorldRotation()
+        );
     }
 }

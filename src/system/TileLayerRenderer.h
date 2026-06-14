@@ -2,25 +2,18 @@
 #define IENGINEV2_TILELAYERRENDERER_H
 
 #include "misc/LevelAsset.h"
-
-#include <SFML/Graphics/Rect.hpp>
-#include <SFML/Graphics/VertexArray.hpp>
+#include "system/IRenderBackend.h"
 
 #include <cstddef>
 #include <string>
 #include <vector>
-
-namespace sf {
-class RenderWindow;
-class Texture;
-}
 
 class TileLayerRenderer {
 public:
     bool buildFromLevelAsset(LevelAsset& levelAsset, float renderScale);
     void clear();
     void update(float deltaTime);
-    void render(sf::RenderWindow& window) const;
+    void render(IRenderBackend& renderBackend, const RenderRect& viewport) const;
 
 private:
     static constexpr int chunkSize = 16;
@@ -36,8 +29,9 @@ private:
     struct TileChunk {
         int chunkX = 0;
         int chunkY = 0;
-        sf::Texture* texture = nullptr;
-        sf::VertexArray vertices;
+        RenderRect bounds;
+        RenderTextureHandle texture = nullptr;
+        std::vector<RenderVertex> vertices;
         std::vector<AnimatedTileRef> animatedTiles;
     };
 
@@ -47,16 +41,22 @@ private:
         std::vector<TileChunk> chunks;
     };
 
-    TileChunk& getOrCreateChunk(RenderLayer& renderLayer, int chunkX, int chunkY, sf::Texture* texture);
+    TileChunk& getOrCreateChunk(
+        RenderLayer& renderLayer,
+        int chunkX,
+        int chunkY,
+        RenderTextureHandle texture,
+        const RenderRect& bounds
+    );
     std::size_t appendTileQuad(
-        sf::VertexArray& vertices,
+        std::vector<RenderVertex>& vertices,
         float destinationX,
         float destinationY,
         float destinationWidth,
         float destinationHeight,
-        const sf::IntRect& sourceRect
+        const RenderRect& sourceRect
     ) const;
-    void updateTileTexCoords(sf::VertexArray& vertices, std::size_t firstVertexIndex, const sf::IntRect& sourceRect) const;
+    void updateTileTexCoords(std::vector<RenderVertex>& vertices, std::size_t firstVertexIndex, const RenderRect& sourceRect) const;
 
     std::vector<RenderLayer> layers;
 };

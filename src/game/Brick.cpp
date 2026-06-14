@@ -41,7 +41,7 @@ void Brick::onCollisionEnter(CollisionComponent& self, CollisionComponent& other
     TextureAsset* spriteSheetAsset = AssetManager::getInstance().getTextureAssetByName(
         "NES - Battle City (JPN) - Miscellaneous - General Sprites.png"
     );
-    if (spriteSheetAsset == nullptr || spriteSheetAsset->getTexture() == nullptr) {
+    if (spriteSheetAsset == nullptr || spriteSheetAsset->getTextureHandle() == nullptr) {
         std::cerr << "Failed to find Battle City sprite sheet texture." << std::endl;
         return;
     }
@@ -53,7 +53,10 @@ void Brick::onCollisionEnter(CollisionComponent& self, CollisionComponent& other
     Animation animation(0.1f);
     Vector2F startIndex(16.0f, 8.0f); // Starting index for brick sprites in the sprite sheet
     for(int i = startIndex.x; i < startIndex.x + 3; ++i) {
-        Sprite brickSprite(spriteSheetAsset->getTexture(), sf::FloatRect({width * i, height * startIndex.y}, {width, height}));
+        Sprite brickSprite(
+            spriteSheetAsset->getTextureHandle(),
+            RenderRect{width * i, height * startIndex.y, width, height}
+        );
         brickSprite.setSize(Vector2F(width * renderScale, height * renderScale));
         animation.addFrame(brickSprite);
     }

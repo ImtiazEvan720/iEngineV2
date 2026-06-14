@@ -1,11 +1,5 @@
 #include "system/TileLayerRenderer.h"
 
-#include <SFML/Graphics/PrimitiveType.hpp>
-#include <SFML/Graphics/RenderStates.hpp>
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/Graphics/Texture.hpp>
-#include <SFML/Graphics/Vertex.hpp>
-
 #include <iostream>
 #include <utility>
 
@@ -22,14 +16,23 @@ const TilesetInfo* findTilesetForGid(const LevelAsset& levelAsset, int gid) {
     return result;
 }
 
-sf::IntRect getTileSourceRect(const TilesetInfo& tileset, int localTileId) {
+RenderRect getTileSourceRect(const TilesetInfo& tileset, int localTileId) {
     const int sourceX = (localTileId % tileset.columns) * tileset.tileWidth;
     const int sourceY = (localTileId / tileset.columns) * tileset.tileHeight;
 
-    return sf::IntRect(
-        {sourceX, sourceY},
-        {tileset.tileWidth, tileset.tileHeight}
-    );
+    return RenderRect{
+        static_cast<float>(sourceX),
+        static_cast<float>(sourceY),
+        static_cast<float>(tileset.tileWidth),
+        static_cast<float>(tileset.tileHeight)
+    };
+}
+
+bool intersects(const RenderRect& left, const RenderRect& right) {
+    return left.x < right.x + right.width
+        && left.x + left.width > right.x
+        && left.y < right.y + right.height
+        && left.y + left.height > right.y;
 }
 }
 
@@ -49,6 +52,8 @@ bool TileLayerRenderer::buildFromLevelAsset(LevelAsset& levelAsset, float render
 
     const float scaledTileWidth = static_cast<float>(levelAsset.getTileWidth()) * renderScale;
     const float scaledTileHeight = static_cast<float>(levelAsset.getTileHeight()) * renderScale;
+    const float scaledChunkWidth = scaledTileWidth * static_cast<float>(chunkSize);
+    const float scaledChunkHeight = scaledTileHeight * static_cast<float>(chunkSize);
 
     if (scaledTileWidth <= 0.0f || scaledTileHeight <= 0.0f) {
         std::cerr << "TileLayerRenderer failed to build tile chunks. Invalid tile size." << std::endl;
@@ -84,18 +89,25 @@ bool TileLayerRenderer::buildFromLevelAsset(LevelAsset& levelAsset, float render
                     if (tileset == nullptr
                         || tileset->columns == 0
                         || tileset->textureAsset == nullptr
-                        || tileset->textureAsset->getTexture() == nullptr) {
+                        || tileset->textureAsset->getTextureHandle() == nullptr) {
                         continue;
                     }
 
                     const int localTileId = gid - tileset->firstGid;
                     const int chunkX = x / chunkSize;
                     const int chunkY = y / chunkSize;
+                    const RenderRect chunkBounds{
+                        static_cast<float>(chunkX) * scaledChunkWidth,
+                        static_cast<float>(chunkY) * scaledChunkHeight,
+                        scaledChunkWidth,
+                        scaledChunkHeight
+                    };
                     TileChunk& chunk = getOrCreateChunk(
                         renderLayer,
                         chunkX,
                         chunkY,
-                        tileset->textureAsset->getTexture()
+                        tileset->textureAsset->getTextureHandle(),
+                        chunkBounds
                     );
 
                     const float destinationX = static_cast<float>(x) * scaledTileWidth;
@@ -177,16 +189,18 @@ void TileLayerRenderer::update(float deltaTime) {
     }
 }
 
-void TileLayerRenderer::render(sf::RenderWindow& window) const {
+void TileLayerRenderer::render(IRenderBackend& renderBackend, const RenderRect& viewport) const {
     for (const RenderLayer& layer : layers) {
         for (const TileChunk& chunk : layer.chunks) {
-            if (chunk.texture == nullptr || chunk.vertices.getVertexCount() == 0) {
+            if (chunk.texture == nullptr || chunk.vertices.empty()) {
                 continue;
             }
 
-            sf::RenderStates states;
-            states.texture = chunk.texture;
-            window.draw(chunk.vertices, states);
+            if (!intersects(chunk.bounds, viewport)) {
+                continue;
+            }
+
+            renderBackend.drawGeometry(chunk.texture, chunk.vertices);
         }
     }
 }
@@ -195,7 +209,8 @@ TileLayerRenderer::TileChunk& TileLayerRenderer::getOrCreateChunk(
     RenderLayer& renderLayer,
     int chunkX,
     int chunkY,
-    sf::Texture* texture
+    RenderTextureHandle texture,
+    const RenderRect& bounds
 ) {
     for (TileChunk& chunk : renderLayer.chunks) {
         if (chunk.chunkX == chunkX && chunk.chunkY == chunkY && chunk.texture == texture) {
@@ -207,85 +222,67 @@ TileLayerRenderer::TileChunk& TileLayerRenderer::getOrCreateChunk(
     TileChunk& chunk = renderLayer.chunks.back();
     chunk.chunkX = chunkX;
     chunk.chunkY = chunkY;
+    chunk.bounds = bounds;
     chunk.texture = texture;
-    chunk.vertices.setPrimitiveType(sf::PrimitiveType::Triangles);
     return chunk;
 }
 
 std::size_t TileLayerRenderer::appendTileQuad(
-    sf::VertexArray& vertices,
+    std::vector<RenderVertex>& vertices,
     float destinationX,
     float destinationY,
     float destinationWidth,
     float destinationHeight,
-    const sf::IntRect& sourceRect
+    const RenderRect& sourceRect
 ) const {
-    const sf::Vector2f topLeft(destinationX, destinationY);
-    const sf::Vector2f topRight(destinationX + destinationWidth, destinationY);
-    const sf::Vector2f bottomRight(destinationX + destinationWidth, destinationY + destinationHeight);
-    const sf::Vector2f bottomLeft(destinationX, destinationY + destinationHeight);
+    const float left = destinationX;
+    const float top = destinationY;
+    const float right = destinationX + destinationWidth;
+    const float bottom = destinationY + destinationHeight;
 
-    const sf::Vector2f uvTopLeft(
-        static_cast<float>(sourceRect.position.x),
-        static_cast<float>(sourceRect.position.y)
-    );
-    const sf::Vector2f uvTopRight(
-        static_cast<float>(sourceRect.position.x + sourceRect.size.x),
-        static_cast<float>(sourceRect.position.y)
-    );
-    const sf::Vector2f uvBottomRight(
-        static_cast<float>(sourceRect.position.x + sourceRect.size.x),
-        static_cast<float>(sourceRect.position.y + sourceRect.size.y)
-    );
-    const sf::Vector2f uvBottomLeft(
-        static_cast<float>(sourceRect.position.x),
-        static_cast<float>(sourceRect.position.y + sourceRect.size.y)
-    );
+    const float uvLeft = sourceRect.x;
+    const float uvTop = sourceRect.y;
+    const float uvRight = sourceRect.x + sourceRect.width;
+    const float uvBottom = sourceRect.y + sourceRect.height;
 
-    const std::size_t firstVertexIndex = vertices.getVertexCount();
+    const std::size_t firstVertexIndex = vertices.size();
 
-    vertices.append(sf::Vertex{topLeft, sf::Color::White, uvTopLeft});
-    vertices.append(sf::Vertex{topRight, sf::Color::White, uvTopRight});
-    vertices.append(sf::Vertex{bottomRight, sf::Color::White, uvBottomRight});
+    vertices.push_back(RenderVertex{left, top, uvLeft, uvTop});
+    vertices.push_back(RenderVertex{right, top, uvRight, uvTop});
+    vertices.push_back(RenderVertex{right, bottom, uvRight, uvBottom});
 
-    vertices.append(sf::Vertex{topLeft, sf::Color::White, uvTopLeft});
-    vertices.append(sf::Vertex{bottomRight, sf::Color::White, uvBottomRight});
-    vertices.append(sf::Vertex{bottomLeft, sf::Color::White, uvBottomLeft});
+    vertices.push_back(RenderVertex{left, top, uvLeft, uvTop});
+    vertices.push_back(RenderVertex{right, bottom, uvRight, uvBottom});
+    vertices.push_back(RenderVertex{left, bottom, uvLeft, uvBottom});
 
     return firstVertexIndex;
 }
 
 void TileLayerRenderer::updateTileTexCoords(
-    sf::VertexArray& vertices,
+    std::vector<RenderVertex>& vertices,
     std::size_t firstVertexIndex,
-    const sf::IntRect& sourceRect
+    const RenderRect& sourceRect
 ) const {
-    if (firstVertexIndex + 5 >= vertices.getVertexCount()) {
+    if (firstVertexIndex + 5 >= vertices.size()) {
         return;
     }
 
-    const sf::Vector2f uvTopLeft(
-        static_cast<float>(sourceRect.position.x),
-        static_cast<float>(sourceRect.position.y)
-    );
-    const sf::Vector2f uvTopRight(
-        static_cast<float>(sourceRect.position.x + sourceRect.size.x),
-        static_cast<float>(sourceRect.position.y)
-    );
-    const sf::Vector2f uvBottomRight(
-        static_cast<float>(sourceRect.position.x + sourceRect.size.x),
-        static_cast<float>(sourceRect.position.y + sourceRect.size.y)
-    );
-    const sf::Vector2f uvBottomLeft(
-        static_cast<float>(sourceRect.position.x),
-        static_cast<float>(sourceRect.position.y + sourceRect.size.y)
-    );
+    const float uvLeft = sourceRect.x;
+    const float uvTop = sourceRect.y;
+    const float uvRight = sourceRect.x + sourceRect.width;
+    const float uvBottom = sourceRect.y + sourceRect.height;
 
-    vertices[firstVertexIndex + 0].texCoords = uvTopLeft;
-    vertices[firstVertexIndex + 1].texCoords = uvTopRight;
-    vertices[firstVertexIndex + 2].texCoords = uvBottomRight;
+    vertices[firstVertexIndex + 0].u = uvLeft;
+    vertices[firstVertexIndex + 0].v = uvTop;
+    vertices[firstVertexIndex + 1].u = uvRight;
+    vertices[firstVertexIndex + 1].v = uvTop;
+    vertices[firstVertexIndex + 2].u = uvRight;
+    vertices[firstVertexIndex + 2].v = uvBottom;
 
-    vertices[firstVertexIndex + 3].texCoords = uvTopLeft;
-    vertices[firstVertexIndex + 4].texCoords = uvBottomRight;
-    vertices[firstVertexIndex + 5].texCoords = uvBottomLeft;
+    vertices[firstVertexIndex + 3].u = uvLeft;
+    vertices[firstVertexIndex + 3].v = uvTop;
+    vertices[firstVertexIndex + 4].u = uvRight;
+    vertices[firstVertexIndex + 4].v = uvBottom;
+    vertices[firstVertexIndex + 5].u = uvLeft;
+    vertices[firstVertexIndex + 5].v = uvBottom;
 }
