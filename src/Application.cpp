@@ -22,7 +22,7 @@
 #include "system/sdl/SdlRenderBackend.h"
 #include "system/sdl/SdlWindowBackend.h"
 
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
 #include "system/sfml/SfmlGuiBackend.h"
 #include "system/sfml/SfmlRenderBackend.h"
 #include "system/sfml/SfmlWindowBackend.h"
@@ -37,7 +37,7 @@
 
 namespace {
 std::string getBackendName(int argc, char* argv[]) {
-#ifdef __EMSCRIPTEN__
+#ifdef IENGINE_SDL_ONLY
     std::string backendName = "sdl";
 #else
     std::string backendName = "sfml";
@@ -166,7 +166,7 @@ bool Application::initialize(int argc, char* argv[]) {
         renderBackend = std::make_unique<SdlRenderBackend>(*sdlWindowBackend);
         guiBackend = std::make_unique<SdlGuiBackend>();
         windowBackend = std::move(sdlWindowBackend);
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
     } else if (backendName == "sfml") {
         auto sfmlWindowBackend = std::make_unique<SfmlWindowBackend>();
         if (!sfmlWindowBackend->initialize(windowWidth, windowHeight, windowTitle, framerateLimit)) {
@@ -179,9 +179,9 @@ bool Application::initialize(int argc, char* argv[]) {
         windowBackend = std::move(sfmlWindowBackend);
 #endif
     } else {
-#ifdef __EMSCRIPTEN__
+#ifdef IENGINE_SDL_ONLY
         std::cerr << "Unknown backend: " << backendName
-                  << ". Web builds support --backend=sdl." << std::endl;
+                  << ". This build supports --backend=sdl." << std::endl;
 #else
         std::cerr << "Unknown backend: " << backendName
                   << ". Use --backend=sfml or --backend=sdl." << std::endl;
@@ -326,7 +326,7 @@ void Application::shutdown() {
 
     Renderer::getInstance().setRenderBackend(nullptr);
     Renderer::getInstance().setWindowBackend(nullptr);
-#ifdef __EMSCRIPTEN__
+#ifdef IENGINE_SDL_ONLY
     TextureAsset::setTextureRenderBackend(TextureRenderBackend::Sdl, nullptr);
 #else
     TextureAsset::setTextureRenderBackend(TextureRenderBackend::Sfml, nullptr);

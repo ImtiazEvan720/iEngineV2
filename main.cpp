@@ -1,5 +1,9 @@
 #include "Application.h"
 
+#ifdef IENGINE_IOS
+#include <SDL3/SDL_main.h>
+#endif
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif

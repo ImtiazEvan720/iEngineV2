@@ -145,7 +145,7 @@ void SdlWindowBackend::endFrame() {
 
     SDL_RenderPresent(renderer);
 
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(IENGINE_IOS)
     if (frameDelayMilliseconds > 0) {
         SDL_Delay(static_cast<Uint32>(frameDelayMilliseconds));
     }

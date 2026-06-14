@@ -1,6 +1,6 @@
 #include "system/AssetManager.h"
 
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
 #include "misc/MusicAsset.h"
 #include "misc/SoundAsset.h"
 #endif
@@ -27,7 +27,7 @@ Asset::Type typeFromExtension(const std::filesystem::path& path) {
         return Asset::Type::Texture;
     }
 
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
     if (extension == ".wav") {
         return Asset::Type::Sound;
     }
@@ -51,7 +51,7 @@ std::unique_ptr<Asset> createAsset(const std::filesystem::path& assetPath, Asset
     switch (assetType) {
         case Asset::Type::Texture:
             return std::make_unique<TextureAsset>(name, path);
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
         case Asset::Type::Sound:
             return std::make_unique<SoundAsset>(name, path);
         case Asset::Type::Music:
@@ -168,7 +168,7 @@ const TextureAsset* AssetManager::getTextureAssetByName(const std::string& name)
 }
 
 SoundAsset* AssetManager::getSoundAssetByName(const std::string& name) {
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
     return dynamic_cast<SoundAsset*>(getAssetByName(name));
 #else
     (void)name;
@@ -177,7 +177,7 @@ SoundAsset* AssetManager::getSoundAssetByName(const std::string& name) {
 }
 
 const SoundAsset* AssetManager::getSoundAssetByName(const std::string& name) const {
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
     return dynamic_cast<const SoundAsset*>(getAssetByName(name));
 #else
     (void)name;
@@ -186,7 +186,7 @@ const SoundAsset* AssetManager::getSoundAssetByName(const std::string& name) con
 }
 
 MusicAsset* AssetManager::getMusicAssetByName(const std::string& name) {
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
     return dynamic_cast<MusicAsset*>(getAssetByName(name));
 #else
     (void)name;
@@ -195,7 +195,7 @@ MusicAsset* AssetManager::getMusicAssetByName(const std::string& name) {
 }
 
 const MusicAsset* AssetManager::getMusicAssetByName(const std::string& name) const {
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
     return dynamic_cast<const MusicAsset*>(getAssetByName(name));
 #else
     (void)name;

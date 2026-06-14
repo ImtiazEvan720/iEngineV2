@@ -16,6 +16,16 @@ set(BOX2D_BUILD_DOCS OFF CACHE BOOL "Build Box2D documentation" FORCE)
 set(BOX2D_BUILD_SAMPLES OFF CACHE BOOL "Build Box2D samples" FORCE)
 set(BOX2D_BUILD_UNIT_TESTS OFF CACHE BOOL "Build Box2D unit tests" FORCE)
 
+set(IENGINE_TARGET_IOS OFF)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(IENGINE_TARGET_IOS ON)
+endif()
+
+set(IENGINE_SDL_ONLY OFF)
+if(EMSCRIPTEN OR IENGINE_TARGET_IOS)
+    set(IENGINE_SDL_ONLY ON)
+endif()
+
 FetchContent_Declare(imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG ${IMGUI_GIT_TAG}
@@ -57,19 +67,21 @@ if(NOT EMSCRIPTEN)
     set(SDL_SENSOR OFF CACHE BOOL "Build SDL sensor subsystem" FORCE)
     set(SDL_TRAY OFF CACHE BOOL "Build SDL tray subsystem" FORCE)
 
-    FetchContent_Declare(SFML
-        GIT_REPOSITORY https://github.com/SFML/SFML.git
-        GIT_TAG 3.1.0
-        GIT_SHALLOW ON
-        EXCLUDE_FROM_ALL
-        SYSTEM
-    )
+    if(NOT IENGINE_SDL_ONLY)
+        FetchContent_Declare(SFML
+            GIT_REPOSITORY https://github.com/SFML/SFML.git
+            GIT_TAG 3.1.0
+            GIT_SHALLOW ON
+            EXCLUDE_FROM_ALL
+            SYSTEM
+        )
 
-    FetchContent_Declare(imgui-sfml
-        GIT_REPOSITORY https://github.com/SFML/imgui-sfml.git
-        GIT_TAG master
-        GIT_SHALLOW ON
-    )
+        FetchContent_Declare(imgui-sfml
+            GIT_REPOSITORY https://github.com/SFML/imgui-sfml.git
+            GIT_TAG master
+            GIT_SHALLOW ON
+        )
+    endif()
 
     FetchContent_Declare(SDL3
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
@@ -96,8 +108,10 @@ use_existing_fetchcontent_source(box2d box2d)
 use_existing_fetchcontent_source(tinyxml2 tinyxml2)
 
 if(NOT EMSCRIPTEN)
-    use_existing_fetchcontent_source(SFML sfml)
-    use_existing_fetchcontent_source(imgui-sfml imgui-sfml)
+    if(NOT IENGINE_SDL_ONLY)
+        use_existing_fetchcontent_source(SFML sfml)
+        use_existing_fetchcontent_source(imgui-sfml imgui-sfml)
+    endif()
     use_existing_fetchcontent_source(SDL3 sdl3)
 endif()
 
@@ -105,12 +119,14 @@ FetchContent_MakeAvailable(imgui)
 FetchContent_MakeAvailable(stb)
 
 if(NOT EMSCRIPTEN)
-    FetchContent_MakeAvailable(SFML)
+    if(NOT IENGINE_SDL_ONLY)
+        FetchContent_MakeAvailable(SFML)
 
-    set(IMGUI_DIR ${imgui_SOURCE_DIR})
-    set(IMGUI_SFML_FIND_SFML OFF)
+        set(IMGUI_DIR ${imgui_SOURCE_DIR})
+        set(IMGUI_SFML_FIND_SFML OFF)
 
-    FetchContent_MakeAvailable(imgui-sfml)
+        FetchContent_MakeAvailable(imgui-sfml)
+    endif()
     FetchContent_MakeAvailable(SDL3)
 endif()
 
@@ -150,7 +166,7 @@ set(IENGINE_SOURCES
     src/system/TileLayerRenderer.cpp
 )
 
-if(NOT EMSCRIPTEN)
+if(NOT IENGINE_SDL_ONLY)
     list(APPEND IENGINE_SOURCES
         src/misc/MusicAsset.cpp
         src/misc/SfmlTextureResource.cpp
@@ -185,7 +201,7 @@ target_link_libraries(iEngineV2 PRIVATE
 )
 
 if(EMSCRIPTEN)
-    target_compile_definitions(iEngineV2 PRIVATE IENGINE_WEB)
+    target_compile_definitions(iEngineV2 PRIVATE IENGINE_WEB IENGINE_SDL_ONLY)
     target_compile_options(iEngineV2 PRIVATE "-sUSE_SDL=3")
     target_link_options(iEngineV2 PRIVATE
         "-sUSE_SDL=3"
@@ -194,6 +210,28 @@ if(EMSCRIPTEN)
         "--preload-file=${CMAKE_CURRENT_SOURCE_DIR}/config.xml@/config.xml"
     )
     set_target_properties(iEngineV2 PROPERTIES SUFFIX ".html")
+elseif(IENGINE_TARGET_IOS)
+    target_compile_definitions(iEngineV2 PRIVATE IENGINE_IOS IENGINE_SDL_ONLY)
+    target_link_libraries(iEngineV2 PRIVATE SDL3::SDL3)
+
+    set_target_properties(iEngineV2 PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.imtiazevan.iEngineV2"
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.imtiazevan.iEngineV2"
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+        XCODE_ATTRIBUTE_INFOPLIST_KEY_CFBundleDisplayName "iEngineV2"
+        XCODE_ATTRIBUTE_INFOPLIST_KEY_UILaunchScreen_Generation "YES"
+        XCODE_ATTRIBUTE_ENABLE_BITCODE "NO"
+    )
+
+    add_custom_command(TARGET iEngineV2 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
+            "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/config.xml"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/Assets"
+            "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/Assets"
+    )
 else()
     target_link_libraries(iEngineV2 PRIVATE
         SFML::Graphics

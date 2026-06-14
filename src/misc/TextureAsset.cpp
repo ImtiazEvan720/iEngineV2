@@ -3,7 +3,7 @@
 #include "misc/ITextureResource.h"
 #include "misc/SdlTextureResource.h"
 
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
 #include "misc/SfmlTextureResource.h"
 #endif
 
@@ -12,7 +12,7 @@
 #include <utility>
 
 namespace {
-#ifdef __EMSCRIPTEN__
+#ifdef IENGINE_SDL_ONLY
 TextureRenderBackend activeBackend = TextureRenderBackend::Sdl;
 #else
 TextureRenderBackend activeBackend = TextureRenderBackend::Sfml;
@@ -36,13 +36,13 @@ bool TextureAsset::load() {
             static_cast<SDL_Renderer*>(activeNativeContext)
         );
     }
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
     else {
         textureResource = std::make_unique<SfmlTextureResource>();
     }
 #else
     else {
-        std::cerr << "SFML texture loading is not available in web builds: "
+        std::cerr << "SFML texture loading is not available in this SDL-only build: "
                   << getPath() << std::endl;
         return false;
     }

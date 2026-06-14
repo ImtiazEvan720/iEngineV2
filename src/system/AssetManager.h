@@ -5,7 +5,7 @@
 #include "misc/LevelAsset.h"
 #include "misc/TextureAsset.h"
 
-#ifndef __EMSCRIPTEN__
+#ifndef IENGINE_SDL_ONLY
 #include "misc/MusicAsset.h"
 #include "misc/SoundAsset.h"
 #else
