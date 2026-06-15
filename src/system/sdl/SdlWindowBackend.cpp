@@ -45,6 +45,11 @@ bool SdlWindowBackend::initialize(
     const std::string& title,
     int framerateLimit
 ) {
+#ifdef IENGINE_ANDROID
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+#endif
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
         return false;

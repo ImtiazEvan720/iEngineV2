@@ -1,6 +1,6 @@
 #include "Application.h"
 
-#ifdef IENGINE_IOS
+#if defined(IENGINE_IOS) || defined(IENGINE_ANDROID)
 #include <SDL3/SDL_main.h>
 #endif
 

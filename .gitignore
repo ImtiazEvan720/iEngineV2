@@ -3,3 +3,8 @@
 build/
 build-web/
 build-ios/
+android/.gradle/
+android/build/
+android/app/build/
+android/app/.cxx/
+android/local.properties

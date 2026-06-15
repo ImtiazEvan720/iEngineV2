@@ -31,6 +31,11 @@
 #include <box2d/box2d.h>
 #include <tinyxml2.h>
 
+#ifdef IENGINE_ANDROID
+#include <SDL3/SDL_system.h>
+#endif
+
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -95,16 +100,36 @@ bool runStartupChecks() {
     return true;
 }
 
+std::string getRuntimeDataRoot() {
+#ifdef IENGINE_ANDROID
+    const char* internalStoragePath = SDL_GetAndroidInternalStoragePath();
+    if (internalStoragePath != nullptr && internalStoragePath[0] != '\0') {
+        return internalStoragePath;
+    }
+#endif
+
+    return "";
+}
+
+std::string getRuntimePath(const std::string& root, const std::string& relativePath) {
+    if (root.empty()) {
+        return relativePath;
+    }
+
+    return (std::filesystem::path(root) / relativePath).string();
+}
+
 bool loadWindowConfig(
+    const std::string& configPath,
     int& windowWidth,
     int& windowHeight,
     int& framerateLimit,
     std::string& windowTitle
 ) {
     tinyxml2::XMLDocument config;
-    tinyxml2::XMLError loadResult = config.LoadFile("config.xml");
+    tinyxml2::XMLError loadResult = config.LoadFile(configPath.c_str());
     if (loadResult != tinyxml2::XML_SUCCESS) {
-        std::cerr << "Failed to load config.xml: " << config.ErrorStr() << std::endl;
+        std::cerr << "Failed to load " << configPath << ": " << config.ErrorStr() << std::endl;
         return false;
     }
 
@@ -148,8 +173,11 @@ bool Application::initialize(int argc, char* argv[]) {
     int windowHeight = 720;
     int framerateLimit = 60;
     std::string windowTitle = "iEngine(Alpha)";
+    const std::string runtimeDataRoot = getRuntimeDataRoot();
+    const std::string configPath = getRuntimePath(runtimeDataRoot, "config.xml");
+    const std::string assetsPath = getRuntimePath(runtimeDataRoot, "Assets");
 
-    if (!loadWindowConfig(windowWidth, windowHeight, framerateLimit, windowTitle)) {
+    if (!loadWindowConfig(configPath, windowWidth, windowHeight, framerateLimit, windowTitle)) {
         return false;
     }
 
@@ -195,7 +223,7 @@ bool Application::initialize(int argc, char* argv[]) {
     }
 
     AssetManager& assetManager = AssetManager::getInstance();
-    if (!assetManager.loadAssets()) {
+    if (!assetManager.loadAssets(assetsPath)) {
         std::cerr << "One or more assets failed to load." << std::endl;
     }
 

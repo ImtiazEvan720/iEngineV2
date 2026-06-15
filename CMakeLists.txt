@@ -21,8 +21,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(IENGINE_TARGET_IOS ON)
 endif()
 
+set(IENGINE_TARGET_ANDROID OFF)
+if(ANDROID)
+    set(IENGINE_TARGET_ANDROID ON)
+endif()
+
 set(IENGINE_SDL_ONLY OFF)
-if(EMSCRIPTEN OR IENGINE_TARGET_IOS)
+if(EMSCRIPTEN OR IENGINE_TARGET_IOS OR IENGINE_TARGET_ANDROID)
     set(IENGINE_SDL_ONLY ON)
 endif()
 
@@ -53,8 +58,13 @@ FetchContent_Declare(tinyxml2
 )
 
 if(NOT EMSCRIPTEN)
-    set(SDL_SHARED OFF CACHE BOOL "Build SDL shared library" FORCE)
-    set(SDL_STATIC ON CACHE BOOL "Build SDL static library" FORCE)
+    if(IENGINE_TARGET_ANDROID)
+        set(SDL_SHARED ON CACHE BOOL "Build SDL shared library" FORCE)
+        set(SDL_STATIC OFF CACHE BOOL "Build SDL static library" FORCE)
+    else()
+        set(SDL_SHARED OFF CACHE BOOL "Build SDL shared library" FORCE)
+        set(SDL_STATIC ON CACHE BOOL "Build SDL static library" FORCE)
+    endif()
     set(SDL_TEST_LIBRARY OFF CACHE BOOL "Build SDL test library" FORCE)
     set(SDL_AUDIO OFF CACHE BOOL "Build SDL audio subsystem" FORCE)
     set(SDL_CAMERA OFF CACHE BOOL "Build SDL camera subsystem" FORCE)
@@ -184,7 +194,12 @@ else()
     )
 endif()
 
-add_executable(iEngineV2 ${IENGINE_SOURCES})
+if(IENGINE_TARGET_ANDROID)
+    add_library(iEngineV2 SHARED ${IENGINE_SOURCES})
+    set_target_properties(iEngineV2 PROPERTIES OUTPUT_NAME main)
+else()
+    add_executable(iEngineV2 ${IENGINE_SOURCES})
+endif()
 
 target_compile_features(iEngineV2 PRIVATE cxx_std_17)
 
@@ -232,6 +247,9 @@ elseif(IENGINE_TARGET_IOS)
             "${CMAKE_CURRENT_SOURCE_DIR}/Assets"
             "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/Assets"
     )
+elseif(IENGINE_TARGET_ANDROID)
+    target_compile_definitions(iEngineV2 PRIVATE IENGINE_ANDROID IENGINE_SDL_ONLY)
+    target_link_libraries(iEngineV2 PRIVATE SDL3::SDL3)
 else()
     target_link_libraries(iEngineV2 PRIVATE
         SFML::Graphics
