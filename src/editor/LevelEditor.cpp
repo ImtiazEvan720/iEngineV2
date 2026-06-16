@@ -1,10 +1,22 @@
 #include "editor/LevelEditor.h"
 
+#include "components/AnimationComponent.h"
+#include "components/CollisionComponent.h"
+#include "components/PlayerController.h"
+#include "components/SpriteComponent.h"
+#include "components/TransformComponent.h"
+#include "game/Brick.h"
+#include "game/Bullet.h"
+#include "math/Vector2F.h"
+#include "misc/Level.h"
+#include "misc/Sprite.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
 #include "system/InputSystem.h"
+#include "system/Renderer.h"
 
 #include "imgui.h"
+#include "misc/cpp/imgui_stdlib.h"
 #include "tinyxml2.h"
 
 #include <algorithm>
@@ -13,6 +25,13 @@
 #include <iostream>
 
 namespace {
+constexpr const char* TileDragPayloadType = "IENGINE_TILE";
+
+struct TileDragPayload {
+    int tilesetIndex = -1;
+    int tileId = -1;
+};
+
 std::string toLower(std::string value) {
     std::transform(value.begin(), value.end(), value.begin(),
                    [](unsigned char character) {
@@ -59,6 +78,30 @@ std::filesystem::path findAssetsRoot() {
     }
 
     return "Assets";
+}
+
+int bodyTypeToIndex(CollisionComponent::BodyType bodyType) {
+    switch (bodyType) {
+        case CollisionComponent::BodyType::Kinematic:
+            return 1;
+        case CollisionComponent::BodyType::Dynamic:
+            return 2;
+        case CollisionComponent::BodyType::Static:
+        default:
+            return 0;
+    }
+}
+
+CollisionComponent::BodyType bodyTypeFromIndex(int index) {
+    switch (index) {
+        case 1:
+            return CollisionComponent::BodyType::Kinematic;
+        case 2:
+            return CollisionComponent::BodyType::Dynamic;
+        case 0:
+        default:
+            return CollisionComponent::BodyType::Static;
+    }
 }
 }
 
@@ -131,6 +174,11 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
             ImGui::EndTabItem();
         }
 
+        if (ImGui::BeginTabItem("Entities")) {
+            drawEntitiesTab();
+            ImGui::EndTabItem();
+        }
+
         if (ImGui::BeginTabItem("Sprites")) {
             drawSpritesTab();
             ImGui::EndTabItem();
@@ -145,6 +193,8 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
     }
 
     ImGui::End();
+
+    drawLevelDropTarget();
 }
 
 void LevelEditor::setEnabled(bool value) {
@@ -185,6 +235,52 @@ void LevelEditor::drawLevelOutlineTab(const InputSystem& inputSystem) {
     ImGui::Text("Tool: %s", currentTool == Tool::Select ? "Select" : "Move");
 }
 
+void LevelEditor::drawEntitiesTab() {
+    Level& level = Level::getCurrentLevel();
+    auto& entities = level.getEntities();
+
+    ImGui::Text("Entities: %zu", entities.size());
+
+    if (selectedEntityId >= 0) {
+        ImGui::SameLine();
+        ImGui::Text("Selected: %d", selectedEntityId);
+    }
+
+    if (!statusMessage.empty()) {
+        ImGui::TextWrapped("%s", statusMessage.c_str());
+    }
+
+    ImGui::Separator();
+
+    if (entities.empty()) {
+        ImGui::TextUnformatted("Current level has no entities.");
+        return;
+    }
+
+    if (ImGui::BeginChild(
+            "##EntityTree",
+            ImVec2(0.0f, 0.0f),
+            ImGuiChildFlags_Borders,
+            ImGuiWindowFlags_HorizontalScrollbar)) {
+        const bool levelOpen = ImGui::TreeNodeEx(
+            "Current Level",
+            ImGuiTreeNodeFlags_DefaultOpen |
+            ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_SpanAvailWidth
+        );
+
+        if (levelOpen) {
+            for (Entity& entity : entities) {
+                drawEntityTreeNode(entity);
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
+    ImGui::EndChild();
+}
+
 void LevelEditor::drawSpritesTab() {
     if (!tilesetsScanned) {
         refreshTilesets();
@@ -200,6 +296,322 @@ void LevelEditor::drawSpritesTab() {
 
 void LevelEditor::drawFileExplorerTab() {
     ImGui::Text("File explorer goes here.");
+}
+
+void LevelEditor::drawEntityTreeNode(Entity& entity) {
+    ImGui::PushID(entity.getId());
+
+    std::string label = entity.getName();
+    if (label.empty()) {
+        label = "Entity";
+    }
+
+    label += "##" + std::to_string(entity.getId());
+
+    ImGuiTreeNodeFlags flags =
+        ImGuiTreeNodeFlags_OpenOnArrow |
+        ImGuiTreeNodeFlags_OpenOnDoubleClick |
+        ImGuiTreeNodeFlags_SpanAvailWidth;
+
+    if (selectedEntityId == entity.getId()) {
+        flags |= ImGuiTreeNodeFlags_Selected;
+    }
+
+    const bool open = ImGui::TreeNodeEx(label.c_str(), flags);
+
+    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+        selectedEntityId = entity.getId();
+        syncEditStateFromEntity(entity);
+    }
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "id: %d\nname: %s\ntag: %s",
+            entity.getId(),
+            entity.getName().c_str(),
+            entity.getTag().c_str()
+        );
+    }
+
+    if (open) {
+        ImGui::Text("Id: %d", entity.getId());
+        ImGui::Text("State: %s", entity.isDestroyed() ? "Destroyed" : "Active");
+
+        if (selectedEntityId == entity.getId()) {
+            syncEditStateFromEntity(entity);
+            drawEntityIdentityFields(entity);
+        } else {
+            ImGui::Text("Name: %s", entity.getName().c_str());
+            ImGui::Text("Tag: %s", entity.getTag().c_str());
+        }
+
+        drawEntityComponents(entity);
+        ImGui::TreePop();
+    }
+
+    ImGui::PopID();
+}
+
+void LevelEditor::drawEntityComponents(Entity& entity) {
+    if (!ImGui::TreeNodeEx(
+            "Components",
+            ImGuiTreeNodeFlags_DefaultOpen |
+            ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_SpanAvailWidth)) {
+        return;
+    }
+
+    bool hasComponents = false;
+    const bool editable = selectedEntityId == entity.getId();
+
+    if (auto* transform = entity.getComponent<TransformComponent>()) {
+        hasComponents = true;
+        if (ImGui::TreeNodeEx("TransformComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (editable) {
+                drawTransformComponentFields(*transform);
+            } else {
+                const Vector2F& position = transform->getPosition();
+                const Vector2F worldPosition = transform->getWorldPosition();
+
+                ImGui::Text("Position: %.2f, %.2f", position.x, position.y);
+                ImGui::Text("World Position: %.2f, %.2f", worldPosition.x, worldPosition.y);
+                ImGui::Text("Rotation: %.2f", transform->getRotation());
+                ImGui::Text("World Rotation: %.2f", transform->getWorldRotation());
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
+    if (auto* spriteComponent = entity.getComponent<SpriteComponent>()) {
+        hasComponents = true;
+        if (ImGui::TreeNodeEx("SpriteComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (editable) {
+                drawSpriteComponentFields(*spriteComponent);
+            } else {
+                const Sprite& sprite = spriteComponent->getSprite();
+                const RenderRect& source = sprite.getSourceRect();
+                const Vector2F& size = sprite.getSize();
+                const Vector2F& origin = sprite.getOrigin();
+
+                ImGui::Text("Source: %.2f, %.2f, %.2f, %.2f", source.x, source.y, source.width, source.height);
+                ImGui::Text("Size: %.2f, %.2f", size.x, size.y);
+                ImGui::Text("Origin: %.2f, %.2f", origin.x, origin.y);
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
+    if (auto* animationComponent = entity.getComponent<AnimationComponent>()) {
+        hasComponents = true;
+        if (ImGui::TreeNodeEx("AnimationComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (editable) {
+                drawAnimationComponentFields(*animationComponent);
+            } else {
+                const Animation& animation = animationComponent->getAnimation();
+
+                ImGui::Text("Frames: %zu", animation.getFrameCount());
+                ImGui::Text("Frame Duration: %.3f", animation.getFrameDuration());
+                ImGui::Text("Playing: %s", animationComponent->isPlaying() ? "true" : "false");
+                ImGui::Text("Finished: %s", animationComponent->isFinished() ? "true" : "false");
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
+    if (auto* collisionComponent = entity.getComponent<CollisionComponent>()) {
+        hasComponents = true;
+        if (ImGui::TreeNodeEx("CollisionComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (editable) {
+                drawCollisionComponentFields(*collisionComponent);
+            } else {
+                ImGui::Text("Name: %s", collisionComponent->getName().c_str());
+                ImGui::Text("Size: %.2f, %.2f", collisionComponent->getWidth(), collisionComponent->getHeight());
+                ImGui::Text("Sensor: %s", collisionComponent->isSensor() ? "true" : "false");
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
+    if (entity.getComponent<PlayerController>() != nullptr) {
+        hasComponents = true;
+        ImGui::BulletText("PlayerController");
+    }
+
+    if (entity.getComponent<Brick>() != nullptr) {
+        hasComponents = true;
+        ImGui::BulletText("Brick");
+    }
+
+    if (entity.getComponent<Bullet>() != nullptr) {
+        hasComponents = true;
+        ImGui::BulletText("Bullet");
+    }
+
+    if (!hasComponents) {
+        ImGui::TextUnformatted("No known components.");
+    }
+
+    ImGui::TreePop();
+}
+
+void LevelEditor::drawEntityIdentityFields(Entity& entity) {
+    ImGui::InputText("Name", &entityEditState.name);
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        entity.setName(entityEditState.name);
+        statusMessage = "Updated entity name.";
+    }
+
+    ImGui::InputText("Tag", &entityEditState.tag);
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        entity.setTag(entityEditState.tag);
+        statusMessage = "Updated entity tag.";
+    }
+}
+
+void LevelEditor::drawTransformComponentFields(TransformComponent& transform) {
+    ImGui::InputFloat2("Position", entityEditState.position, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        transform.setPosition(Vector2F(entityEditState.position[0], entityEditState.position[1]));
+        statusMessage = "Updated TransformComponent position.";
+    }
+
+    ImGui::InputFloat("Rotation", &entityEditState.rotation, 0.0f, 0.0f, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        transform.setRotation(entityEditState.rotation);
+        statusMessage = "Updated TransformComponent rotation.";
+    }
+
+    const Vector2F worldPosition = transform.getWorldPosition();
+    ImGui::Text("World Position: %.2f, %.2f", worldPosition.x, worldPosition.y);
+    ImGui::Text("World Rotation: %.2f", transform.getWorldRotation());
+}
+
+void LevelEditor::drawSpriteComponentFields(SpriteComponent& spriteComponent) {
+    Sprite& sprite = spriteComponent.getSprite();
+
+    ImGui::InputFloat4("Source Rect", entityEditState.spriteSource, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        sprite.setSourceRect(RenderRect{
+            entityEditState.spriteSource[0],
+            entityEditState.spriteSource[1],
+            entityEditState.spriteSource[2],
+            entityEditState.spriteSource[3]
+        });
+        statusMessage = "Updated SpriteComponent source rect.";
+    }
+
+    ImGui::InputFloat2("Size", entityEditState.spriteSize, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        sprite.setSize(Vector2F(entityEditState.spriteSize[0], entityEditState.spriteSize[1]));
+        statusMessage = "Updated SpriteComponent size.";
+    }
+
+    ImGui::InputFloat2("Origin", entityEditState.spriteOrigin, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        sprite.setOrigin(Vector2F(entityEditState.spriteOrigin[0], entityEditState.spriteOrigin[1]));
+        statusMessage = "Updated SpriteComponent origin.";
+    }
+}
+
+void LevelEditor::drawAnimationComponentFields(AnimationComponent& animationComponent) {
+    Animation& animation = animationComponent.getAnimation();
+
+    ImGui::Text("Frames: %zu", animation.getFrameCount());
+    ImGui::Text("Finished: %s", animationComponent.isFinished() ? "true" : "false");
+
+    ImGui::InputFloat("Frame Duration", &entityEditState.animationFrameDuration, 0.0f, 0.0f, "%.3f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        entityEditState.animationFrameDuration = std::max(0.001f, entityEditState.animationFrameDuration);
+        animation.setFrameDuration(entityEditState.animationFrameDuration);
+        statusMessage = "Updated AnimationComponent frame duration.";
+    }
+
+    if (ImGui::Checkbox("Playing", &entityEditState.animationPlaying)) {
+        if (entityEditState.animationPlaying) {
+            animationComponent.play();
+        } else {
+            animationComponent.pause();
+        }
+
+        statusMessage = "Updated AnimationComponent playback.";
+    }
+}
+
+void LevelEditor::drawCollisionComponentFields(CollisionComponent& collisionComponent) {
+    ImGui::InputText("Name", &entityEditState.collisionName);
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        collisionComponent.setName(entityEditState.collisionName);
+        statusMessage = "Updated CollisionComponent name.";
+    }
+
+    ImGui::InputFloat2("Size", entityEditState.collisionSize, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        entityEditState.collisionSize[0] = std::max(0.001f, entityEditState.collisionSize[0]);
+        entityEditState.collisionSize[1] = std::max(0.001f, entityEditState.collisionSize[1]);
+        collisionComponent.setSize(entityEditState.collisionSize[0], entityEditState.collisionSize[1]);
+        statusMessage = "Updated CollisionComponent size.";
+    }
+
+    if (ImGui::Combo("Body Type", &entityEditState.collisionBodyType, "Static\0Kinematic\0Dynamic\0")) {
+        collisionComponent.setBodyType(bodyTypeFromIndex(entityEditState.collisionBodyType));
+        statusMessage = "Updated CollisionComponent body type.";
+    }
+
+    if (ImGui::Checkbox("Sensor", &entityEditState.collisionSensor)) {
+        collisionComponent.setSensor(entityEditState.collisionSensor);
+        statusMessage = "Updated CollisionComponent sensor.";
+    }
+}
+
+void LevelEditor::syncEditStateFromEntity(Entity& entity) {
+    if (entityEditState.entityId == entity.getId()) {
+        return;
+    }
+
+    entityEditState = EntityEditState{};
+    entityEditState.entityId = entity.getId();
+    entityEditState.name = entity.getName();
+    entityEditState.tag = entity.getTag();
+
+    if (TransformComponent* transform = entity.getComponent<TransformComponent>()) {
+        const Vector2F& position = transform->getPosition();
+        entityEditState.position[0] = position.x;
+        entityEditState.position[1] = position.y;
+        entityEditState.rotation = transform->getRotation();
+    }
+
+    if (SpriteComponent* spriteComponent = entity.getComponent<SpriteComponent>()) {
+        const Sprite& sprite = spriteComponent->getSprite();
+        const RenderRect& source = sprite.getSourceRect();
+        const Vector2F& size = sprite.getSize();
+        const Vector2F& origin = sprite.getOrigin();
+
+        entityEditState.spriteSource[0] = source.x;
+        entityEditState.spriteSource[1] = source.y;
+        entityEditState.spriteSource[2] = source.width;
+        entityEditState.spriteSource[3] = source.height;
+        entityEditState.spriteSize[0] = size.x;
+        entityEditState.spriteSize[1] = size.y;
+        entityEditState.spriteOrigin[0] = origin.x;
+        entityEditState.spriteOrigin[1] = origin.y;
+    }
+
+    if (AnimationComponent* animationComponent = entity.getComponent<AnimationComponent>()) {
+        entityEditState.animationFrameDuration = animationComponent->getAnimation().getFrameDuration();
+        entityEditState.animationPlaying = animationComponent->isPlaying();
+    }
+
+    if (CollisionComponent* collisionComponent = entity.getComponent<CollisionComponent>()) {
+        entityEditState.collisionSize[0] = collisionComponent->getWidth();
+        entityEditState.collisionSize[1] = collisionComponent->getHeight();
+        entityEditState.collisionBodyType = bodyTypeToIndex(collisionComponent->getBodyType());
+        entityEditState.collisionSensor = collisionComponent->isSensor();
+        entityEditState.collisionName = collisionComponent->getName();
+    }
 }
 
 void LevelEditor::refreshTilesets() {
@@ -344,6 +756,10 @@ void LevelEditor::drawSelectedTilesetGrid() {
         ImGui::TextUnformatted("Selected tile id: none");
     }
 
+    if (!statusMessage.empty()) {
+        ImGui::TextWrapped("%s", statusMessage.c_str());
+    }
+
     const ImTextureID textureId = tileset.textureAsset->getImGuiTextureId();
     const ImVec2 previewSize(
         static_cast<float>(tileset.tileWidth) * tilePreviewScale,
@@ -381,6 +797,32 @@ void LevelEditor::drawSelectedTilesetGrid() {
                 selectedTileId = tileId;
             }
 
+            if (ImGui::BeginDragDropSource()) {
+                const TileDragPayload payload{
+                    selectedTilesetIndex,
+                    tileId
+                };
+
+                ImGui::SetDragDropPayload(TileDragPayloadType, &payload, sizeof(payload));
+                ImGui::Text("Tile id: %d", tileId);
+                // ImGui::Image(textureId, previewSize, uv0, uv1);
+
+                const ImVec2 mousePosition = ImGui::GetMousePos();
+                const float renderScale = Renderer::getInstance().getRenderScale();
+
+                const ImVec2 halfSize(tileset.tileWidth * renderScale * 0.5f, tileset.tileHeight * renderScale * 0.5f);
+                ImGui::GetForegroundDrawList()->AddImage(
+                    textureId,
+                    ImVec2(mousePosition.x - halfSize.x, mousePosition.y - halfSize.y),
+                    ImVec2(mousePosition.x + halfSize.x, mousePosition.y + halfSize.y),
+                    uv0,
+                    uv1
+                );
+
+
+                ImGui::EndDragDropSource();
+            }
+
             if (selected) {
                 ImGui::PopStyleColor();
             }
@@ -398,4 +840,105 @@ void LevelEditor::drawSelectedTilesetGrid() {
     }
 
     ImGui::EndChild();
+}
+
+void LevelEditor::drawLevelDropTarget() {
+    const ImGuiPayload* activePayload = ImGui::GetDragDropPayload();
+    if (activePayload == nullptr || !activePayload->IsDataType(TileDragPayloadType)) {
+        return;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImVec2 displaySize = io.DisplaySize;
+    if (displaySize.x <= 0.0f || displaySize.y <= 0.0f) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(displaySize, ImGuiCond_Always);
+
+    const ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoDecoration |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoBackground |
+        ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoScrollWithMouse;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::Begin("##LevelDropTarget", nullptr, flags);
+    ImGui::InvisibleButton("##LevelDropArea", displaySize);
+
+    if (ImGui::BeginDragDropTarget()) {
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(TileDragPayloadType);
+        if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(TileDragPayload)) {
+            const auto* tilePayload = static_cast<const TileDragPayload*>(payload->Data);
+            createSpriteEntityFromTile(
+                tilePayload->tilesetIndex,
+                tilePayload->tileId,
+                io.MousePos.x,
+                io.MousePos.y
+            );
+        }
+
+        ImGui::EndDragDropTarget();
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar();
+
+    ImGui::GetForegroundDrawList()->AddText(
+        ImVec2(12.0f, getToolbarHeight() + 8.0f),
+        IM_COL32(255, 255, 255, 220),
+        "Drop tile to create a sprite entity"
+    );
+}
+
+void LevelEditor::createSpriteEntityFromTile(int tilesetIndex, int tileId, float x, float y) {
+    if (tilesetIndex < 0 || tilesetIndex >= static_cast<int>(tilesets.size())) {
+        statusMessage = "Failed to create sprite entity: invalid tileset.";
+        return;
+    }
+
+    const EditorTileset& tileset = tilesets[static_cast<std::size_t>(tilesetIndex)];
+    if (tileId < 0 || tileId >= tileset.tileCount) {
+        statusMessage = "Failed to create sprite entity: invalid tile id.";
+        return;
+    }
+
+    if (tileset.textureAsset == nullptr || tileset.textureAsset->getTextureHandle() == nullptr) {
+        statusMessage = "Failed to create sprite entity: missing texture.";
+        return;
+    }
+
+    const int column = tileId % tileset.columns;
+    const int row = tileId / tileset.columns;
+    const float sourceX = static_cast<float>(column * tileset.tileWidth);
+    const float sourceY = static_cast<float>(row * tileset.tileHeight);
+    const float renderScale = Renderer::getInstance().getRenderScale();
+
+    Sprite sprite(
+        tileset.textureAsset->getTextureHandle(),
+        RenderRect{
+            sourceX,
+            sourceY,
+            static_cast<float>(tileset.tileWidth),
+            static_cast<float>(tileset.tileHeight)
+        }
+    );
+    sprite.setSize(Vector2F(
+        static_cast<float>(tileset.tileWidth) * renderScale,
+        static_cast<float>(tileset.tileHeight) * renderScale
+    ));
+
+    Entity& entity = Level::getCurrentLevel().createEntity();
+    entity.setName("EditorSprite_" + std::to_string(createdSpriteCount));
+    entity.setTag("EditorSprite");
+    entity.addComponent<TransformComponent>(Vector2F(x, y), 0.0f);
+    entity.addComponent<SpriteComponent>(sprite);
+
+    ++createdSpriteCount;
+    selectedTileId = tileId;
+    statusMessage = "Created sprite entity from tile id " + std::to_string(tileId) + ".";
 }

@@ -146,6 +146,7 @@ FetchContent_MakeAvailable(tinyxml2)
 set(IENGINE_SOURCES
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp
+    ${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
     main.cpp
     src/Application.cpp
     src/Entity.cpp

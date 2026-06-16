@@ -81,6 +81,47 @@ const std::string& CollisionComponent::getName() const {
     return name;
 }
 
+float CollisionComponent::getWidth() const {
+    return width;
+}
+
+float CollisionComponent::getHeight() const {
+    return height;
+}
+
+CollisionComponent::BodyType CollisionComponent::getBodyType() const {
+    return bodyType;
+}
+
+bool CollisionComponent::isSensor() const {
+    return sensor;
+}
+
+void CollisionComponent::setName(const std::string& name) {
+    this->name = name;
+}
+
+void CollisionComponent::setSize(float width, float height) {
+    if (width <= 0.0f || height <= 0.0f) {
+        std::cerr << "CollisionComponent size must be greater than zero." << std::endl;
+        return;
+    }
+
+    this->width = width;
+    this->height = height;
+    rebuildBody();
+}
+
+void CollisionComponent::setBodyType(BodyType bodyType) {
+    this->bodyType = bodyType;
+    rebuildBody();
+}
+
+void CollisionComponent::setSensor(bool sensor) {
+    this->sensor = sensor;
+    rebuildBody();
+}
+
 void CollisionComponent::setListener(CollisionListener* listener) {
     this->listener = listener;
 }
@@ -116,4 +157,13 @@ b2BodyType CollisionComponent::toBox2DBodyType(BodyType bodyType) {
         default:
             return b2_staticBody;
     }
+}
+
+void CollisionComponent::rebuildBody() {
+    if (!b2Body_IsValid(bodyId)) {
+        return;
+    }
+
+    onDestroy();
+    onStart();
 }

@@ -34,12 +34,21 @@ public:
     b2BodyId getBodyId() const;
     b2ShapeId getShapeId() const;
     const std::string& getName() const;
+    float getWidth() const;
+    float getHeight() const;
+    BodyType getBodyType() const;
+    bool isSensor() const;
+    void setName(const std::string& name);
+    void setSize(float width, float height);
+    void setBodyType(BodyType bodyType);
+    void setSensor(bool sensor);
     void setListener(CollisionListener* listener);
     void notifyCollisionEnter(CollisionComponent& other);
     void syncBodyToTransform();
 
 private:
     static b2BodyType toBox2DBodyType(BodyType bodyType);
+    void rebuildBody();
 
     float width;
     float height;
