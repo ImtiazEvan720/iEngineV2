@@ -4,6 +4,8 @@
 #include "misc/Asset.h"
 #include "system/IRenderBackend.h"
 
+#include "imgui.h"
+
 #include <memory>
 #include <string>
 
@@ -25,6 +27,7 @@ public:
     bool load() override;
 
     RenderTextureHandle getTextureHandle() const;
+    ImTextureID getImGuiTextureId() const;
 
 private:
     std::unique_ptr<ITextureResource> textureResource;

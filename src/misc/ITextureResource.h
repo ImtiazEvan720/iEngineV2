@@ -3,6 +3,8 @@
 
 #include "system/IRenderBackend.h"
 
+#include "imgui.h"
+
 #include <string>
 
 class ITextureResource {
@@ -11,6 +13,7 @@ public:
 
     virtual bool loadFromFile(const std::string& path) = 0;
     virtual RenderTextureHandle getHandle() const = 0;
+    virtual ImTextureID getImGuiTextureId() const = 0;
 };
 
 #endif

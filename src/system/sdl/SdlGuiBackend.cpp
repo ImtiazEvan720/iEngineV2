@@ -56,13 +56,7 @@ void SdlGuiBackend::render(const InputSystem& inputSystem) {
         return;
     }
 
-    ImGui::Begin("Custom Integration Window");
-    ImGui::Text("Hello, World! I am running through SDL3 + ImGui.");
-    ImGui::Text("Input: %s", inputSystem.getLastInputText().c_str());
-    if (ImGui::Button("Test Click")) {
-        // Hook debug actions here.
-    }
-    ImGui::End();
+    levelEditor.draw(inputSystem, windowBackend->getViewport().width);
 
     ImGui::Render();
     ImGui_ImplSDLRenderer3_RenderDrawData(

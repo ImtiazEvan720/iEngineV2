@@ -64,3 +64,11 @@ RenderTextureHandle TextureAsset::getTextureHandle() const {
 
     return textureResource->getHandle();
 }
+
+ImTextureID TextureAsset::getImGuiTextureId() const {
+    if (textureResource == nullptr) {
+        return ImTextureID{};
+    }
+
+    return textureResource->getImGuiTextureId();
+}

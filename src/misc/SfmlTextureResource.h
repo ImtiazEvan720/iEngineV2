@@ -14,6 +14,7 @@ public:
 
     bool loadFromFile(const std::string& path) override;
     RenderTextureHandle getHandle() const override;
+    ImTextureID getImGuiTextureId() const override;
 
 private:
     std::unique_ptr<sf::Texture> texture;

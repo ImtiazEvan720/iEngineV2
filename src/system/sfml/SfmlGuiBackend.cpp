@@ -47,13 +47,7 @@ void SfmlGuiBackend::render(const InputSystem& inputSystem) {
         return;
     }
 
-    ImGui::Begin("Custom Integration Window");
-    ImGui::Text("Hello, World! I am running through ImGui-SFML.");
-    ImGui::Text("Input: %s", inputSystem.getLastInputText().c_str());
-    if (ImGui::Button("Test Click")) {
-        // Hook debug actions here.
-    }
-    ImGui::End();
+    levelEditor.draw(inputSystem, windowBackend->getViewport().width);
 
     ImGui::SFML::Render(windowBackend->getWindow());
 }

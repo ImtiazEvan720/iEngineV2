@@ -155,6 +155,7 @@ set(IENGINE_SOURCES
     src/components/SpriteComponent.cpp
     src/components/TransformComponent.cpp
     src/components/PlayerController.cpp
+    src/editor/LevelEditor.cpp
     src/game/Brick.cpp
     src/game/Bullet.cpp
     src/math/Vector2F.cpp

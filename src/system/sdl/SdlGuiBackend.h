@@ -1,6 +1,7 @@
 #ifndef IENGINEV2_SDLGUIBACKEND_H
 #define IENGINEV2_SDLGUIBACKEND_H
 
+#include "editor/LevelEditor.h"
 #include "system/IGuiBackend.h"
 
 class SdlWindowBackend;
@@ -18,6 +19,7 @@ public:
 
 private:
     SdlWindowBackend* windowBackend = nullptr;
+    LevelEditor levelEditor;
     bool initialized = false;
 };
 

@@ -1,6 +1,7 @@
 #ifndef IENGINEV2_SFMLGUIBACKEND_H
 #define IENGINEV2_SFMLGUIBACKEND_H
 
+#include "editor/LevelEditor.h"
 #include "system/IGuiBackend.h"
 
 class SfmlWindowBackend;
@@ -18,6 +19,7 @@ public:
 
 private:
     SfmlWindowBackend* windowBackend = nullptr;
+    LevelEditor levelEditor;
     bool initialized = false;
 };
 

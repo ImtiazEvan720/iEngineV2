@@ -74,3 +74,7 @@ bool SdlTextureResource::loadFromFile(const std::string& path) {
 RenderTextureHandle SdlTextureResource::getHandle() const {
     return texture.get();
 }
+
+ImTextureID SdlTextureResource::getImGuiTextureId() const {
+    return reinterpret_cast<ImTextureID>(texture.get());
+}

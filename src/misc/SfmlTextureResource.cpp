@@ -3,6 +3,7 @@
 #include <SFML/Graphics/Image.hpp>
 #include <SFML/Graphics/Texture.hpp>
 
+#include <cstring>
 #include <iostream>
 #include <memory>
 
@@ -31,4 +32,17 @@ bool SfmlTextureResource::loadFromFile(const std::string& path) {
 
 RenderTextureHandle SfmlTextureResource::getHandle() const {
     return texture.get();
+}
+
+ImTextureID SfmlTextureResource::getImGuiTextureId() const {
+    ImTextureID textureId{};
+    if (texture == nullptr) {
+        return textureId;
+    }
+
+    const auto nativeHandle = texture->getNativeHandle();
+    static_assert(sizeof(nativeHandle) <= sizeof(ImTextureID),
+                  "ImTextureID is not large enough for an SFML texture handle.");
+    std::memcpy(&textureId, &nativeHandle, sizeof(nativeHandle));
+    return textureId;
 }
