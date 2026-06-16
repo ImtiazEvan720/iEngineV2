@@ -11,6 +11,7 @@ class CollisionComponent;
 class SpriteComponent;
 class TextureAsset;
 class TransformComponent;
+class Vector2F;
 
 class LevelEditor {
 public:
@@ -77,7 +78,11 @@ private:
     void drawSpriteComponentFields(SpriteComponent& spriteComponent);
     void drawAnimationComponentFields(AnimationComponent& animationComponent);
     void drawCollisionComponentFields(CollisionComponent& collisionComponent);
-    void syncEditStateFromEntity(Entity& entity);
+    void handleViewportEntityInteraction();
+    Entity* findEntityAt(float x, float y);
+    Entity* findEntityById(int id);
+    bool entityContainsPoint(Entity& entity, float x, float y) const;
+    void syncEditStateFromEntity(Entity& entity, bool force = false);
     void createSpriteEntityFromTile(int tilesetIndex, int tileId, float x, float y);
 
     bool enabled = true;
@@ -88,8 +93,10 @@ private:
     int selectedTilesetIndex = -1;
     int selectedTileId = -1;
     int selectedEntityId = -1;
+    int draggingEntityId = -1;
     int createdSpriteCount = 0;
     Tool currentTool = Tool::Select;
+    float dragOffset[2] = {0.0f, 0.0f};
     std::string statusMessage;
     EntityEditState entityEditState;
     std::vector<EditorTileset> tilesets;

@@ -194,6 +194,7 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
 
     ImGui::End();
 
+    handleViewportEntityInteraction();
     drawLevelDropTarget();
 }
 
@@ -567,8 +568,134 @@ void LevelEditor::drawCollisionComponentFields(CollisionComponent& collisionComp
     }
 }
 
-void LevelEditor::syncEditStateFromEntity(Entity& entity) {
-    if (entityEditState.entityId == entity.getId()) {
+void LevelEditor::handleViewportEntityInteraction() {
+    if (!enabled) {
+        draggingEntityId = -1;
+        return;
+    }
+
+    const ImGuiPayload* activePayload = ImGui::GetDragDropPayload();
+    if (activePayload != nullptr) {
+        return;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImVec2 mousePosition = ImGui::GetMousePos();
+
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !io.WantCaptureMouse) {
+        Entity* entity = findEntityAt(mousePosition.x, mousePosition.y);
+        if (entity != nullptr) {
+            selectedEntityId = entity->getId();
+            draggingEntityId = entity->getId();
+            currentTool = Tool::Move;
+
+            if (TransformComponent* transform = entity->getComponent<TransformComponent>()) {
+                const Vector2F& position = transform->getPosition();
+                dragOffset[0] = mousePosition.x - position.x;
+                dragOffset[1] = mousePosition.y - position.y;
+            } else {
+                dragOffset[0] = 0.0f;
+                dragOffset[1] = 0.0f;
+            }
+
+            syncEditStateFromEntity(*entity, true);
+            statusMessage = "Selected entity " + std::to_string(entity->getId()) + ".";
+        } else {
+            selectedEntityId = -1;
+            draggingEntityId = -1;
+            entityEditState = EntityEditState{};
+        }
+    }
+
+    if (draggingEntityId >= 0 && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        Entity* entity = findEntityById(draggingEntityId);
+        if (entity == nullptr) {
+            draggingEntityId = -1;
+            return;
+        }
+
+        TransformComponent* transform = entity->getComponent<TransformComponent>();
+        if (transform == nullptr) {
+            draggingEntityId = -1;
+            return;
+        }
+
+        transform->setPosition(Vector2F(
+            mousePosition.x - dragOffset[0],
+            mousePosition.y - dragOffset[1]
+        ));
+        syncEditStateFromEntity(*entity, true);
+    }
+
+    if (draggingEntityId >= 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        Entity* entity = findEntityById(draggingEntityId);
+        if (entity != nullptr) {
+            syncEditStateFromEntity(*entity, true);
+            statusMessage = "Moved entity " + std::to_string(entity->getId()) + ".";
+        }
+
+        draggingEntityId = -1;
+    }
+}
+
+Entity* LevelEditor::findEntityAt(float x, float y) {
+    auto& entities = Level::getCurrentLevel().getEntities();
+
+    for (auto iterator = entities.rbegin(); iterator != entities.rend(); ++iterator) {
+        if (iterator->isDestroyed()) {
+            continue;
+        }
+
+        if (entityContainsPoint(*iterator, x, y)) {
+            return &*iterator;
+        }
+    }
+
+    return nullptr;
+}
+
+Entity* LevelEditor::findEntityById(int id) {
+    for (Entity& entity : Level::getCurrentLevel().getEntities()) {
+        if (entity.getId() == id && !entity.isDestroyed()) {
+            return &entity;
+        }
+    }
+
+    return nullptr;
+}
+
+bool LevelEditor::entityContainsPoint(Entity& entity, float x, float y) const {
+    TransformComponent* transform = entity.getComponent<TransformComponent>();
+    if (transform == nullptr) {
+        return false;
+    }
+
+    const Sprite* sprite = nullptr;
+    if (AnimationComponent* animationComponent = entity.getComponent<AnimationComponent>();
+        animationComponent != nullptr && animationComponent->getAnimation().hasFrames()) {
+        sprite = &animationComponent->getCurrentFrame();
+    } else if (SpriteComponent* spriteComponent = entity.getComponent<SpriteComponent>()) {
+        sprite = &spriteComponent->getSprite();
+    }
+
+    if (sprite == nullptr) {
+        return false;
+    }
+
+    const Vector2F worldPosition = transform->getWorldPosition();
+    const Vector2F& size = sprite->getSize();
+    const Vector2F& origin = sprite->getOrigin();
+
+    const float left = worldPosition.x - origin.x;
+    const float top = worldPosition.y - origin.y;
+    const float right = left + size.x;
+    const float bottom = top + size.y;
+
+    return x >= left && x <= right && y >= top && y <= bottom;
+}
+
+void LevelEditor::syncEditStateFromEntity(Entity& entity, bool force) {
+    if (!force && entityEditState.entityId == entity.getId()) {
         return;
     }
 
