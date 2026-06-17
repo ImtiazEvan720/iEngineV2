@@ -11,6 +11,7 @@ class InputSystem;
 class Entity;
 class AnimationComponent;
 class CollisionComponent;
+class ScriptComponent;
 class SpriteComponent;
 class TextureAsset;
 class TransformComponent;
@@ -95,6 +96,7 @@ private:
     void drawSpriteComponentFields(SpriteComponent& spriteComponent);
     void drawAnimationComponentFields(AnimationComponent& animationComponent);
     void drawCollisionComponentFields(CollisionComponent& collisionComponent);
+    void drawScriptComponentFields(ScriptComponent& scriptComponent);
     void handleViewportCameraZoom();
     void handleViewportCameraPan();
     bool isViewportCameraPanActive() const;

@@ -3,6 +3,7 @@
 #include "components/AnimationComponent.h"
 #include "components/CollisionComponent.h"
 #include "components/PlayerController.h"
+#include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "game/Brick.h"
@@ -298,6 +299,20 @@ bool Application::initialize(int argc, char* argv[]) {
         "Brick"
     );
     brick.addComponent<Brick>();
+
+    Entity& luaScriptTest = level.createEntity();
+    luaScriptTest.setName("LuaScriptTest");
+    luaScriptTest.setTag("Script");
+    Sprite luaSprite(
+        spriteSheetAsset->getTextureHandle(),
+        RenderRect{width * 2.0f, height * 0.0f, width, height}
+    );
+    luaSprite.setSize(Vector2F(scaledWidth, scaledHeight));
+    luaScriptTest.addComponent<SpriteComponent>(luaSprite);
+    luaScriptTest.addComponent<TransformComponent>(Vector2F(360.0f, 340.0f), 0.0f);
+    luaScriptTest.addComponent<ScriptComponent>(
+        getRuntimePath(runtimeDataRoot, "Assets/Scripts/test_transform.lua")
+    );
 
     InputSystem& inputSystem = InputSystem::getInstance();
     for (Entity& entity : level.getEntities()) {

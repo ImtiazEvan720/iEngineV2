@@ -3,6 +3,7 @@
 #include "components/AnimationComponent.h"
 #include "components/CollisionComponent.h"
 #include "components/PlayerController.h"
+#include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "game/Brick.h"
@@ -748,6 +749,14 @@ void LevelEditor::drawEntityComponents(Entity& entity) {
         }
     }
 
+    if (auto* scriptComponent = entity.getComponent<ScriptComponent>()) {
+        hasComponents = true;
+        if (ImGui::TreeNodeEx("ScriptComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            drawScriptComponentFields(*scriptComponent);
+            ImGui::TreePop();
+        }
+    }
+
     if (entity.getComponent<PlayerController>() != nullptr) {
         hasComponents = true;
         ImGui::BulletText("PlayerController");
@@ -877,6 +886,11 @@ void LevelEditor::drawCollisionComponentFields(CollisionComponent& collisionComp
         collisionComponent.setSensor(entityEditState.collisionSensor);
         statusMessage = "Updated CollisionComponent sensor.";
     }
+}
+
+void LevelEditor::drawScriptComponentFields(ScriptComponent& scriptComponent) {
+    ImGui::TextWrapped("Path: %s", scriptComponent.getScriptPath().c_str());
+    ImGui::Text("Loaded: %s", scriptComponent.isLoaded() ? "true" : "false");
 }
 
 void LevelEditor::handleViewportCameraZoom() {

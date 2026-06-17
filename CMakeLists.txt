@@ -11,10 +11,15 @@ include(FetchContent)
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Do not update FetchContent dependencies during normal builds" FORCE)
 
 set(IMGUI_GIT_TAG v1.91.9b CACHE STRING "Dear ImGui git tag, branch, or commit to fetch" FORCE)
+set(LUA_VERSION 5.4.8 CACHE STRING "Lua version to embed" FORCE)
+set(SOL2_GIT_TAG v3.5.0 CACHE STRING "sol2 git tag, branch, or commit to fetch" FORCE)
 
 set(BOX2D_BUILD_DOCS OFF CACHE BOOL "Build Box2D documentation" FORCE)
 set(BOX2D_BUILD_SAMPLES OFF CACHE BOOL "Build Box2D samples" FORCE)
 set(BOX2D_BUILD_UNIT_TESTS OFF CACHE BOOL "Build Box2D unit tests" FORCE)
+set(SOL2_ENABLE_INSTALL OFF CACHE BOOL "Disable sol2 install rules" FORCE)
+set(SOL2_BUILD_LUA OFF CACHE BOOL "Use engine-provided Lua instead of sol2-built Lua" FORCE)
+set(SOL2_LUA_VERSION ${LUA_VERSION} CACHE STRING "Lua version for sol2 integration" FORCE)
 
 set(IENGINE_TARGET_IOS OFF)
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
@@ -47,6 +52,19 @@ FetchContent_Declare(stb
     GIT_REPOSITORY https://github.com/nothings/stb.git
     GIT_TAG master
     GIT_SHALLOW ON
+)
+
+FetchContent_Declare(lua
+    URL https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz
+    URL_HASH SHA256=4f18ddae154e793e46eeab727c59ef1c0c0c2b744e7b94219710d76f530629ae
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+
+FetchContent_Declare(sol2
+    GIT_REPOSITORY https://github.com/ThePhD/sol2.git
+    GIT_TAG ${SOL2_GIT_TAG}
+    GIT_SHALLOW ON
+    EXCLUDE_FROM_ALL
 )
 
 FetchContent_Declare(box2d
@@ -124,6 +142,8 @@ endfunction()
 
 use_existing_fetchcontent_source(imgui imgui)
 use_existing_fetchcontent_source(stb stb)
+use_existing_fetchcontent_source(lua lua)
+use_existing_fetchcontent_source(sol2 sol2)
 use_existing_fetchcontent_source(box2d box2d)
 use_existing_fetchcontent_source(tinyxml2 tinyxml2)
 
@@ -137,6 +157,8 @@ endif()
 
 FetchContent_MakeAvailable(imgui)
 FetchContent_MakeAvailable(stb)
+FetchContent_MakeAvailable(lua)
+FetchContent_MakeAvailable(sol2)
 
 if(NOT EMSCRIPTEN)
     if(NOT IENGINE_SDL_ONLY)
@@ -153,6 +175,15 @@ endif()
 FetchContent_MakeAvailable(box2d)
 FetchContent_MakeAvailable(tinyxml2)
 
+file(GLOB LUA_SOURCES CONFIGURE_DEPENDS "${lua_SOURCE_DIR}/src/*.c")
+list(REMOVE_ITEM LUA_SOURCES
+    "${lua_SOURCE_DIR}/src/lua.c"
+    "${lua_SOURCE_DIR}/src/luac.c"
+)
+
+add_library(iEngineLua STATIC ${LUA_SOURCES})
+target_include_directories(iEngineLua PUBLIC "${lua_SOURCE_DIR}/src")
+
 set(IENGINE_SOURCES
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp
@@ -163,6 +194,7 @@ set(IENGINE_SOURCES
     src/components/AnimationComponent.cpp
     src/components/CollisionComponent.cpp
     src/components/Component.cpp
+    src/components/ScriptComponent.cpp
     src/components/SpriteComponent.cpp
     src/components/TransformComponent.cpp
     src/components/PlayerController.cpp
@@ -183,6 +215,7 @@ set(IENGINE_SOURCES
     src/system/InputSystem.cpp
     src/system/PhysicsSystem.cpp
     src/system/Renderer.cpp
+    src/system/ScriptSystem.cpp
     src/system/sdl/SdlGuiBackend.cpp
     src/system/sdl/SdlRenderBackend.cpp
     src/system/sdl/SdlWindowBackend.cpp
@@ -226,6 +259,8 @@ target_include_directories(iEngineV2 PRIVATE
 
 target_link_libraries(iEngineV2 PRIVATE
     box2d::box2d
+    iEngineLua
+    sol2::sol2
     tinyxml2::tinyxml2
 )
 
