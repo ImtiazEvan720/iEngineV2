@@ -31,6 +31,12 @@ if(EMSCRIPTEN OR IENGINE_TARGET_IOS OR IENGINE_TARGET_ANDROID)
     set(IENGINE_SDL_ONLY ON)
 endif()
 
+if(IENGINE_SDL_ONLY)
+    set(IENGINE_IMGUI_USER_CONFIG "\"IEngineImGuiConfig.h\"")
+else()
+    set(IENGINE_IMGUI_USER_CONFIG "\"IEngineImGuiSfmlConfig.h\"")
+endif()
+
 FetchContent_Declare(imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG ${IMGUI_GIT_TAG}
@@ -91,6 +97,10 @@ if(NOT EMSCRIPTEN)
             GIT_TAG master
             GIT_SHALLOW ON
         )
+
+        set(IMGUI_SFML_USE_DEFAULT_CONFIG OFF CACHE BOOL "Use default imconfig-SFML.h" FORCE)
+        set(IMGUI_SFML_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src" CACHE PATH "Path to ImGui-SFML user ImGui config" FORCE)
+        set(IMGUI_SFML_CONFIG_NAME "IEngineImGuiSfmlConfig.h" CACHE STRING "ImGui-SFML user ImGui config header" FORCE)
     endif()
 
     FetchContent_Declare(SDL3
@@ -162,6 +172,7 @@ set(IENGINE_SOURCES
     src/math/Vector2F.cpp
     src/misc/Asset.cpp
     src/misc/Animation.cpp
+    src/misc/Camera2D.cpp
     src/misc/Level.cpp
     src/misc/LevelAsset.cpp
     src/misc/SdlTextureResource.cpp
@@ -204,6 +215,7 @@ else()
 endif()
 
 target_compile_features(iEngineV2 PRIVATE cxx_std_17)
+target_compile_definitions(iEngineV2 PRIVATE IMGUI_USER_CONFIG=${IENGINE_IMGUI_USER_CONFIG})
 
 target_include_directories(iEngineV2 PRIVATE
     src

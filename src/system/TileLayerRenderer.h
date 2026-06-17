@@ -1,6 +1,7 @@
 #ifndef IENGINEV2_TILELAYERRENDERER_H
 #define IENGINEV2_TILELAYERRENDERER_H
 
+#include "misc/Camera2D.h"
 #include "misc/LevelAsset.h"
 #include "system/IRenderBackend.h"
 
@@ -13,7 +14,7 @@ public:
     bool buildFromLevelAsset(LevelAsset& levelAsset, float renderScale);
     void clear();
     void update(float deltaTime);
-    void render(IRenderBackend& renderBackend, const RenderRect& viewport) const;
+    void render(IRenderBackend& renderBackend, const Camera2D& camera, const RenderRect& viewport) const;
 
 private:
     static constexpr int chunkSize = 16;

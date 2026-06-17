@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 
@@ -193,6 +194,14 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
     }
 
     ImGui::End();
+
+    consumedPinchZoomThisFrame = false;
+    handleViewportCameraZoom();
+    handleViewportCameraPan();
+
+    if (showGrid) {
+        drawViewportGrid();
+    }
 
     handleViewportEntityInteraction();
     drawLevelDropTarget();
@@ -568,6 +577,103 @@ void LevelEditor::drawCollisionComponentFields(CollisionComponent& collisionComp
     }
 }
 
+void LevelEditor::handleViewportCameraZoom() {
+    if (!enabled) {
+        return;
+    }
+
+    const ImGuiPayload* activePayload = ImGui::GetDragDropPayload();
+    if (activePayload != nullptr) {
+        return;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    Renderer& renderer = Renderer::getInstance();
+    const float pinchZoomFactor = renderer.consumePendingPinchZoomFactor();
+    const bool pinchZoom =
+        std::isfinite(pinchZoomFactor)
+        && pinchZoomFactor > 0.0f
+        && pinchZoomFactor != 1.0f;
+    const bool zoomGesture = io.KeyCtrl || io.KeySuper;
+    const bool wheelZoom = zoomGesture && io.MouseWheel != 0.0f;
+
+    if (io.WantCaptureMouse || (!pinchZoom && !wheelZoom)) {
+        return;
+    }
+
+    float zoomMultiplier = 1.0f;
+    if (pinchZoom) {
+        zoomMultiplier *= pinchZoomFactor;
+        consumedPinchZoomThisFrame = true;
+    }
+
+    if (wheelZoom) {
+        zoomMultiplier *= std::pow(1.1f, io.MouseWheel);
+    }
+
+    renderer.getCamera().zoomAtScreenPoint(
+        zoomMultiplier,
+        Vector2F(io.MousePos.x, io.MousePos.y),
+        getViewportForCamera()
+    );
+
+    statusMessage = "Viewport zoom: " + std::to_string(renderer.getCamera().getZoom());
+}
+
+void LevelEditor::handleViewportCameraPan() {
+    constexpr float WheelPanPixels = 48.0f;
+
+    if (!enabled) {
+        return;
+    }
+
+    const ImGuiPayload* activePayload = ImGui::GetDragDropPayload();
+    if (activePayload != nullptr) {
+        return;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    const bool zoomGesture = io.KeyCtrl || io.KeySuper;
+    const bool wheelPan =
+        !zoomGesture
+        && !consumedPinchZoomThisFrame
+        && (io.MouseWheel != 0.0f || io.MouseWheelH != 0.0f);
+    const bool dragPan = isViewportCameraPanActive();
+
+    if (io.WantCaptureMouse || (!dragPan && !wheelPan)) {
+        return;
+    }
+
+    Camera2D& camera = Renderer::getInstance().getCamera();
+    const float zoom = camera.getZoom();
+    if (zoom <= 0.0f) {
+        return;
+    }
+
+    Vector2F position = camera.getPosition();
+
+    if (dragPan) {
+        position.x -= io.MouseDelta.x / zoom;
+        position.y -= io.MouseDelta.y / zoom;
+    }
+
+    if (wheelPan) {
+        position.x -= (io.MouseWheelH * WheelPanPixels) / zoom;
+        position.y -= (io.MouseWheel * WheelPanPixels) / zoom;
+    }
+
+    camera.setPosition(position);
+}
+
+bool LevelEditor::isViewportCameraPanActive() const {
+    const bool middleDrag = ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0f);
+    const bool spaceLeftDrag =
+        ImGui::IsKeyDown(ImGuiKey_Space)
+        && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f);
+
+    return middleDrag || spaceLeftDrag;
+}
+
 void LevelEditor::handleViewportEntityInteraction() {
     if (!enabled) {
         draggingEntityId = -1;
@@ -580,10 +686,21 @@ void LevelEditor::handleViewportEntityInteraction() {
     }
 
     const ImGuiIO& io = ImGui::GetIO();
+    if (isViewportCameraPanActive()) {
+        draggingEntityId = -1;
+        return;
+    }
+
     const ImVec2 mousePosition = ImGui::GetMousePos();
+    const RenderRect viewport = getViewportForCamera();
+    Camera2D& camera = Renderer::getInstance().getCamera();
+    const Vector2F worldMousePosition = camera.screenToWorld(
+        Vector2F(mousePosition.x, mousePosition.y),
+        viewport
+    );
 
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !io.WantCaptureMouse) {
-        Entity* entity = findEntityAt(mousePosition.x, mousePosition.y);
+        Entity* entity = findEntityAt(worldMousePosition.x, worldMousePosition.y);
         if (entity != nullptr) {
             selectedEntityId = entity->getId();
             draggingEntityId = entity->getId();
@@ -591,8 +708,8 @@ void LevelEditor::handleViewportEntityInteraction() {
 
             if (TransformComponent* transform = entity->getComponent<TransformComponent>()) {
                 const Vector2F& position = transform->getPosition();
-                dragOffset[0] = mousePosition.x - position.x;
-                dragOffset[1] = mousePosition.y - position.y;
+                dragOffset[0] = worldMousePosition.x - position.x;
+                dragOffset[1] = worldMousePosition.y - position.y;
             } else {
                 dragOffset[0] = 0.0f;
                 dragOffset[1] = 0.0f;
@@ -621,8 +738,8 @@ void LevelEditor::handleViewportEntityInteraction() {
         }
 
         transform->setPosition(Vector2F(
-            mousePosition.x - dragOffset[0],
-            mousePosition.y - dragOffset[1]
+            worldMousePosition.x - dragOffset[0],
+            worldMousePosition.y - dragOffset[1]
         ));
         syncEditStateFromEntity(*entity, true);
     }
@@ -692,6 +809,21 @@ bool LevelEditor::entityContainsPoint(Entity& entity, float x, float y) const {
     const float bottom = top + size.y;
 
     return x >= left && x <= right && y >= top && y <= bottom;
+}
+
+RenderRect LevelEditor::getViewportForCamera() const {
+    RenderRect viewport = Renderer::getInstance().getViewport();
+    if (viewport.width > 0.0f && viewport.height > 0.0f) {
+        return viewport;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    return RenderRect{
+        0.0f,
+        0.0f,
+        io.DisplaySize.x,
+        io.DisplaySize.y
+    };
 }
 
 void LevelEditor::syncEditStateFromEntity(Entity& entity, bool force) {
@@ -935,9 +1067,14 @@ void LevelEditor::drawSelectedTilesetGrid() {
                 // ImGui::Image(textureId, previewSize, uv0, uv1);
 
                 const ImVec2 mousePosition = ImGui::GetMousePos();
-                const float renderScale = Renderer::getInstance().getRenderScale();
+                Renderer& renderer = Renderer::getInstance();
+                const float renderScale = renderer.getRenderScale();
+                const float cameraZoom = renderer.getCamera().getZoom();
 
-                const ImVec2 halfSize(tileset.tileWidth * renderScale * 0.5f, tileset.tileHeight * renderScale * 0.5f);
+                const ImVec2 halfSize(
+                    tileset.tileWidth * renderScale * cameraZoom * 0.5f,
+                    tileset.tileHeight * renderScale * cameraZoom * 0.5f
+                );
                 ImGui::GetForegroundDrawList()->AddImage(
                     textureId,
                     ImVec2(mousePosition.x - halfSize.x, mousePosition.y - halfSize.y),
@@ -1001,11 +1138,16 @@ void LevelEditor::drawLevelDropTarget() {
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(TileDragPayloadType);
         if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(TileDragPayload)) {
             const auto* tilePayload = static_cast<const TileDragPayload*>(payload->Data);
+            const Vector2F worldDropPosition = Renderer::getInstance().getCamera().screenToWorld(
+                Vector2F(io.MousePos.x, io.MousePos.y),
+                getViewportForCamera()
+            );
+
             createSpriteEntityFromTile(
                 tilePayload->tilesetIndex,
                 tilePayload->tileId,
-                io.MousePos.x,
-                io.MousePos.y
+                worldDropPosition.x,
+                worldDropPosition.y
             );
         }
 
@@ -1068,4 +1210,105 @@ void LevelEditor::createSpriteEntityFromTile(int tilesetIndex, int tileId, float
     ++createdSpriteCount;
     selectedTileId = tileId;
     statusMessage = "Created sprite entity from tile id " + std::to_string(tileId) + ".";
+}
+
+void LevelEditor::drawViewportGrid() {
+    constexpr int MaxGridLinesPerAxis = 512;
+    constexpr int MaxGridLabels = 1200;
+    constexpr float MinScreenTileSizeForLabels = 32.0f;
+
+    Renderer& renderer = Renderer::getInstance();
+    const RenderRect viewport = getViewportForCamera();
+    const Camera2D& camera = renderer.getCamera();
+    const RenderRect worldViewport = camera.getWorldViewport(viewport);
+    const float tileSize = 16.0f * renderer.getRenderScale();
+    const float screenTileSize = tileSize * camera.getZoom();
+
+    if (tileSize <= 0.0f
+        || screenTileSize <= 0.0f
+        || viewport.width <= 0.0f
+        || viewport.height <= 0.0f
+        || !std::isfinite(worldViewport.x)
+        || !std::isfinite(worldViewport.y)
+        || !std::isfinite(worldViewport.width)
+        || !std::isfinite(worldViewport.height)) {
+        return;
+    }
+
+    ImDrawList* gridDrawList = ImGui::GetBackgroundDrawList();
+    ImDrawList* textDrawList = ImGui::GetForegroundDrawList();
+
+    const ImU32 lineColor = IM_COL32(255, 255, 255, 35);
+    const ImU32 textColor = IM_COL32(255, 255, 255, 90);
+
+    const float worldLeft = worldViewport.x;
+    const float worldTop = worldViewport.y;
+    const float worldRight = worldViewport.x + worldViewport.width;
+    const float worldBottom = worldViewport.y + worldViewport.height;
+
+    const int startColumn = static_cast<int>(std::floor(worldLeft / tileSize));
+    const int endColumn = static_cast<int>(std::ceil(worldRight / tileSize));
+    const int startRow = static_cast<int>(std::floor(worldTop / tileSize));
+    const int endRow = static_cast<int>(std::ceil(worldBottom / tileSize));
+    const int visibleColumns = std::max(1, endColumn - startColumn);
+    const int visibleRows = std::max(1, endRow - startRow);
+
+    if (visibleColumns > MaxGridLinesPerAxis || visibleRows > MaxGridLinesPerAxis) {
+        return;
+    }
+
+    for (int row = startRow; row <= endRow; ++row) {
+        const float worldY = static_cast<float>(row) * tileSize;
+        const Vector2F start = camera.worldToScreen(Vector2F(worldLeft, worldY), viewport);
+        const Vector2F end = camera.worldToScreen(Vector2F(worldRight, worldY), viewport);
+        gridDrawList->AddLine(
+            ImVec2(start.x, start.y),
+            ImVec2(end.x, end.y),
+            lineColor
+        );
+    }
+
+    for (int column = startColumn; column <= endColumn; ++column) {
+        const float worldX = static_cast<float>(column) * tileSize;
+        const Vector2F start = camera.worldToScreen(Vector2F(worldX, worldTop), viewport);
+        const Vector2F end = camera.worldToScreen(Vector2F(worldX, worldBottom), viewport);
+        gridDrawList->AddLine(
+            ImVec2(start.x, start.y),
+            ImVec2(end.x, end.y),
+            lineColor
+        );
+    }
+
+    const int totalVisibleCells = visibleColumns * visibleRows;
+    if (screenTileSize < MinScreenTileSizeForLabels || totalVisibleCells > MaxGridLabels) {
+        return;
+    }
+
+    for (int row = startRow; row < endRow; ++row) {
+        for (int column = startColumn; column < endColumn; ++column) {
+            const int id = (row - startRow) * visibleColumns + (column - startColumn);
+            const float worldX = static_cast<float>(column) * tileSize;
+            const float worldY = static_cast<float>(row) * tileSize;
+            const Vector2F screenPosition = camera.worldToScreen(Vector2F(worldX, worldY + tileSize), viewport);
+
+            if (screenPosition.x < viewport.x - screenTileSize || screenPosition.x > viewport.x + viewport.width) {
+                continue;
+            }
+
+            if (screenPosition.y < viewport.y || screenPosition.y > viewport.y + viewport.height + screenTileSize) {
+                continue;
+            }
+
+            const ImVec2 textPosition(
+                screenPosition.x + 4.0f,
+                screenPosition.y - ImGui::GetTextLineHeight() - 3.0f
+            );
+
+            textDrawList->AddText(
+                textPosition,
+                textColor,
+                std::to_string(id).c_str()
+            );
+        }
+    }
 }

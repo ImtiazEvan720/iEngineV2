@@ -189,18 +189,34 @@ void TileLayerRenderer::update(float deltaTime) {
     }
 }
 
-void TileLayerRenderer::render(IRenderBackend& renderBackend, const RenderRect& viewport) const {
+void TileLayerRenderer::render(IRenderBackend& renderBackend, const Camera2D& camera, const RenderRect& viewport) const {
+    const RenderRect worldViewport = camera.getWorldViewport(viewport);
+
     for (const RenderLayer& layer : layers) {
         for (const TileChunk& chunk : layer.chunks) {
             if (chunk.texture == nullptr || chunk.vertices.empty()) {
                 continue;
             }
 
-            if (!intersects(chunk.bounds, viewport)) {
+            if (!intersects(chunk.bounds, worldViewport)) {
                 continue;
             }
 
-            renderBackend.drawGeometry(chunk.texture, chunk.vertices);
+            std::vector<RenderVertex> transformedVertices;
+            transformedVertices.reserve(chunk.vertices.size());
+
+            for (const RenderVertex& vertex : chunk.vertices) {
+                const Vector2F screenPosition = camera.worldToScreen(Vector2F(vertex.x, vertex.y), viewport);
+                transformedVertices.push_back(RenderVertex{
+                    screenPosition.x,
+                    screenPosition.y,
+                    vertex.u,
+                    vertex.v,
+                    vertex.color
+                });
+            }
+
+            renderBackend.drawGeometry(chunk.texture, transformedVertices);
         }
     }
 }

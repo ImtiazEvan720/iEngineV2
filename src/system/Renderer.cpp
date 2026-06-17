@@ -34,6 +34,30 @@ float Renderer::getRenderScale() const {
     return renderScale;
 }
 
+Camera2D& Renderer::getCamera() {
+    return camera;
+}
+
+const Camera2D& Renderer::getCamera() const {
+    return camera;
+}
+
+RenderRect Renderer::getViewport() const {
+    if (windowBackend == nullptr) {
+        return RenderRect{};
+    }
+
+    return windowBackend->getViewport();
+}
+
+float Renderer::consumePendingPinchZoomFactor() {
+    if (windowBackend == nullptr) {
+        return 1.0f;
+    }
+
+    return windowBackend->consumePendingPinchZoomFactor();
+}
+
 bool Renderer::buildTileLayerBatches(LevelAsset& levelAsset) {
     return tileLayerRenderer.buildFromLevelAsset(levelAsset, renderScale);
 }
@@ -51,7 +75,8 @@ void Renderer::render() {
         return;
     }
 
-    tileLayerRenderer.render(*renderBackend, windowBackend->getViewport());
+    const RenderRect viewport = windowBackend->getViewport();
+    tileLayerRenderer.render(*renderBackend, camera, viewport);
 
     const Level& level = Level::getCurrentLevel();
     for (const Entity& entity : level.getEntities()) {
@@ -85,7 +110,9 @@ void Renderer::render() {
         }
 
         const Vector2F worldPosition = transformComponent->getWorldPosition();
+        const Vector2F screenPosition = camera.worldToScreen(worldPosition, viewport);
         const auto& sourceRect = engineSprite->getSourceRect();
+        const float zoom = camera.getZoom();
 
         renderBackend->drawTexture(
             texture,
@@ -96,10 +123,10 @@ void Renderer::render() {
                 sourceRect.height
             },
             RenderRect{
-                worldPosition.x,
-                worldPosition.y,
-                engineSprite->getSize().x,
-                engineSprite->getSize().y
+                screenPosition.x,
+                screenPosition.y,
+                engineSprite->getSize().x * zoom,
+                engineSprite->getSize().y * zoom
             },
             RenderVector2{
                 engineSprite->getOrigin().x,

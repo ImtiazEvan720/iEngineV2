@@ -21,6 +21,7 @@ public:
     void beginFrame(const RenderColor& clearColor) override;
     void endFrame() override;
     RenderRect getViewport() const override;
+    float consumePendingPinchZoomFactor() override;
 
     SDL_Window* getWindow();
     SDL_Renderer* getRenderer();
@@ -30,6 +31,7 @@ private:
     SDL_Renderer* renderer = nullptr;
     bool open = false;
     int frameDelayMilliseconds = 0;
+    float pendingPinchZoomFactor = 1.0f;
 };
 
 #endif

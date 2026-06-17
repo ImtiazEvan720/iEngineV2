@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <cmath>
 #include <iostream>
 
 namespace {
@@ -114,6 +115,10 @@ void SdlWindowBackend::pollEvents(InputSystem& inputSystem, IGuiBackend* guiBack
 
         if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
             open = false;
+        } else if (event.type == SDL_EVENT_PINCH_UPDATE) {
+            if (std::isfinite(event.pinch.scale) && event.pinch.scale > 0.0f) {
+                pendingPinchZoomFactor *= event.pinch.scale;
+            }
         } else if (event.type == SDL_EVENT_KEY_DOWN) {
             inputSystem.processKeyPressed(mapKey(event.key.key));
         } else if (event.type == SDL_EVENT_KEY_UP) {
@@ -172,6 +177,17 @@ RenderRect SdlWindowBackend::getViewport() const {
         static_cast<float>(width),
         static_cast<float>(height)
     };
+}
+
+float SdlWindowBackend::consumePendingPinchZoomFactor() {
+    const float zoomFactor = pendingPinchZoomFactor;
+    pendingPinchZoomFactor = 1.0f;
+
+    if (!std::isfinite(zoomFactor) || zoomFactor <= 0.0f) {
+        return 1.0f;
+    }
+
+    return zoomFactor;
 }
 
 SDL_Window* SdlWindowBackend::getWindow() {

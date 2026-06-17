@@ -1,6 +1,7 @@
 #ifndef IENGINEV2_RENDERER_H
 #define IENGINEV2_RENDERER_H
 
+#include "misc/Camera2D.h"
 #include "system/TileLayerRenderer.h"
 
 class IWindowBackend;
@@ -13,6 +14,10 @@ public:
     void setWindowBackend(IWindowBackend* backend);
     void setRenderScale(float scale);
     float getRenderScale() const;
+    Camera2D& getCamera();
+    const Camera2D& getCamera() const;
+    RenderRect getViewport() const;
+    float consumePendingPinchZoomFactor();
     bool buildTileLayerBatches(LevelAsset& levelAsset);
     void clearTileLayerBatches();
     void update(float deltaTime);
@@ -30,6 +35,7 @@ private:
     IRenderBackend* renderBackend = nullptr;
     IWindowBackend* windowBackend = nullptr;
     float renderScale = 4.0f;
+    Camera2D camera;
     TileLayerRenderer tileLayerRenderer;
 };
 

@@ -22,6 +22,7 @@ public:
     virtual void beginFrame(const RenderColor& clearColor) = 0;
     virtual void endFrame() = 0;
     virtual RenderRect getViewport() const = 0;
+    virtual float consumePendingPinchZoomFactor() { return 1.0f; }
 };
 
 #endif

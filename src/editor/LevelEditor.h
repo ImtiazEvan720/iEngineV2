@@ -1,6 +1,8 @@
 #ifndef IENGINEV2_LEVELEDITOR_H
 #define IENGINEV2_LEVELEDITOR_H
 
+#include "system/IRenderBackend.h"
+
 #include <string>
 #include <vector>
 
@@ -78,12 +80,17 @@ private:
     void drawSpriteComponentFields(SpriteComponent& spriteComponent);
     void drawAnimationComponentFields(AnimationComponent& animationComponent);
     void drawCollisionComponentFields(CollisionComponent& collisionComponent);
+    void handleViewportCameraZoom();
+    void handleViewportCameraPan();
+    bool isViewportCameraPanActive() const;
     void handleViewportEntityInteraction();
     Entity* findEntityAt(float x, float y);
     Entity* findEntityById(int id);
     bool entityContainsPoint(Entity& entity, float x, float y) const;
+    RenderRect getViewportForCamera() const;
     void syncEditStateFromEntity(Entity& entity, bool force = false);
     void createSpriteEntityFromTile(int tilesetIndex, int tileId, float x, float y);
+    void drawViewportGrid();
 
     bool enabled = true;
     bool showGrid = true;
@@ -95,6 +102,7 @@ private:
     int selectedEntityId = -1;
     int draggingEntityId = -1;
     int createdSpriteCount = 0;
+    bool consumedPinchZoomThisFrame = false;
     Tool currentTool = Tool::Select;
     float dragOffset[2] = {0.0f, 0.0f};
     std::string statusMessage;
