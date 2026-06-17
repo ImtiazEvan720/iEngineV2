@@ -72,3 +72,19 @@ ImTextureID TextureAsset::getImGuiTextureId() const {
 
     return textureResource->getImGuiTextureId();
 }
+
+int TextureAsset::getWidth() const {
+    if (textureResource == nullptr) {
+        return 0;
+    }
+
+    return textureResource->getWidth();
+}
+
+int TextureAsset::getHeight() const {
+    if (textureResource == nullptr) {
+        return 0;
+    }
+
+    return textureResource->getHeight();
+}

@@ -28,6 +28,8 @@ public:
 
     RenderTextureHandle getTextureHandle() const;
     ImTextureID getImGuiTextureId() const;
+    int getWidth() const;
+    int getHeight() const;
 
 private:
     std::unique_ptr<ITextureResource> textureResource;

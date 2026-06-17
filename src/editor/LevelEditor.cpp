@@ -19,11 +19,16 @@
 #include "misc/cpp/imgui_stdlib.h"
 #include "tinyxml2.h"
 
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <iostream>
+#include <system_error>
 
 namespace {
 constexpr const char* TileDragPayloadType = "IENGINE_TILE";
@@ -79,6 +84,86 @@ std::filesystem::path findAssetsRoot() {
     }
 
     return "Assets";
+}
+
+std::vector<TextureAsset*> getLoadedTextureAssets() {
+    std::vector<TextureAsset*> textureAssets;
+
+    for (const auto& asset : AssetManager::getInstance().getAssets()) {
+        auto* textureAsset = dynamic_cast<TextureAsset*>(asset.get());
+        if (textureAsset != nullptr && textureAsset->isLoaded()) {
+            textureAssets.push_back(textureAsset);
+        }
+    }
+
+    return textureAssets;
+}
+
+std::string makeDefaultTilesetName(const TextureAsset& textureAsset) {
+    std::filesystem::path texturePath(textureAsset.getPath());
+    return texturePath.stem().string();
+}
+
+std::filesystem::path resolveTilesetOutputPath(const std::string& outputFile) {
+    std::filesystem::path outputPath(outputFile);
+
+    if (outputPath.empty()) {
+        outputPath = "NewTileset.tsx";
+    }
+
+    if (outputPath.extension() != ".tsx") {
+        outputPath.replace_extension(".tsx");
+    }
+
+    if (!outputPath.is_absolute()) {
+        const std::filesystem::path assetsRoot = findAssetsRoot();
+        const auto firstPart = outputPath.begin();
+        if (firstPart == outputPath.end() || *firstPart != assetsRoot.filename()) {
+            outputPath = assetsRoot / outputPath;
+        }
+    }
+
+    return outputPath.lexically_normal();
+}
+
+int colorFloatToByte(float value) {
+    return std::clamp(static_cast<int>(std::round(value * 255.0f)), 0, 255);
+}
+
+void appendHexByte(std::string& output, int byte) {
+    constexpr char HexDigits[] = "0123456789abcdef";
+    const int clampedByte = std::clamp(byte, 0, 255);
+    output.push_back(HexDigits[(clampedByte >> 4) & 0x0f]);
+    output.push_back(HexDigits[clampedByte & 0x0f]);
+}
+
+std::string colorBytesToTiledHex(int red, int green, int blue) {
+    std::string result;
+    result.reserve(6);
+    appendHexByte(result, red);
+    appendHexByte(result, green);
+    appendHexByte(result, blue);
+    return result;
+}
+
+std::string colorToTiledHex(const float color[3]) {
+    return colorBytesToTiledHex(
+        colorFloatToByte(color[0]),
+        colorFloatToByte(color[1]),
+        colorFloatToByte(color[2])
+    );
+}
+
+tinyxml2::XMLElement* findTileElementById(tinyxml2::XMLElement* tilesetRoot, int tileId) {
+    for (tinyxml2::XMLElement* tile = tilesetRoot == nullptr ? nullptr : tilesetRoot->FirstChildElement("tile");
+         tile != nullptr;
+         tile = tile->NextSiblingElement("tile")) {
+        if (tile->IntAttribute("id", -1) == tileId) {
+            return tile;
+        }
+    }
+
+    return nullptr;
 }
 
 int bodyTypeToIndex(CollisionComponent::BodyType bodyType) {
@@ -159,6 +244,8 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
             ImGui::EndMenu();
         }
 
+        drawAssetsMenu();
+
         if (ImGui::BeginMenu("Tools")) {
             ImGui::MenuItem("Editor Enabled", nullptr, &enabled);
             ImGui::Separator();
@@ -183,6 +270,8 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
 
         ImGui::EndMainMenuBar();
     }
+
+    drawCreateTilesetPopup();
 
     ImGui::Begin("Level Editor");
 
@@ -327,6 +416,198 @@ void LevelEditor::drawSpritesTab() {
 
 void LevelEditor::drawFileExplorerTab() {
     ImGui::Text("File explorer goes here.");
+}
+
+void LevelEditor::drawAssetsMenu() {
+    if (!ImGui::BeginMenu("Assets")) {
+        return;
+    }
+
+    if (ImGui::MenuItem("Create Tileset")) {
+        resetCreateTilesetForm();
+        showCreateTilesetPopup = true;
+    }
+
+    if (ImGui::MenuItem("Refresh Tilesets")) {
+        refreshTilesets();
+        statusMessage = "Refreshed tilesets.";
+    }
+
+    ImGui::EndMenu();
+}
+
+void LevelEditor::drawCreateTilesetPopup() {
+    if (showCreateTilesetPopup) {
+        ImGui::OpenPopup("Create Tileset");
+        showCreateTilesetPopup = false;
+    }
+
+    if (!ImGui::BeginPopupModal("Create Tileset", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        return;
+    }
+
+    std::vector<TextureAsset*> textureAssets = getLoadedTextureAssets();
+    if (textureAssets.empty()) {
+        ImGui::TextUnformatted("No loaded texture assets found.");
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+        return;
+    }
+
+    if (selectedCreateTilesetTextureIndex < 0
+        || selectedCreateTilesetTextureIndex >= static_cast<int>(textureAssets.size())) {
+        selectedCreateTilesetTextureIndex = 0;
+    }
+
+    TextureAsset* selectedTexture = textureAssets[static_cast<std::size_t>(selectedCreateTilesetTextureIndex)];
+    if (selectedTexture != nullptr) {
+        const std::string defaultName = makeDefaultTilesetName(*selectedTexture);
+        if (newTilesetName.empty()) {
+            newTilesetName = defaultName;
+        }
+
+        if (newTilesetOutputFile.empty()) {
+            newTilesetOutputFile = defaultName + ".tsx";
+        }
+    }
+
+    const std::string previewText = selectedTexture == nullptr
+        ? "None"
+        : std::filesystem::path(selectedTexture->getPath()).filename().string();
+
+    if (ImGui::BeginCombo("Texture", previewText.c_str())) {
+        for (std::size_t index = 0; index < textureAssets.size(); ++index) {
+            TextureAsset* textureAsset = textureAssets[index];
+            const std::string label = std::filesystem::path(textureAsset->getPath()).filename().string();
+            const bool selected = selectedCreateTilesetTextureIndex == static_cast<int>(index);
+
+            if (ImGui::Selectable(label.c_str(), selected)) {
+                selectedCreateTilesetTextureIndex = static_cast<int>(index);
+                resetCreateTilesetPreviewImage();
+
+                const std::string defaultName = makeDefaultTilesetName(*textureAsset);
+                newTilesetName = defaultName;
+                newTilesetOutputFile = defaultName + ".tsx";
+            }
+
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::InputText("Tileset Name", &newTilesetName);
+    ImGui::InputInt("Tile Width", &newTilesetTileWidth);
+    ImGui::InputInt("Tile Height", &newTilesetTileHeight);
+    ImGui::InputText("Output File", &newTilesetOutputFile);
+    ImGui::TextWrapped("Save path: %s", resolveTilesetOutputPath(newTilesetOutputFile).string().c_str());
+
+    ImGui::Checkbox("Use Transparency Color", &newTilesetUseTransparencyColor);
+    if (!newTilesetUseTransparencyColor) {
+        pickingTransparencyColor = false;
+    }
+
+    if (!newTilesetUseTransparencyColor) {
+        ImGui::BeginDisabled();
+    }
+
+    ImGui::ColorEdit3(
+        "Transparency Color",
+        newTilesetTransparencyColor,
+        ImGuiColorEditFlags_DisplayHex | ImGuiColorEditFlags_NoAlpha
+    );
+
+    if (ImGui::Button(pickingTransparencyColor ? "Cancel Eyedropper" : "Pick From Image")) {
+        pickingTransparencyColor = !pickingTransparencyColor;
+    }
+
+    if (pickingTransparencyColor) {
+        ImGui::SameLine();
+        ImGui::TextUnformatted("Click a pixel in the preview.");
+    }
+
+    if (!newTilesetUseTransparencyColor) {
+        ImGui::EndDisabled();
+    }
+
+    if (newTilesetTileWidth < 1) {
+        newTilesetTileWidth = 1;
+    }
+
+    if (newTilesetTileHeight < 1) {
+        newTilesetTileHeight = 1;
+    }
+
+    int columns = 0;
+    int rows = 0;
+    int tileCount = 0;
+    bool validTileGrid = false;
+
+    if (selectedTexture != nullptr) {
+        const int imageWidth = selectedTexture->getWidth();
+        const int imageHeight = selectedTexture->getHeight();
+        validTileGrid =
+            imageWidth > 0
+            && imageHeight > 0
+            && newTilesetTileWidth > 0
+            && newTilesetTileHeight > 0
+            && imageWidth % newTilesetTileWidth == 0
+            && imageHeight % newTilesetTileHeight == 0;
+
+        if (validTileGrid) {
+            columns = imageWidth / newTilesetTileWidth;
+            rows = imageHeight / newTilesetTileHeight;
+            tileCount = columns * rows;
+        }
+
+        ImGui::Text("Image size: %dx%d", imageWidth, imageHeight);
+        ImGui::Text("Generated grid: %d columns x %d rows, %d tiles", columns, rows, tileCount);
+        drawCreateTilesetImagePreview(*selectedTexture);
+    }
+
+    if (!validTileGrid) {
+        ImGui::TextUnformatted("Tile size must divide the texture width and height exactly.");
+    }
+
+    const bool canCreate =
+        selectedTexture != nullptr
+        && !newTilesetName.empty()
+        && !newTilesetOutputFile.empty()
+        && validTileGrid;
+
+    if (!canCreate) {
+        ImGui::BeginDisabled();
+    }
+
+    if (ImGui::Button("Create and Save")) {
+        if (createTilesetFromTexture(
+                *selectedTexture,
+                newTilesetName,
+                newTilesetTileWidth,
+                newTilesetTileHeight,
+                newTilesetUseTransparencyColor,
+                newTilesetTransparencyColor)) {
+            refreshTilesets();
+            ImGui::CloseCurrentPopup();
+        }
+    }
+
+    if (!canCreate) {
+        ImGui::EndDisabled();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+    }
+
+    ImGui::EndPopup();
 }
 
 void LevelEditor::drawEntityTreeNode(Entity& entity) {
@@ -959,11 +1240,40 @@ void LevelEditor::refreshTilesets() {
             tileset.textureAsset = AssetManager::getInstance().getTextureAssetByName(tileset.imageFilename);
         }
 
+        for (const tinyxml2::XMLElement* tile = tilesetRoot->FirstChildElement("tile");
+             tile != nullptr;
+             tile = tile->NextSiblingElement("tile")) {
+            const int ownerTileId = tile->IntAttribute("id", -1);
+            if (ownerTileId < 0) {
+                continue;
+            }
+
+            const tinyxml2::XMLElement* animation = tile->FirstChildElement("animation");
+            if (animation == nullptr) {
+                continue;
+            }
+
+            EditorTileAnimation editorAnimation;
+            for (const tinyxml2::XMLElement* frame = animation->FirstChildElement("frame");
+                 frame != nullptr;
+                 frame = frame->NextSiblingElement("frame")) {
+                EditorAnimationFrame editorFrame;
+                editorFrame.tileId = frame->IntAttribute("tileid", ownerTileId);
+                editorFrame.durationMs = std::max(1, frame->IntAttribute("duration", 200));
+                editorAnimation.frames.push_back(editorFrame);
+            }
+
+            if (!editorAnimation.frames.empty()) {
+                tileset.animations[ownerTileId] = std::move(editorAnimation);
+            }
+        }
+
         tilesets.push_back(tileset);
     }
 
     if (!tilesets.empty()) {
         selectedTilesetIndex = 0;
+        animationOwnerTileId = -1;
     }
 
     tilesetsScanned = true;
@@ -990,6 +1300,7 @@ void LevelEditor::drawTilesetSelector() {
             if (ImGui::Selectable(label.c_str(), isSelected)) {
                 selectedTilesetIndex = static_cast<int>(index);
                 selectedTileId = -1;
+                animationOwnerTileId = -1;
             }
 
             if (isSelected) {
@@ -1008,7 +1319,7 @@ void LevelEditor::drawSelectedTilesetGrid() {
         return;
     }
 
-    const EditorTileset& tileset = tilesets[static_cast<std::size_t>(selectedTilesetIndex)];
+    EditorTileset& tileset = tilesets[static_cast<std::size_t>(selectedTilesetIndex)];
 
     ImGui::Text("File: %s", std::filesystem::path(tileset.path).filename().string().c_str());
     ImGui::Text("Image: %s", tileset.imageFilename.empty() ? "none" : tileset.imageFilename.c_str());
@@ -1044,6 +1355,8 @@ void LevelEditor::drawSelectedTilesetGrid() {
     if (!statusMessage.empty()) {
         ImGui::TextWrapped("%s", statusMessage.c_str());
     }
+
+    drawSelectedTileAnimationEditor(tileset);
 
     const ImTextureID textureId = tileset.textureAsset->getImGuiTextureId();
     const ImVec2 previewSize(
@@ -1082,6 +1395,34 @@ void LevelEditor::drawSelectedTilesetGrid() {
                 selectedTileId = tileId;
             }
 
+            const ImVec2 tileMin = ImGui::GetItemRectMin();
+            const ImVec2 tileMax = ImGui::GetItemRectMax();
+            const auto animationIterator = tileset.animations.find(tileId);
+            const bool animatedOwner =
+                animationIterator != tileset.animations.end()
+                && !animationIterator->second.frames.empty();
+            const bool activeOwner = animationOwnerTileId == tileId;
+
+            if (animatedOwner || activeOwner) {
+                const char* label = animatedOwner ? "OWNER" : "OWNER*";
+                const ImVec2 textSize = ImGui::CalcTextSize(label);
+                const float labelHeight = textSize.y + 4.0f;
+                const ImU32 backgroundColor = animatedOwner
+                    ? IM_COL32(33, 120, 64, 220)
+                    : IM_COL32(120, 90, 28, 210);
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                drawList->AddRectFilled(
+                    ImVec2(tileMin.x, tileMax.y - labelHeight),
+                    tileMax,
+                    backgroundColor
+                );
+                drawList->AddText(
+                    ImVec2(tileMin.x + std::max(2.0f, (previewSize.x - textSize.x) * 0.5f), tileMax.y - labelHeight + 2.0f),
+                    IM_COL32(255, 255, 255, 245),
+                    label
+                );
+            }
+
             if (ImGui::BeginDragDropSource()) {
                 const TileDragPayload payload{
                     selectedTilesetIndex,
@@ -1118,7 +1459,15 @@ void LevelEditor::drawSelectedTilesetGrid() {
             }
 
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("tile id: %d", tileId);
+                if (animatedOwner) {
+                    ImGui::SetTooltip(
+                        "tile id: %d\nanimation owner\nframes: %zu",
+                        tileId,
+                        animationIterator->second.frames.size()
+                    );
+                } else {
+                    ImGui::SetTooltip("tile id: %d", tileId);
+                }
             }
 
             ImGui::PopID();
@@ -1130,6 +1479,95 @@ void LevelEditor::drawSelectedTilesetGrid() {
     }
 
     ImGui::EndChild();
+}
+
+void LevelEditor::drawSelectedTileAnimationEditor(EditorTileset& tileset) {
+    ImGui::Separator();
+
+    if (selectedTileId < 0) {
+        ImGui::TextUnformatted("Select a tile to edit animation frames.");
+        return;
+    }
+
+    if (animationOwnerTileId < 0 || animationOwnerTileId >= tileset.tileCount) {
+        animationOwnerTileId = selectedTileId;
+    }
+
+    ImGui::Text("Animation owner tile: %d", animationOwnerTileId);
+    ImGui::SameLine();
+    if (ImGui::Button("Use Selected As Owner")) {
+        animationOwnerTileId = selectedTileId;
+    }
+
+    ImGui::InputInt("Owner Tile Id", &animationOwnerTileId);
+    animationOwnerTileId = std::clamp(animationOwnerTileId, 0, std::max(0, tileset.tileCount - 1));
+
+    ImGui::InputInt("Frame Duration Ms", &newAnimationFrameDurationMs);
+    newAnimationFrameDurationMs = std::max(1, newAnimationFrameDurationMs);
+    const float framesPerSecond = 1000.0f / static_cast<float>(newAnimationFrameDurationMs);
+    ImGui::Text("Speed: %.2f FPS", framesPerSecond);
+
+    if (ImGui::Button("Add Selected Tile As Frame")) {
+        EditorTileAnimation& animation = tileset.animations[animationOwnerTileId];
+        animation.frames.push_back(EditorAnimationFrame{
+            selectedTileId,
+            newAnimationFrameDurationMs
+        });
+        statusMessage =
+            "Added tile " + std::to_string(selectedTileId)
+            + " as animation frame for tile " + std::to_string(animationOwnerTileId) + ".";
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Clear Animation")) {
+        tileset.animations.erase(animationOwnerTileId);
+        statusMessage = "Cleared animation for tile " + std::to_string(animationOwnerTileId) + ".";
+    }
+
+    auto animationIterator = tileset.animations.find(animationOwnerTileId);
+    if (animationIterator == tileset.animations.end() || animationIterator->second.frames.empty()) {
+        ImGui::TextUnformatted("No frames for this tile yet.");
+    } else {
+        EditorTileAnimation& animation = animationIterator->second;
+        int removeFrameIndex = -1;
+
+        for (std::size_t frameIndex = 0; frameIndex < animation.frames.size(); ++frameIndex) {
+            EditorAnimationFrame& frame = animation.frames[frameIndex];
+            ImGui::PushID(static_cast<int>(frameIndex));
+
+            ImGui::Text("Frame %zu", frameIndex);
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(96.0f);
+            ImGui::InputInt("Tile", &frame.tileId);
+            frame.tileId = std::clamp(frame.tileId, 0, std::max(0, tileset.tileCount - 1));
+
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(112.0f);
+            ImGui::InputInt("Duration", &frame.durationMs);
+            frame.durationMs = std::max(1, frame.durationMs);
+
+            ImGui::SameLine();
+            if (ImGui::Button("Remove")) {
+                removeFrameIndex = static_cast<int>(frameIndex);
+            }
+
+            ImGui::PopID();
+        }
+
+        if (removeFrameIndex >= 0
+            && removeFrameIndex < static_cast<int>(animation.frames.size())) {
+            animation.frames.erase(animation.frames.begin() + removeFrameIndex);
+
+            if (animation.frames.empty()) {
+                tileset.animations.erase(animationOwnerTileId);
+            }
+        }
+    }
+
+    if (ImGui::Button("Save Tileset Animations")) {
+        saveTilesetAnimations(tileset);
+    }
 }
 
 void LevelEditor::drawLevelDropTarget() {
@@ -1210,35 +1648,370 @@ void LevelEditor::createSpriteEntityFromTile(int tilesetIndex, int tileId, float
         return;
     }
 
-    const int column = tileId % tileset.columns;
-    const int row = tileId / tileset.columns;
-    const float sourceX = static_cast<float>(column * tileset.tileWidth);
-    const float sourceY = static_cast<float>(row * tileset.tileHeight);
+    if (tileset.columns <= 0) {
+        statusMessage = "Failed to create sprite entity: invalid tileset columns.";
+        return;
+    }
+
     const float renderScale = Renderer::getInstance().getRenderScale();
 
-    Sprite sprite(
-        tileset.textureAsset->getTextureHandle(),
-        RenderRect{
-            sourceX,
-            sourceY,
-            static_cast<float>(tileset.tileWidth),
-            static_cast<float>(tileset.tileHeight)
-        }
-    );
-    sprite.setSize(Vector2F(
-        static_cast<float>(tileset.tileWidth) * renderScale,
-        static_cast<float>(tileset.tileHeight) * renderScale
-    ));
+    const auto createSpriteFromTile = [&tileset, renderScale](int frameTileId) {
+        const int column = frameTileId % tileset.columns;
+        const int row = frameTileId / tileset.columns;
+        const float sourceX = static_cast<float>(column * tileset.tileWidth);
+        const float sourceY = static_cast<float>(row * tileset.tileHeight);
+
+        Sprite sprite(
+            tileset.textureAsset->getTextureHandle(),
+            RenderRect{
+                sourceX,
+                sourceY,
+                static_cast<float>(tileset.tileWidth),
+                static_cast<float>(tileset.tileHeight)
+            }
+        );
+        sprite.setSize(Vector2F(
+            static_cast<float>(tileset.tileWidth) * renderScale,
+            static_cast<float>(tileset.tileHeight) * renderScale
+        ));
+        return sprite;
+    };
 
     Entity& entity = Level::getCurrentLevel().createEntity();
-    entity.setName("EditorSprite_" + std::to_string(createdSpriteCount));
-    entity.setTag("EditorSprite");
     entity.addComponent<TransformComponent>(Vector2F(x, y), 0.0f);
-    entity.addComponent<SpriteComponent>(sprite);
+
+    const auto animationIterator = tileset.animations.find(tileId);
+    if (animationIterator != tileset.animations.end()
+        && !animationIterator->second.frames.empty()) {
+        Animation animation;
+        bool addedFrame = false;
+
+        for (const EditorAnimationFrame& frame : animationIterator->second.frames) {
+            if (frame.tileId < 0 || frame.tileId >= tileset.tileCount) {
+                continue;
+            }
+
+            animation.addFrame(createSpriteFromTile(frame.tileId));
+            if (!addedFrame) {
+                animation.setFrameDuration(static_cast<float>(std::max(1, frame.durationMs)) / 1000.0f);
+            }
+
+            addedFrame = true;
+        }
+
+        if (!addedFrame) {
+            statusMessage = "Failed to create animation entity: animation has no valid frames.";
+            Level::getCurrentLevel().destroyEntity(entity);
+            return;
+        }
+
+        entity.setName("EditorAnimation_" + std::to_string(createdSpriteCount));
+        entity.setTag("EditorAnimation");
+        entity.addComponent<AnimationComponent>(animation);
+        statusMessage =
+            "Created animation entity from owner tile id "
+            + std::to_string(tileId)
+            + " with " + std::to_string(animation.getFrameCount()) + " frame(s).";
+    } else {
+        Sprite sprite = createSpriteFromTile(tileId);
+        entity.setName("EditorSprite_" + std::to_string(createdSpriteCount));
+        entity.setTag("EditorSprite");
+        entity.addComponent<SpriteComponent>(sprite);
+        statusMessage = "Created sprite entity from tile id " + std::to_string(tileId) + ".";
+    }
 
     ++createdSpriteCount;
     selectedTileId = tileId;
-    statusMessage = "Created sprite entity from tile id " + std::to_string(tileId) + ".";
+}
+
+void LevelEditor::drawCreateTilesetImagePreview(TextureAsset& textureAsset) {
+    const ImTextureID textureId = textureAsset.getImGuiTextureId();
+    const int imageWidth = textureAsset.getWidth();
+    const int imageHeight = textureAsset.getHeight();
+
+    if (textureId == ImTextureID{} || imageWidth <= 0 || imageHeight <= 0) {
+        return;
+    }
+
+    const bool imagePixelsLoaded = loadCreateTilesetPreviewImage(textureAsset);
+    const float availableWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+    const float maxPreviewWidth = std::min(availableWidth, 420.0f);
+    constexpr float MaxPreviewHeight = 220.0f;
+    const float scale = std::clamp(
+        std::min(
+            maxPreviewWidth / static_cast<float>(imageWidth),
+            MaxPreviewHeight / static_cast<float>(imageHeight)
+        ),
+        0.1f,
+        4.0f
+    );
+    const ImVec2 previewSize(
+        static_cast<float>(imageWidth) * scale,
+        static_cast<float>(imageHeight) * scale
+    );
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Image Preview");
+    ImGui::Image(textureId, previewSize);
+
+    const ImVec2 imageMin = ImGui::GetItemRectMin();
+    const ImVec2 imageMax = ImGui::GetItemRectMax();
+
+    if (pickingTransparencyColor) {
+        ImGui::GetWindowDrawList()->AddRect(
+            imageMin,
+            imageMax,
+            IM_COL32(255, 210, 64, 255),
+            0.0f,
+            0,
+            2.0f
+        );
+    }
+
+    if (!imagePixelsLoaded) {
+        ImGui::TextUnformatted("Could not load image pixels for eyedropper.");
+        return;
+    }
+
+    if (!ImGui::IsItemHovered()) {
+        return;
+    }
+
+    const ImVec2 mousePosition = ImGui::GetMousePos();
+    const float localX = std::clamp(mousePosition.x - imageMin.x, 0.0f, previewSize.x);
+    const float localY = std::clamp(mousePosition.y - imageMin.y, 0.0f, previewSize.y);
+    const int pixelX = std::clamp(
+        static_cast<int>((localX / previewSize.x) * static_cast<float>(createTilesetPreviewImageWidth)),
+        0,
+        createTilesetPreviewImageWidth - 1
+    );
+    const int pixelY = std::clamp(
+        static_cast<int>((localY / previewSize.y) * static_cast<float>(createTilesetPreviewImageHeight)),
+        0,
+        createTilesetPreviewImageHeight - 1
+    );
+    const std::size_t pixelIndex =
+        (static_cast<std::size_t>(pixelY) * static_cast<std::size_t>(createTilesetPreviewImageWidth)
+         + static_cast<std::size_t>(pixelX)) * 4U;
+
+    if (pixelIndex + 2U >= createTilesetPreviewPixels.size()) {
+        return;
+    }
+
+    const int red = createTilesetPreviewPixels[pixelIndex];
+    const int green = createTilesetPreviewPixels[pixelIndex + 1U];
+    const int blue = createTilesetPreviewPixels[pixelIndex + 2U];
+    const std::string hexColor = colorBytesToTiledHex(red, green, blue);
+
+    ImGui::SetTooltip("Pixel: %d, %d\nColor: #%s", pixelX, pixelY, hexColor.c_str());
+
+    if (pickingTransparencyColor && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        newTilesetTransparencyColor[0] = static_cast<float>(red) / 255.0f;
+        newTilesetTransparencyColor[1] = static_cast<float>(green) / 255.0f;
+        newTilesetTransparencyColor[2] = static_cast<float>(blue) / 255.0f;
+        newTilesetUseTransparencyColor = true;
+        pickingTransparencyColor = false;
+        statusMessage = "Picked transparency color #" + hexColor + ".";
+    }
+}
+
+bool LevelEditor::loadCreateTilesetPreviewImage(TextureAsset& textureAsset) {
+    const std::string imagePath = textureAsset.getPath();
+    if (createTilesetPreviewImagePath == imagePath && !createTilesetPreviewPixels.empty()) {
+        return true;
+    }
+
+    resetCreateTilesetPreviewImage();
+    createTilesetPreviewImagePath = imagePath;
+
+    int width = 0;
+    int height = 0;
+    int channelCount = 0;
+    stbi_uc* pixels = stbi_load(imagePath.c_str(), &width, &height, &channelCount, 4);
+    if (pixels == nullptr || width <= 0 || height <= 0) {
+        statusMessage = "Failed to load image pixels for eyedropper.";
+        if (pixels != nullptr) {
+            stbi_image_free(pixels);
+        }
+
+        return false;
+    }
+
+    const std::size_t pixelCount = static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U;
+    createTilesetPreviewPixels.assign(pixels, pixels + pixelCount);
+    stbi_image_free(pixels);
+
+    createTilesetPreviewImageWidth = width;
+    createTilesetPreviewImageHeight = height;
+    return true;
+}
+
+void LevelEditor::resetCreateTilesetPreviewImage() {
+    createTilesetPreviewImagePath.clear();
+    createTilesetPreviewImageWidth = 0;
+    createTilesetPreviewImageHeight = 0;
+    createTilesetPreviewPixels.clear();
+}
+
+bool LevelEditor::createTilesetFromTexture(
+    TextureAsset& textureAsset,
+    const std::string& tilesetName,
+    int tileWidth,
+    int tileHeight,
+    bool useTransparencyColor,
+    const float transparencyColor[3]
+) {
+    const int imageWidth = textureAsset.getWidth();
+    const int imageHeight = textureAsset.getHeight();
+
+    if (tilesetName.empty()
+        || tileWidth <= 0
+        || tileHeight <= 0
+        || imageWidth <= 0
+        || imageHeight <= 0
+        || imageWidth % tileWidth != 0
+        || imageHeight % tileHeight != 0) {
+        statusMessage = "Failed to create tileset: invalid tileset settings.";
+        return false;
+    }
+
+    namespace fs = std::filesystem;
+
+    const fs::path outputPath = resolveTilesetOutputPath(newTilesetOutputFile);
+    std::error_code directoryError;
+    fs::create_directories(outputPath.parent_path(), directoryError);
+    if (directoryError) {
+        statusMessage = "Failed to create tileset directory: " + directoryError.message();
+        return false;
+    }
+
+    const fs::path texturePath(textureAsset.getPath());
+    std::error_code relativeError;
+    fs::path imageSource = fs::relative(texturePath, outputPath.parent_path(), relativeError);
+    if (relativeError || imageSource.empty()) {
+        imageSource = texturePath.filename();
+    }
+
+    const int columns = imageWidth / tileWidth;
+    const int rows = imageHeight / tileHeight;
+    const int tileCount = columns * rows;
+
+    tinyxml2::XMLDocument document;
+    document.InsertEndChild(document.NewDeclaration(R"(xml version="1.0" encoding="UTF-8")"));
+
+    tinyxml2::XMLElement* tileset = document.NewElement("tileset");
+    tileset->SetAttribute("version", "1.10");
+    tileset->SetAttribute("tiledversion", "1.12.2");
+    tileset->SetAttribute("name", tilesetName.c_str());
+    tileset->SetAttribute("tilewidth", tileWidth);
+    tileset->SetAttribute("tileheight", tileHeight);
+    tileset->SetAttribute("tilecount", tileCount);
+    tileset->SetAttribute("columns", columns);
+    document.InsertEndChild(tileset);
+
+    tinyxml2::XMLElement* image = document.NewElement("image");
+    const std::string imageSourceText = imageSource.generic_string();
+    image->SetAttribute("source", imageSourceText.c_str());
+    if (useTransparencyColor) {
+        const std::string transparencyHex = colorToTiledHex(transparencyColor);
+        image->SetAttribute("trans", transparencyHex.c_str());
+    }
+
+    image->SetAttribute("width", imageWidth);
+    image->SetAttribute("height", imageHeight);
+    tileset->InsertEndChild(image);
+
+    const tinyxml2::XMLError result = document.SaveFile(outputPath.string().c_str());
+    if (result != tinyxml2::XML_SUCCESS) {
+        statusMessage = "Failed to save tileset: " + std::string(document.ErrorStr());
+        return false;
+    }
+
+    statusMessage = "Created tileset " + outputPath.filename().string() + ".";
+    return true;
+}
+
+void LevelEditor::resetCreateTilesetForm() {
+    selectedCreateTilesetTextureIndex = -1;
+    newTilesetTileWidth = 16;
+    newTilesetTileHeight = 16;
+    newTilesetUseTransparencyColor = true;
+    pickingTransparencyColor = false;
+    newTilesetTransparencyColor[0] = 0.0f;
+    newTilesetTransparencyColor[1] = 0.0f;
+    newTilesetTransparencyColor[2] = 1.0f / 255.0f;
+    newTilesetName.clear();
+    newTilesetOutputFile.clear();
+    resetCreateTilesetPreviewImage();
+}
+
+bool LevelEditor::saveTilesetAnimations(EditorTileset& tileset) {
+    tinyxml2::XMLDocument document;
+    if (document.LoadFile(tileset.path.c_str()) != tinyxml2::XML_SUCCESS) {
+        statusMessage = "Failed to load tileset for saving: " + std::string(document.ErrorStr());
+        return false;
+    }
+
+    tinyxml2::XMLElement* tilesetRoot = document.FirstChildElement("tileset");
+    if (tilesetRoot == nullptr) {
+        statusMessage = "Failed to save animations: tileset root is missing.";
+        return false;
+    }
+
+    for (tinyxml2::XMLElement* tile = tilesetRoot->FirstChildElement("tile");
+         tile != nullptr;
+         tile = tile->NextSiblingElement("tile")) {
+        for (tinyxml2::XMLElement* animation = tile->FirstChildElement("animation");
+             animation != nullptr;) {
+            tinyxml2::XMLElement* nextAnimation = animation->NextSiblingElement("animation");
+            tile->DeleteChild(animation);
+            animation = nextAnimation;
+        }
+    }
+
+    std::vector<int> ownerTileIds;
+    ownerTileIds.reserve(tileset.animations.size());
+    for (const auto& animationPair : tileset.animations) {
+        if (!animationPair.second.frames.empty()) {
+            ownerTileIds.push_back(animationPair.first);
+        }
+    }
+
+    std::sort(ownerTileIds.begin(), ownerTileIds.end());
+
+    for (int ownerTileId : ownerTileIds) {
+        if (ownerTileId < 0 || ownerTileId >= tileset.tileCount) {
+            continue;
+        }
+
+        tinyxml2::XMLElement* tile = findTileElementById(tilesetRoot, ownerTileId);
+        if (tile == nullptr) {
+            tile = document.NewElement("tile");
+            tile->SetAttribute("id", ownerTileId);
+            tilesetRoot->InsertEndChild(tile);
+        }
+
+        tinyxml2::XMLElement* animation = document.NewElement("animation");
+        const EditorTileAnimation& editorAnimation = tileset.animations[ownerTileId];
+
+        for (const EditorAnimationFrame& editorFrame : editorAnimation.frames) {
+            tinyxml2::XMLElement* frame = document.NewElement("frame");
+            frame->SetAttribute("tileid", std::clamp(editorFrame.tileId, 0, std::max(0, tileset.tileCount - 1)));
+            frame->SetAttribute("duration", std::max(1, editorFrame.durationMs));
+            animation->InsertEndChild(frame);
+        }
+
+        tile->InsertEndChild(animation);
+    }
+
+    const tinyxml2::XMLError result = document.SaveFile(tileset.path.c_str());
+    if (result != tinyxml2::XML_SUCCESS) {
+        statusMessage = "Failed to save tileset animations: " + std::string(document.ErrorStr());
+        return false;
+    }
+
+    statusMessage = "Saved tileset animations to " + std::filesystem::path(tileset.path).filename().string() + ".";
+    return true;
 }
 
 void LevelEditor::drawViewportGrid() {

@@ -4,6 +4,7 @@
 #include "system/IRenderBackend.h"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class InputSystem;
@@ -35,6 +36,15 @@ public:
     bool shouldSnapToGrid() const;
 
 private:
+    struct EditorAnimationFrame {
+        int tileId = 0;
+        int durationMs = 200;
+    };
+
+    struct EditorTileAnimation {
+        std::vector<EditorAnimationFrame> frames;
+    };
+
     struct EditorTileset {
         std::string name;
         std::string path;
@@ -47,6 +57,7 @@ private:
         int imageWidth = 0;
         int imageHeight = 0;
         TextureAsset* textureAsset = nullptr;
+        std::unordered_map<int, EditorTileAnimation> animations;
     };
 
     struct EntityEditState {
@@ -70,9 +81,12 @@ private:
     void drawEntitiesTab();
     void drawSpritesTab();
     void drawFileExplorerTab();
+    void drawAssetsMenu();
+    void drawCreateTilesetPopup();
     void refreshTilesets();
     void drawTilesetSelector();
     void drawSelectedTilesetGrid();
+    void drawSelectedTileAnimationEditor(EditorTileset& tileset);
     void drawLevelDropTarget();
     void drawEntityTreeNode(Entity& entity);
     void drawEntityComponents(Entity& entity);
@@ -91,6 +105,19 @@ private:
     RenderRect getViewportForCamera() const;
     void syncEditStateFromEntity(Entity& entity, bool force = false);
     void createSpriteEntityFromTile(int tilesetIndex, int tileId, float x, float y);
+    void drawCreateTilesetImagePreview(TextureAsset& textureAsset);
+    bool createTilesetFromTexture(
+        TextureAsset& textureAsset,
+        const std::string& tilesetName,
+        int tileWidth,
+        int tileHeight,
+        bool useTransparencyColor,
+        const float transparencyColor[3]
+    );
+    bool loadCreateTilesetPreviewImage(TextureAsset& textureAsset);
+    void resetCreateTilesetPreviewImage();
+    void resetCreateTilesetForm();
+    bool saveTilesetAnimations(EditorTileset& tileset);
     void drawViewportGrid();
 
     bool enabled = true;
@@ -98,17 +125,32 @@ private:
     bool snapToGrid = false;
     bool showColliders = false;
     bool tilesetsScanned = false;
+    bool showCreateTilesetPopup = false;
+    bool newTilesetUseTransparencyColor = true;
+    bool pickingTransparencyColor = false;
     float tilePreviewScale = 3.0f;
+    float newTilesetTransparencyColor[3] = {0.0f, 0.0f, 1.0f / 255.0f};
     int selectedTilesetIndex = -1;
     int selectedTileId = -1;
     int selectedEntityId = -1;
     int draggingEntityId = -1;
     int createdSpriteCount = 0;
+    int selectedCreateTilesetTextureIndex = -1;
+    int newTilesetTileWidth = 16;
+    int newTilesetTileHeight = 16;
+    int animationOwnerTileId = -1;
+    int newAnimationFrameDurationMs = 200;
     bool consumedPinchZoomThisFrame = false;
     Tool currentTool = Tool::Select;
     float dragOffset[2] = {0.0f, 0.0f};
     std::string statusMessage;
+    std::string newTilesetName;
+    std::string newTilesetOutputFile;
+    std::string createTilesetPreviewImagePath;
+    int createTilesetPreviewImageWidth = 0;
+    int createTilesetPreviewImageHeight = 0;
     EntityEditState entityEditState;
+    std::vector<unsigned char> createTilesetPreviewPixels;
     std::vector<EditorTileset> tilesets;
 };
 

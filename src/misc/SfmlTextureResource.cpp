@@ -16,6 +16,10 @@ bool SfmlTextureResource::loadFromFile(const std::string& path) {
         return false;
     }
 
+    const sf::Vector2u imageSize = image.getSize();
+    width = static_cast<int>(imageSize.x);
+    height = static_cast<int>(imageSize.y);
+
     image.createMaskFromColor(sf::Color(0, 0, 1));
 
     texture = std::make_unique<sf::Texture>();
@@ -24,6 +28,8 @@ bool SfmlTextureResource::loadFromFile(const std::string& path) {
     if (!texture->loadFromImage(image)) {
         std::cerr << "Failed to create SFML texture: " << path << std::endl;
         texture.reset();
+        width = 0;
+        height = 0;
         return false;
     }
 
@@ -45,4 +51,12 @@ ImTextureID SfmlTextureResource::getImGuiTextureId() const {
                   "ImTextureID is not large enough for an SFML texture handle.");
     std::memcpy(&textureId, &nativeHandle, sizeof(nativeHandle));
     return textureId;
+}
+
+int SfmlTextureResource::getWidth() const {
+    return width;
+}
+
+int SfmlTextureResource::getHeight() const {
+    return height;
 }

@@ -34,6 +34,9 @@ bool SdlTextureResource::loadFromFile(const std::string& path) {
         return false;
     }
 
+    this->width = width;
+    this->height = height;
+
     for (int pixelIndex = 0; pixelIndex < width * height; ++pixelIndex) {
         std::uint8_t* pixel = pixels + pixelIndex * 4;
         if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 1) {
@@ -63,6 +66,8 @@ bool SdlTextureResource::loadFromFile(const std::string& path) {
     if (texture == nullptr) {
         std::cerr << "Failed to create SDL texture for " << path
                   << ": " << SDL_GetError() << std::endl;
+        this->width = 0;
+        this->height = 0;
         return false;
     }
 
@@ -77,4 +82,12 @@ RenderTextureHandle SdlTextureResource::getHandle() const {
 
 ImTextureID SdlTextureResource::getImGuiTextureId() const {
     return reinterpret_cast<ImTextureID>(texture.get());
+}
+
+int SdlTextureResource::getWidth() const {
+    return width;
+}
+
+int SdlTextureResource::getHeight() const {
+    return height;
 }
