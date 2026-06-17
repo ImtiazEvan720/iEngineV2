@@ -32,6 +32,7 @@ public:
     float getToolbarHeight() const;
     bool shouldShowGrid() const;
     bool shouldShowColliders() const;
+    bool shouldSnapToGrid() const;
 
 private:
     struct EditorTileset {
@@ -94,6 +95,7 @@ private:
 
     bool enabled = true;
     bool showGrid = true;
+    bool snapToGrid = false;
     bool showColliders = false;
     bool tilesetsScanned = false;
     float tilePreviewScale = 3.0f;

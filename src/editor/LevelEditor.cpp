@@ -104,6 +104,23 @@ CollisionComponent::BodyType bodyTypeFromIndex(int index) {
             return CollisionComponent::BodyType::Static;
     }
 }
+
+float getEditorGridSize() {
+    return 16.0f * Renderer::getInstance().getRenderScale();
+}
+
+Vector2F snapPositionToGrid(const Vector2F& position) {
+    const float gridSize = getEditorGridSize();
+    if (gridSize <= 0.0f) {
+        return position;
+    }
+
+    const float halfGridSize = gridSize * 0.5f;
+    return Vector2F(
+        std::round((position.x - halfGridSize) / gridSize) * gridSize + halfGridSize,
+        std::round((position.y - halfGridSize) / gridSize) * gridSize + halfGridSize
+    );
+}
 }
 
 void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
@@ -160,7 +177,7 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Show Grid", nullptr, &showGrid);
             ImGui::MenuItem("Show Colliders", nullptr, &showColliders);
-
+            ImGui::MenuItem("Snap to Grid", nullptr, &snapToGrid);
             ImGui::EndMenu();
         }
 
@@ -237,6 +254,10 @@ bool LevelEditor::shouldShowGrid() const {
 
 bool LevelEditor::shouldShowColliders() const {
     return showColliders;
+}
+
+bool LevelEditor::shouldSnapToGrid() const {
+    return snapToGrid;
 }
 
 void LevelEditor::drawLevelOutlineTab(const InputSystem& inputSystem) {
@@ -737,10 +758,15 @@ void LevelEditor::handleViewportEntityInteraction() {
             return;
         }
 
-        transform->setPosition(Vector2F(
+        Vector2F newPosition(
             worldMousePosition.x - dragOffset[0],
             worldMousePosition.y - dragOffset[1]
-        ));
+        );
+        if (snapToGrid) {
+            newPosition = snapPositionToGrid(newPosition);
+        }
+
+        transform->setPosition(newPosition);
         syncEditStateFromEntity(*entity, true);
     }
 
@@ -1138,16 +1164,19 @@ void LevelEditor::drawLevelDropTarget() {
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(TileDragPayloadType);
         if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(TileDragPayload)) {
             const auto* tilePayload = static_cast<const TileDragPayload*>(payload->Data);
-            const Vector2F worldDropPosition = Renderer::getInstance().getCamera().screenToWorld(
+            Vector2F dropPosition = Renderer::getInstance().getCamera().screenToWorld(
                 Vector2F(io.MousePos.x, io.MousePos.y),
                 getViewportForCamera()
             );
+            if (snapToGrid) {
+                dropPosition = snapPositionToGrid(dropPosition);
+            }
 
             createSpriteEntityFromTile(
                 tilePayload->tilesetIndex,
                 tilePayload->tileId,
-                worldDropPosition.x,
-                worldDropPosition.y
+                dropPosition.x,
+                dropPosition.y
             );
         }
 
