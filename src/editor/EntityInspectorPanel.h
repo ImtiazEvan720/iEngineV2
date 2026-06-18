@@ -51,6 +51,7 @@ private:
     void drawScriptComponentFields(ScriptComponent& scriptComponent);
 
     int selectedEntityId = -1;
+    int selectedAddComponentIndex = 0;
     std::string prefabName;
     EntityEditState entityEditState;
 };

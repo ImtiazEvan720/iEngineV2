@@ -414,23 +414,45 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
 }
 
 void EntityInspectorPanel::drawAddComponentCombo(Entity& entity, std::string& statusMessage) {
-    if (!ImGui::BeginCombo("Add Component", "Select component")) {
+    const std::vector<ComponentAddEntry>& registry = getComponentAddRegistry();
+    if (registry.empty()) {
         return;
     }
 
-    for (const ComponentAddEntry& entry : getComponentAddRegistry()) {
-        if (ImGui::Selectable(entry.name)) {
-            if (entry.add(entity)) {
-                entity.addInputListeners(InputSystem::getInstance());
-                syncEditStateFromEntity(entity, true);
-                statusMessage = "Added " + std::string(entry.name) + ".";
-            } else {
-                statusMessage = "Entity already has " + std::string(entry.name) + ".";
-            }
-        }
+    if (selectedAddComponentIndex < 0 ||
+        selectedAddComponentIndex >= static_cast<int>(registry.size())) {
+        selectedAddComponentIndex = 0;
     }
 
-    ImGui::EndCombo();
+    const ComponentAddEntry& selectedEntry = registry[static_cast<std::size_t>(selectedAddComponentIndex)];
+
+    ImGui::SetNextItemWidth(220.0f);
+    if (ImGui::BeginCombo("Component", selectedEntry.name)) {
+        for (std::size_t index = 0; index < registry.size(); ++index) {
+            const bool selected = selectedAddComponentIndex == static_cast<int>(index);
+            if (ImGui::Selectable(registry[index].name, selected)) {
+                selectedAddComponentIndex = static_cast<int>(index);
+            }
+
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Add Component")) {
+        const ComponentAddEntry& entry = registry[static_cast<std::size_t>(selectedAddComponentIndex)];
+        if (entry.add(entity)) {
+            entity.addInputListeners(InputSystem::getInstance());
+            syncEditStateFromEntity(entity, true);
+            statusMessage = "Added " + std::string(entry.name) + ".";
+        } else {
+            statusMessage = "Entity already has " + std::string(entry.name) + ".";
+        }
+    }
 }
 
 void EntityInspectorPanel::drawEntityIdentityFields(Entity& entity, std::string& statusMessage) {
