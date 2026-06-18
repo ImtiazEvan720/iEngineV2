@@ -16,6 +16,7 @@
 #include "misc/Sprite.h"
 #include "system/AssetManager.h"
 #include "system/IRenderBackend.h"
+#include "system/InputSystem.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -23,7 +24,10 @@
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <functional>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace {
 int bodyTypeToIndex(CollisionComponent::BodyType bodyType) {
@@ -74,6 +78,96 @@ std::filesystem::path getPrefabPath(const std::string& prefabName) {
     std::filesystem::path path = std::filesystem::path("Assets") / "Prefabs" / sanitizePrefabName(prefabName);
     path.replace_extension(".iprefab");
     return path;
+}
+
+template <typename TComponent, typename... Args>
+bool addComponentIfMissing(Entity& entity, Args&&... args) {
+    if (entity.getComponent<TComponent>() != nullptr) {
+        return false;
+    }
+
+    entity.addComponent<TComponent>(std::forward<Args>(args)...);
+    return true;
+}
+
+template <typename TComponent, typename... Args>
+void ensureComponent(Entity& entity, Args&&... args) {
+    if (entity.getComponent<TComponent>() == nullptr) {
+        entity.addComponent<TComponent>(std::forward<Args>(args)...);
+    }
+}
+
+struct ComponentAddEntry {
+    const char* name;
+    std::function<bool(Entity&)> add;
+};
+
+const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
+    static const std::vector<ComponentAddEntry> registry = {
+        {
+            "TransformComponent",
+            [](Entity& entity) {
+                return addComponentIfMissing<TransformComponent>(
+                    entity,
+                    Vector2F(0.0f, 0.0f),
+                    0.0f
+                );
+            }
+        },
+        {
+            "CollisionComponent",
+            [](Entity& entity) {
+                ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
+                return addComponentIfMissing<CollisionComponent>(
+                    entity,
+                    64.0f,
+                    64.0f,
+                    CollisionComponent::BodyType::Static,
+                    false,
+                    "Collider"
+                );
+            }
+        },
+        {
+            "PlayerController",
+            [](Entity& entity) {
+                ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
+                return addComponentIfMissing<PlayerController>(entity);
+            }
+        },
+        {
+            "Brick",
+            [](Entity& entity) {
+                ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
+                ensureComponent<CollisionComponent>(
+                    entity,
+                    64.0f,
+                    64.0f,
+                    CollisionComponent::BodyType::Static,
+                    false,
+                    "Brick"
+                );
+                return addComponentIfMissing<Brick>(entity);
+            }
+        },
+        {
+            "Bullet",
+            [](Entity& entity) {
+                ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
+                ensureComponent<CollisionComponent>(
+                    entity,
+                    16.0f,
+                    32.0f,
+                    CollisionComponent::BodyType::Dynamic,
+                    true,
+                    "Bullet"
+                );
+                return addComponentIfMissing<Bullet>(entity);
+            }
+        }
+    };
+
+    return registry;
 }
 }
 
@@ -212,6 +306,11 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
     bool hasComponents = false;
     const bool editable = selectedEntityId == entity.getId();
 
+    if (editable) {
+        drawAddComponentCombo(entity, statusMessage);
+        ImGui::Separator();
+    }
+
     if (auto* transform = entity.getComponent<TransformComponent>()) {
         hasComponents = true;
         if (ImGui::TreeNodeEx("TransformComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
@@ -312,6 +411,26 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
     }
 
     ImGui::TreePop();
+}
+
+void EntityInspectorPanel::drawAddComponentCombo(Entity& entity, std::string& statusMessage) {
+    if (!ImGui::BeginCombo("Add Component", "Select component")) {
+        return;
+    }
+
+    for (const ComponentAddEntry& entry : getComponentAddRegistry()) {
+        if (ImGui::Selectable(entry.name)) {
+            if (entry.add(entity)) {
+                entity.addInputListeners(InputSystem::getInstance());
+                syncEditStateFromEntity(entity, true);
+                statusMessage = "Added " + std::string(entry.name) + ".";
+            } else {
+                statusMessage = "Entity already has " + std::string(entry.name) + ".";
+            }
+        }
+    }
+
+    ImGui::EndCombo();
 }
 
 void EntityInspectorPanel::drawEntityIdentityFields(Entity& entity, std::string& statusMessage) {

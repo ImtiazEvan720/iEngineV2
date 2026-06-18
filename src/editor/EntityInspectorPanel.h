@@ -40,6 +40,7 @@ private:
 
     void drawEntityTreeNode(Entity& entity, std::string& statusMessage);
     void drawEntityComponents(Entity& entity, std::string& statusMessage);
+    void drawAddComponentCombo(Entity& entity, std::string& statusMessage);
     void drawEntityIdentityFields(Entity& entity, std::string& statusMessage);
     bool drawPrefabActions(Level& level, std::string& statusMessage);
     Entity* findSelectedEntity(Level& level) const;
