@@ -3,89 +3,35 @@
 #include "components/AnimationComponent.h"
 #include "components/CollisionComponent.h"
 #include "components/PlayerController.h"
+#include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "game/Brick.h"
+#include "game/Bullet.h"
 #include "misc/Animation.h"
 #include "misc/Sprite.h"
+#include "misc/TextureAsset.h"
+#include "system/AssetManager.h"
+#include "system/InputSystem.h"
+
+#include "tinyxml2.h"
 
 #include <algorithm>
-#include <cctype>
-#include <cmath>
+#include <filesystem>
 #include <iostream>
-#include <sstream>
 #include <string>
-#include <unordered_map>
-#include <vector>
+#include <utility>
 
 namespace {
-std::string trim(const std::string& value) {
-    std::size_t begin = 0;
-    while (begin < value.size() && std::isspace(static_cast<unsigned char>(value[begin]))) {
-        ++begin;
-    }
+std::string currentLevelPath = "Assets/Levels/current.ilevel";
 
-    std::size_t end = value.size();
-    while (end > begin && std::isspace(static_cast<unsigned char>(value[end - 1]))) {
-        --end;
-    }
-
-    return value.substr(begin, end - begin);
-}
-
-std::vector<std::string> splitComponents(const std::string& value) {
-    std::vector<std::string> components;
-    std::stringstream stream(value);
-    std::string token;
-
-    while (std::getline(stream, token, ',')) {
-        token = trim(token);
-        if (!token.empty()) {
-            components.push_back(token);
-        }
-    }
-
-    return components;
-}
-
-std::string getStringProperty(
-    const std::unordered_map<std::string, std::string>& properties,
-    const std::string& name,
-    const std::string& fallback = ""
-) {
-    const auto iterator = properties.find(name);
-    return iterator == properties.end() ? fallback : iterator->second;
-}
-
-float getFloatProperty(
-    const std::unordered_map<std::string, std::string>& properties,
-    const std::string& name,
-    float fallback
-) {
-    const auto iterator = properties.find(name);
-    if (iterator == properties.end()) {
+bool parseBool(const char* value, bool fallback) {
+    if (value == nullptr) {
         return fallback;
     }
 
-    try {
-        return std::stof(iterator->second);
-    } catch (const std::exception&) {
-        return fallback;
-    }
-}
-
-bool getBoolProperty(
-    const std::unordered_map<std::string, std::string>& properties,
-    const std::string& name,
-    bool fallback
-) {
-    const auto iterator = properties.find(name);
-    if (iterator == properties.end()) {
-        return fallback;
-    }
-
-    const std::string value = iterator->second;
-    return value == "true" || value == "1" || value == "True" || value == "TRUE";
+    const std::string text = value;
+    return text == "true" || text == "1" || text == "True" || text == "TRUE";
 }
 
 CollisionComponent::BodyType parseBodyType(const std::string& value) {
@@ -100,117 +46,459 @@ CollisionComponent::BodyType parseBodyType(const std::string& value) {
     return CollisionComponent::BodyType::Static;
 }
 
-const TilesetInfo* findTilesetForGid(const LevelAsset& levelAsset, int gid) {
-    const TilesetInfo* result = nullptr;
-
-    for (const TilesetInfo& tileset : levelAsset.getTilesets()) {
-        if (gid >= tileset.firstGid) {
-            result = &tileset;
-        }
-    }
-
-    return result;
+const char* boolText(bool value) {
+    return value ? "true" : "false";
 }
 
-Sprite createSpriteFromLocalTileId(const TilesetInfo& tileset, int localTileId) {
-    const float sourceX = static_cast<float>((localTileId % tileset.columns) * tileset.tileWidth);
-    const float sourceY = static_cast<float>((localTileId / tileset.columns) * tileset.tileHeight);
-
-    return Sprite(
-        tileset.textureAsset->getTextureHandle(),
-        RenderRect{
-            sourceX,
-            sourceY,
-            static_cast<float>(tileset.tileWidth),
-            static_cast<float>(tileset.tileHeight)
-        }
-    );
+const char* bodyTypeToString(CollisionComponent::BodyType bodyType) {
+    switch (bodyType) {
+        case CollisionComponent::BodyType::Kinematic:
+            return "Kinematic";
+        case CollisionComponent::BodyType::Dynamic:
+            return "Dynamic";
+        case CollisionComponent::BodyType::Static:
+        default:
+            return "Static";
+    }
 }
 
-int getGidUnderObject(const ObjectInfo& object, const TileLayerInfo& tileLayer, const LevelAsset& levelAsset) {
-    if (levelAsset.getTileWidth() == 0 || levelAsset.getTileHeight() == 0) {
-        return 0;
+std::string getTextureAssetName(RenderTextureHandle textureHandle) {
+    if (textureHandle == nullptr) {
+        return "";
     }
 
-    const int tileX = static_cast<int>(std::floor(object.x / static_cast<float>(levelAsset.getTileWidth())));
-    const int tileY = static_cast<int>(std::floor(object.y / static_cast<float>(levelAsset.getTileHeight())));
-
-    if (tileX < 0 || tileY < 0 || tileX >= tileLayer.width || tileY >= tileLayer.height) {
-        return 0;
+    for (const auto& asset : AssetManager::getInstance().getAssets()) {
+        const auto* textureAsset = dynamic_cast<const TextureAsset*>(asset.get());
+        if (textureAsset != nullptr && textureAsset->getTextureHandle() == textureHandle) {
+            return std::filesystem::path(textureAsset->getPath()).filename().string();
+        }
     }
 
-    const int index = tileY * tileLayer.width + tileX;
-    if (index < 0 || static_cast<std::size_t>(index) >= tileLayer.gids.size()) {
-        return 0;
-    }
-
-    return tileLayer.gids[static_cast<std::size_t>(index)];
+    return "";
 }
 
-void addVisualFromGid(Entity& entity, const ObjectInfo& object, const LevelAsset& levelAsset, int gid) {
-    if (gid == 0) {
-        return;
-    }
-
-    const TilesetInfo* tileset = findTilesetForGid(levelAsset, gid);
-    if (tileset == nullptr || tileset->textureAsset == nullptr || tileset->textureAsset->getTextureHandle() == nullptr) {
-        return;
-    }
-
-    const int localTileId = gid - tileset->firstGid;
-    const auto animationIterator = tileset->animations.find(localTileId);
-
-    if (animationIterator != tileset->animations.end()) {
-        Animation animation;
-
-        for (const TileAnimationFrame& frame : animationIterator->second.frames) {
-            Sprite frameSprite = createSpriteFromLocalTileId(*tileset, frame.tileId);
-            frameSprite.setSize(Vector2F(object.width, object.height));
-            animation.addFrame(frameSprite);
-        }
-
-        if (!animationIterator->second.frames.empty()) {
-            animation.setFrameDuration(animationIterator->second.frames.front().durationSeconds);
-        }
-
-        entity.addComponent<AnimationComponent>(animation);
-        return;
-    }
-
-    Sprite sprite = createSpriteFromLocalTileId(*tileset, localTileId);
-    sprite.setSize(Vector2F(object.width, object.height));
-    entity.addComponent<SpriteComponent>(sprite);
+tinyxml2::XMLElement* addComponentElement(
+    tinyxml2::XMLDocument& document,
+    tinyxml2::XMLElement& entityElement,
+    const char* type
+) {
+    tinyxml2::XMLElement* component = document.NewElement("component");
+    component->SetAttribute("type", type);
+    entityElement.InsertEndChild(component);
+    return component;
 }
 
-void addComponentsFromProperties(Entity& entity, const ObjectInfo& object) {
-    const std::string components = getStringProperty(object.properties, "components");
+void setSpriteAttributes(tinyxml2::XMLElement& element, const Sprite& sprite) {
+    const RenderRect& source = sprite.getSourceRect();
+    const Vector2F& size = sprite.getSize();
+    const Vector2F& origin = sprite.getOrigin();
 
-    for (const std::string& componentName : splitComponents(components)) {
-        if (componentName == "CollisionComponent") {
-            const float width = getFloatProperty(object.properties, "CollisionComponent_width", object.width);
-            const float height = getFloatProperty(object.properties, "CollisionComponent_height", object.height);
-            const bool isSensor = getBoolProperty(object.properties, "CollisionComponent_isSensor", false);
-            const std::string colliderName = getStringProperty(object.properties, "CollisionComponent_name", object.name);
-            const CollisionComponent::BodyType bodyType = parseBodyType(
-                getStringProperty(object.properties, "CollisionComponent_bodyType", "Static")
-            );
+    element.SetAttribute("texture", getTextureAssetName(sprite.getTextureHandle()).c_str());
+    element.SetAttribute("sourceX", source.x);
+    element.SetAttribute("sourceY", source.y);
+    element.SetAttribute("sourceWidth", source.width);
+    element.SetAttribute("sourceHeight", source.height);
+    element.SetAttribute("sizeX", size.x);
+    element.SetAttribute("sizeY", size.y);
+    element.SetAttribute("originX", origin.x);
+    element.SetAttribute("originY", origin.y);
+}
 
-            entity.addComponent<CollisionComponent>(width, height, bodyType, isSensor, colliderName);
-        } else if (componentName == "Brick") {
-            entity.addComponent<Brick>();
-        } else if (componentName == "PlayerController") {
-            entity.addComponent<PlayerController>();
-        } else {
-            std::cerr << "Unknown level component: " << componentName
-                      << " on object " << object.name << std::endl;
-        }
+void saveTransformComponent(
+    tinyxml2::XMLDocument& document,
+    tinyxml2::XMLElement& entityElement,
+    const TransformComponent& transform
+) {
+    tinyxml2::XMLElement* component = addComponentElement(document, entityElement, "TransformComponent");
+    const Vector2F& position = transform.getPosition();
+    component->SetAttribute("x", position.x);
+    component->SetAttribute("y", position.y);
+    component->SetAttribute("rotation", transform.getRotation());
+}
+
+void saveSpriteComponent(
+    tinyxml2::XMLDocument& document,
+    tinyxml2::XMLElement& entityElement,
+    const SpriteComponent& spriteComponent
+) {
+    tinyxml2::XMLElement* component = addComponentElement(document, entityElement, "SpriteComponent");
+    setSpriteAttributes(*component, spriteComponent.getSprite());
+}
+
+void saveAnimationComponent(
+    tinyxml2::XMLDocument& document,
+    tinyxml2::XMLElement& entityElement,
+    const AnimationComponent& animationComponent
+) {
+    tinyxml2::XMLElement* component = addComponentElement(document, entityElement, "AnimationComponent");
+    const Animation& animation = animationComponent.getAnimation();
+    component->SetAttribute("frameDuration", animation.getFrameDuration());
+    component->SetAttribute("playing", boolText(animationComponent.isPlaying()));
+
+    for (std::size_t frameIndex = 0; frameIndex < animation.getFrameCount(); ++frameIndex) {
+        tinyxml2::XMLElement* frame = document.NewElement("frame");
+        setSpriteAttributes(*frame, animation.getFrame(frameIndex));
+        component->InsertEndChild(frame);
     }
+}
+
+void saveCollisionComponent(
+    tinyxml2::XMLDocument& document,
+    tinyxml2::XMLElement& entityElement,
+    const CollisionComponent& collisionComponent
+) {
+    tinyxml2::XMLElement* component = addComponentElement(document, entityElement, "CollisionComponent");
+    component->SetAttribute("name", collisionComponent.getName().c_str());
+    component->SetAttribute("width", collisionComponent.getWidth());
+    component->SetAttribute("height", collisionComponent.getHeight());
+    component->SetAttribute("bodyType", bodyTypeToString(collisionComponent.getBodyType()));
+    component->SetAttribute("isSensor", boolText(collisionComponent.isSensor()));
+}
+
+void saveScriptComponent(
+    tinyxml2::XMLDocument& document,
+    tinyxml2::XMLElement& entityElement,
+    const ScriptComponent& scriptComponent
+) {
+    tinyxml2::XMLElement* component = addComponentElement(document, entityElement, "ScriptComponent");
+    component->SetAttribute("path", scriptComponent.getScriptPath().c_str());
+}
+
+void addMarkerComponent(tinyxml2::XMLDocument& document, tinyxml2::XMLElement& entityElement, const char* type) {
+    addComponentElement(document, entityElement, type);
+}
+
+TextureAsset* getTextureAsset(const tinyxml2::XMLElement& element) {
+    const char* textureName = element.Attribute("texture");
+    if (textureName == nullptr || textureName[0] == '\0') {
+        return nullptr;
+    }
+
+    return AssetManager::getInstance().getTextureAssetByName(textureName);
+}
+
+Sprite makeSpriteFromAttributes(const tinyxml2::XMLElement& element, TextureAsset& textureAsset) {
+    RenderRect source;
+    source.x = element.FloatAttribute("sourceX", 0.0f);
+    source.y = element.FloatAttribute("sourceY", 0.0f);
+    source.width = element.FloatAttribute("sourceWidth", 0.0f);
+    source.height = element.FloatAttribute("sourceHeight", 0.0f);
+
+    Sprite sprite(textureAsset.getTextureHandle(), source);
+    sprite.setSize(Vector2F(
+        element.FloatAttribute("sizeX", source.width),
+        element.FloatAttribute("sizeY", source.height)
+    ));
+    sprite.setOrigin(Vector2F(
+        element.FloatAttribute("originX", source.width * 0.5f),
+        element.FloatAttribute("originY", source.height * 0.5f)
+    ));
+
+    return sprite;
+}
+
+bool addSpriteComponentFromElement(const tinyxml2::XMLElement& component, Entity& entity, std::string& errorMessage) {
+    TextureAsset* textureAsset = getTextureAsset(component);
+    if (textureAsset == nullptr || textureAsset->getTextureHandle() == nullptr) {
+        errorMessage = "Level sprite texture is missing.";
+        return false;
+    }
+
+    entity.addComponent<SpriteComponent>(makeSpriteFromAttributes(component, *textureAsset));
+    return true;
+}
+
+bool addAnimationComponentFromElement(const tinyxml2::XMLElement& component, Entity& entity, std::string& errorMessage) {
+    Animation animation(component.FloatAttribute("frameDuration", 0.1f));
+
+    for (const tinyxml2::XMLElement* frame = component.FirstChildElement("frame");
+         frame != nullptr;
+         frame = frame->NextSiblingElement("frame")) {
+        TextureAsset* textureAsset = getTextureAsset(*frame);
+        if (textureAsset == nullptr || textureAsset->getTextureHandle() == nullptr) {
+            errorMessage = "Level animation frame texture is missing.";
+            return false;
+        }
+
+        animation.addFrame(makeSpriteFromAttributes(*frame, *textureAsset));
+    }
+
+    if (!animation.hasFrames()) {
+        errorMessage = "Level animation component has no frames.";
+        return false;
+    }
+
+    AnimationComponent& animationComponent = entity.addComponent<AnimationComponent>(animation);
+    if (!parseBool(component.Attribute("playing"), true)) {
+        animationComponent.pause();
+    }
+
+    return true;
+}
+
+bool addComponentFromElement(const tinyxml2::XMLElement& component, Entity& entity, std::string& errorMessage) {
+    const char* type = component.Attribute("type");
+    if (type == nullptr) {
+        return true;
+    }
+
+    const std::string componentType(type);
+    if (componentType == "TransformComponent") {
+        return true;
+    }
+
+    if (componentType == "SpriteComponent") {
+        return addSpriteComponentFromElement(component, entity, errorMessage);
+    }
+
+    if (componentType == "AnimationComponent") {
+        return addAnimationComponentFromElement(component, entity, errorMessage);
+    }
+
+    if (componentType == "CollisionComponent") {
+        entity.addComponent<CollisionComponent>(
+            component.FloatAttribute("width", 1.0f),
+            component.FloatAttribute("height", 1.0f),
+            parseBodyType(component.Attribute("bodyType") == nullptr ? "Static" : component.Attribute("bodyType")),
+            parseBool(component.Attribute("isSensor"), false),
+            component.Attribute("name") == nullptr ? "Collider" : component.Attribute("name")
+        );
+        return true;
+    }
+
+    if (componentType == "ScriptComponent") {
+        const char* path = component.Attribute("path");
+        if (path != nullptr && path[0] != '\0') {
+            entity.addComponent<ScriptComponent>(path);
+        }
+        return true;
+    }
+
+    if (componentType == "PlayerController") {
+        entity.addComponent<PlayerController>();
+        return true;
+    }
+
+    if (componentType == "Brick") {
+        entity.addComponent<Brick>();
+        return true;
+    }
+
+    if (componentType == "Bullet") {
+        entity.addComponent<Bullet>();
+        return true;
+    }
+
+    std::cerr << "Unknown level component: " << componentType << std::endl;
+    return true;
 }
 }
 
 Level& Level::getCurrentLevel() {
     static Level currentLevel;
     return currentLevel;
+}
+
+Level Level::createEmpty() {
+    return Level();
+}
+
+Level& Level::createNewLevel() {
+    Level level = createEmpty();
+    level.sourcePath = "Assets/Levels/current.ilevel";
+    loadLevel(std::move(level));
+    currentLevelPath = "Assets/Levels/current.ilevel";
+    return getCurrentLevel();
+}
+
+bool Level::saveCurrentLevel(std::string& errorMessage) {
+    return saveCurrentLevel(currentLevelPath, errorMessage);
+}
+
+bool Level::saveCurrentLevel(const std::string& path, std::string& errorMessage) {
+    namespace fs = std::filesystem;
+
+    tinyxml2::XMLDocument document;
+    document.InsertEndChild(document.NewDeclaration(R"(xml version="1.0" encoding="UTF-8")"));
+
+    tinyxml2::XMLElement* levelElement = document.NewElement("level");
+    levelElement->SetAttribute("version", 1);
+    document.InsertEndChild(levelElement);
+
+    tinyxml2::XMLElement* entitiesElement = document.NewElement("entities");
+    levelElement->InsertEndChild(entitiesElement);
+
+    int savedEntityCount = 0;
+    const Level& level = getCurrentLevel();
+    for (const Entity& entity : level.getEntities()) {
+        if (entity.isDestroyed()) {
+            continue;
+        }
+
+        tinyxml2::XMLElement* entityElement = document.NewElement("entity");
+        entityElement->SetAttribute("id", entity.getId());
+        entityElement->SetAttribute("name", entity.getName().c_str());
+        entityElement->SetAttribute("tag", entity.getTag().c_str());
+        entitiesElement->InsertEndChild(entityElement);
+
+        if (const TransformComponent* transform = entity.getComponent<TransformComponent>()) {
+            saveTransformComponent(document, *entityElement, *transform);
+        }
+
+        if (const SpriteComponent* spriteComponent = entity.getComponent<SpriteComponent>()) {
+            saveSpriteComponent(document, *entityElement, *spriteComponent);
+        }
+
+        if (const AnimationComponent* animationComponent = entity.getComponent<AnimationComponent>()) {
+            saveAnimationComponent(document, *entityElement, *animationComponent);
+        }
+
+        if (const CollisionComponent* collisionComponent = entity.getComponent<CollisionComponent>()) {
+            saveCollisionComponent(document, *entityElement, *collisionComponent);
+        }
+
+        if (const ScriptComponent* scriptComponent = entity.getComponent<ScriptComponent>()) {
+            saveScriptComponent(document, *entityElement, *scriptComponent);
+        }
+
+        if (entity.getComponent<PlayerController>() != nullptr) {
+            addMarkerComponent(document, *entityElement, "PlayerController");
+        }
+
+        if (entity.getComponent<Brick>() != nullptr) {
+            addMarkerComponent(document, *entityElement, "Brick");
+        }
+
+        if (entity.getComponent<Bullet>() != nullptr) {
+            addMarkerComponent(document, *entityElement, "Bullet");
+        }
+
+        ++savedEntityCount;
+    }
+
+    entitiesElement->SetAttribute("count", savedEntityCount);
+
+    const fs::path outputPath(path);
+    std::error_code directoryError;
+    if (!outputPath.parent_path().empty()) {
+        fs::create_directories(outputPath.parent_path(), directoryError);
+        if (directoryError) {
+            errorMessage = "Failed to create level directory: " + directoryError.message();
+            return false;
+        }
+    }
+
+    const tinyxml2::XMLError result = document.SaveFile(path.c_str());
+    if (result != tinyxml2::XML_SUCCESS) {
+        errorMessage = "Failed to save level: " + std::string(document.ErrorStr());
+        return false;
+    }
+
+    currentLevelPath = path;
+    getCurrentLevel().sourcePath = path;
+    errorMessage.clear();
+    return true;
+}
+
+bool Level::loadFromFile(const std::string& path, Level& level, std::string& errorMessage) {
+    tinyxml2::XMLDocument document;
+    if (document.LoadFile(path.c_str()) != tinyxml2::XML_SUCCESS) {
+        errorMessage = "Failed to load level: " + std::string(document.ErrorStr());
+        return false;
+    }
+
+    const tinyxml2::XMLElement* levelElement = document.FirstChildElement("level");
+    if (levelElement == nullptr) {
+        errorMessage = "Level file is missing level root.";
+        return false;
+    }
+
+    const tinyxml2::XMLElement* entitiesElement = levelElement->FirstChildElement("entities");
+
+    Level loadedLevel = createEmpty();
+    loadedLevel.sourcePath = path;
+
+    for (const tinyxml2::XMLElement* entityElement = entitiesElement == nullptr ? nullptr : entitiesElement->FirstChildElement("entity");
+         entityElement != nullptr;
+         entityElement = entityElement->NextSiblingElement("entity")) {
+        Entity& entity = loadedLevel.createEntity();
+        entity.setName(entityElement->Attribute("name") == nullptr ? "Entity" : entityElement->Attribute("name"));
+        entity.setTag(entityElement->Attribute("tag") == nullptr ? "Default" : entityElement->Attribute("tag"));
+
+        const tinyxml2::XMLElement* transformElement = nullptr;
+        const tinyxml2::XMLElement* collisionElement = nullptr;
+        for (const tinyxml2::XMLElement* component = entityElement->FirstChildElement("component");
+             component != nullptr;
+             component = component->NextSiblingElement("component")) {
+            const char* type = component->Attribute("type");
+            if (type == nullptr) {
+                continue;
+            }
+
+            const std::string componentType(type);
+            if (componentType == "TransformComponent") {
+                transformElement = component;
+            } else if (componentType == "CollisionComponent") {
+                collisionElement = component;
+            }
+        }
+
+        if (transformElement != nullptr) {
+            entity.addComponent<TransformComponent>(
+                Vector2F(
+                    transformElement->FloatAttribute("x", 0.0f),
+                    transformElement->FloatAttribute("y", 0.0f)
+                ),
+                transformElement->FloatAttribute("rotation", 0.0f)
+            );
+        } else if (collisionElement != nullptr) {
+            entity.addComponent<TransformComponent>(Vector2F(0.0f, 0.0f), 0.0f);
+        }
+
+        for (const tinyxml2::XMLElement* component = entityElement->FirstChildElement("component");
+             component != nullptr;
+             component = component->NextSiblingElement("component")) {
+            if (!addComponentFromElement(*component, entity, errorMessage)) {
+                return false;
+            }
+        }
+    }
+
+    level = std::move(loadedLevel);
+    errorMessage.clear();
+    return true;
+}
+
+bool Level::loadCurrentLevel(std::string& errorMessage) {
+    Level level = createEmpty();
+    if (!loadFromFile(currentLevelPath, level, errorMessage)) {
+        return false;
+    }
+
+    loadLevel(std::move(level));
+    return true;
+}
+
+void Level::loadLevel(Level&& level) {
+    Level& currentLevel = getCurrentLevel();
+    currentLevel = std::move(level);
+
+    if (!currentLevel.sourcePath.empty()) {
+        currentLevelPath = currentLevel.sourcePath;
+    }
+
+    for (Entity& entity : currentLevel.entities) {
+        entity.addInputListeners(InputSystem::getInstance());
+    }
+}
+
+const std::string& Level::getCurrentLevelPath() {
+    return currentLevelPath;
+}
+
+void Level::setCurrentLevelPath(const std::string& path) {
+    currentLevelPath = path;
+    getCurrentLevel().sourcePath = path;
 }
 
 Entity& Level::createEntity() {
@@ -306,116 +594,6 @@ std::deque<Entity>& Level::getEntities() {
 
 const std::deque<Entity>& Level::getEntities() const {
     return entities;
-}
-
-bool Level::loadFromAsset(LevelAsset& levelAsset) {
-    if (!levelAsset.isLoaded() && !levelAsset.load()) {
-        return false;
-    }
-
-    std::unordered_map<std::string, Entity*> entitiesByName;
-
-    for (const LevelGroupInfo& group : levelAsset.getGroups()) {
-        const TileLayerInfo* tileLayer = group.tileLayers.empty() ? nullptr : &group.tileLayers.front();
-
-        for (const ObjectInfo& object : group.objects) {
-            Entity& entity = createEntity();
-            entity.setName(object.name);
-            entity.setTag(object.type.empty() ? object.name : object.type);
-
-            entity.addComponent<TransformComponent>(Vector2F(object.x, object.y), object.rotation);
-
-            if (tileLayer != nullptr) {
-                addVisualFromGid(entity, object, levelAsset, getGidUnderObject(object, *tileLayer, levelAsset));
-            }
-
-            addComponentsFromProperties(entity, object);
-
-            if (!object.name.empty()) {
-                entitiesByName[object.name] = &entity;
-            }
-        }
-    }
-
-    for (const LevelGroupInfo& group : levelAsset.getGroups()) {
-        for (const ObjectInfo& object : group.objects) {
-            const std::string parentName = getStringProperty(object.properties, "parent");
-            if (parentName.empty() || object.name.empty()) {
-                continue;
-            }
-
-            const auto childIterator = entitiesByName.find(object.name);
-            const auto parentIterator = entitiesByName.find(parentName);
-            if (childIterator == entitiesByName.end() || parentIterator == entitiesByName.end()) {
-                std::cerr << "Failed to connect parent '" << parentName
-                          << "' for child '" << object.name << "'" << std::endl;
-                continue;
-            }
-
-            TransformComponent* childTransform = childIterator->second->getComponent<TransformComponent>();
-            TransformComponent* parentTransform = parentIterator->second->getComponent<TransformComponent>();
-            if (childTransform != nullptr && parentTransform != nullptr) {
-                childTransform->setParent(parentTransform);
-            }
-        }
-    }
-
-    return true;
-}
-
-void Level::printEntityPreviewFromAsset(LevelAsset& levelAsset) const {
-    if (!levelAsset.isLoaded() && !levelAsset.load()) {
-        std::cerr << "Cannot preview level asset entities because the asset failed to load: "
-                  << levelAsset.getPath() << std::endl;
-        return;
-    }
-
-    std::cout << "Level entity preview for " << levelAsset.getName() << std::endl;
-
-    int previewIndex = 0;
-    for (const LevelGroupInfo& group : levelAsset.getGroups()) {
-        const TileLayerInfo* tileLayer = group.tileLayers.empty() ? nullptr : &group.tileLayers.front();
-        std::cout << "  Group \"" << group.name << "\" objects=" << group.objects.size() << std::endl;
-
-        for (const ObjectInfo& object : group.objects) {
-            const int gid = tileLayer == nullptr ? 0 : getGidUnderObject(object, *tileLayer, levelAsset);
-            const TilesetInfo* tileset = gid == 0 ? nullptr : findTilesetForGid(levelAsset, gid);
-            const int localTileId = tileset == nullptr ? 0 : gid - tileset->firstGid;
-            const bool animated = tileset != nullptr && tileset->animations.find(localTileId) != tileset->animations.end();
-            const std::vector<std::string> customComponents = splitComponents(getStringProperty(object.properties, "components"));
-            const std::string parentName = getStringProperty(object.properties, "parent");
-
-            std::cout << "    [" << previewIndex++ << "] Entity name=\""
-                      << object.name << "\" tag=\""
-                      << (object.type.empty() ? object.name : object.type) << "\"" << std::endl;
-            std::cout << "        TransformComponent position=(" << object.x << ", " << object.y
-                      << ") rotation=" << object.rotation << std::endl;
-
-            if (gid == 0) {
-                std::cout << "        Visual: none, no non-zero tile under object" << std::endl;
-            } else if (animated) {
-                std::cout << "        AnimationComponent from gid=" << gid
-                          << " localTileId=" << localTileId << std::endl;
-            } else {
-                std::cout << "        SpriteComponent from gid=" << gid
-                          << " localTileId=" << localTileId << std::endl;
-            }
-
-            if (customComponents.empty()) {
-                std::cout << "        Custom components: none" << std::endl;
-            } else {
-                std::cout << "        Custom components:";
-                for (const std::string& component : customComponents) {
-                    std::cout << " " << component;
-                }
-                std::cout << std::endl;
-            }
-
-            if (!parentName.empty()) {
-                std::cout << "        Parent: " << parentName << std::endl;
-            }
-        }
-    }
 }
 
 void Level::update(float deltaTime) {

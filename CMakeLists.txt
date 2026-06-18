@@ -201,6 +201,7 @@ set(IENGINE_SOURCES
     src/editor/EditorCamera.cpp
     src/editor/EntityInspectorPanel.cpp
     src/editor/LevelEditor.cpp
+    src/editor/LevelEditorFileExplorer.cpp
     src/editor/PrefabPanel.cpp
     src/editor/PrefabSerializer.cpp
     src/editor/SpritePalettePanel.cpp

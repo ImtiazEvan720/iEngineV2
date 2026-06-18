@@ -2,21 +2,31 @@
 #define IENGINEV2_LEVEL_H
 
 #include "Entity.h"
-#include "misc/LevelAsset.h"
 
 #include <cstddef>
 #include <deque>
+#include <string>
 
 class Level {
 public:
+    Level() = default;
     ~Level() = default;
 
     Level(const Level& other) = delete;
     Level& operator=(const Level& other) = delete;
-    Level(Level&& other) = delete;
-    Level& operator=(Level&& other) = delete;
+    Level(Level&& other) noexcept = default;
+    Level& operator=(Level&& other) noexcept = default;
 
     static Level& getCurrentLevel();
+    static Level createEmpty();
+    static Level& createNewLevel();
+    static bool saveCurrentLevel(std::string& errorMessage);
+    static bool saveCurrentLevel(const std::string& path, std::string& errorMessage);
+    static bool loadFromFile(const std::string& path, Level& level, std::string& errorMessage);
+    static bool loadCurrentLevel(std::string& errorMessage);
+    static void loadLevel(Level&& level);
+    static const std::string& getCurrentLevelPath();
+    static void setCurrentLevelPath(const std::string& path);
 
     Entity& createEntity();
     Entity& addEntity(Entity entity);
@@ -33,14 +43,11 @@ public:
     std::deque<Entity>& getEntities();
     const std::deque<Entity>& getEntities() const;
 
-    bool loadFromAsset(LevelAsset& levelAsset);
-    void printEntityPreviewFromAsset(LevelAsset& levelAsset) const;
     void update(float deltaTime);
 
 private:
-    Level() = default;
-
     std::deque<Entity> entities;
+    std::string sourcePath;
 };
 
 #endif

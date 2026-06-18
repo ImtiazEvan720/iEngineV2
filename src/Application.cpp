@@ -1,16 +1,7 @@
 #include "Application.h"
 
-#include "components/AnimationComponent.h"
-#include "components/CollisionComponent.h"
-#include "components/PlayerController.h"
-#include "components/ScriptComponent.h"
-#include "components/SpriteComponent.h"
-#include "components/TransformComponent.h"
-#include "game/Brick.h"
 #include "math/Vector2F.h"
-#include "misc/Animation.h"
 #include "misc/Level.h"
-#include "misc/Sprite.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
 #include "system/IGuiBackend.h"
@@ -40,6 +31,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace {
 std::string getBackendName(int argc, char* argv[]) {
@@ -228,98 +220,21 @@ bool Application::initialize(int argc, char* argv[]) {
         std::cerr << "One or more assets failed to load." << std::endl;
     }
 
-    TextureAsset* spriteSheetAsset = assetManager.getTextureAssetByName(
-        "NES - Battle City (JPN) - Miscellaneous - General Sprites.png"
-    );
-    if (spriteSheetAsset == nullptr || spriteSheetAsset->getTextureHandle() == nullptr) {
-        std::cerr << "Failed to find Battle City sprite sheet texture." << std::endl;
-        shutdown();
-        return false;
-    }
-
-    LevelAsset* levelAsset = assetManager.getLevelAssetByName("custom.tmx");
-    if (levelAsset == nullptr) {
-        std::cerr << "Failed to find Custom.tmx level asset." << std::endl;
-        shutdown();
-        return false;
-    }
-
     Renderer& renderer = Renderer::getInstance();
     renderer.setRenderBackend(renderBackend.get());
     renderer.setWindowBackend(windowBackend.get());
     renderer.setRenderScale(2.0f);
 
-    Level& level = Level::getCurrentLevel();
-    levelAsset->print();
-    level.printEntityPreviewFromAsset(*levelAsset);
-
-    Entity& testEntity = level.createEntity();
-    testEntity.setName("Player1");
-    testEntity.setTag("Player");
-    testEntity.addComponent<TransformComponent>(Vector2F(420.0f, 260.0f), 0.0f);
-
-    const float height = 16.0f;
-    const float width = 16.0f;
-    const float scaledWidth = width * renderer.getRenderScale();
-    const float scaledHeight = height * renderer.getRenderScale();
-
-    Sprite testSprite(
-        spriteSheetAsset->getTextureHandle(),
-        RenderRect{width * 0.0f, height * 0.0f, width, height}
-    );
-    testSprite.setSize(Vector2F(scaledWidth, scaledHeight));
-
-    Sprite testSprite2(
-        spriteSheetAsset->getTextureHandle(),
-        RenderRect{width * 1.0f, height * 0.0f, width, height}
-    );
-    testSprite2.setSize(Vector2F(scaledWidth, scaledHeight));
-
-    Animation anim(0.1f);
-    anim.addFrame(testSprite);
-    anim.addFrame(testSprite2);
-
-    AnimationComponent& animationComponent = testEntity.addComponent<AnimationComponent>(anim);
-    animationComponent.pause();
-    testEntity.addComponent<PlayerController>();
-
-    Entity& brick = level.createEntity();
-    Sprite brickSprite(
-        spriteSheetAsset->getTextureHandle(),
-        RenderRect{width * 16.0f, height * 0.0f, width, height}
-    );
-    brickSprite.setSize(Vector2F(scaledWidth, scaledHeight));
-    brick.addComponent<SpriteComponent>(brickSprite);
-    brick.addComponent<TransformComponent>(Vector2F(520.0f, 260.0f), 0.0f);
-    brick.addComponent<CollisionComponent>(
-        scaledWidth,
-        scaledHeight,
-        CollisionComponent::BodyType::Static,
-        false,
-        "Brick"
-    );
-    brick.addComponent<Brick>();
-
-    Entity& luaScriptTest = level.createEntity();
-    luaScriptTest.setName("LuaScriptTest");
-    luaScriptTest.setTag("Script");
-    Sprite luaSprite(
-        spriteSheetAsset->getTextureHandle(),
-        RenderRect{width * 2.0f, height * 0.0f, width, height}
-    );
-    luaSprite.setSize(Vector2F(scaledWidth, scaledHeight));
-    luaScriptTest.addComponent<SpriteComponent>(luaSprite);
-    luaScriptTest.addComponent<TransformComponent>(Vector2F(360.0f, 340.0f), 0.0f);
-    luaScriptTest.addComponent<ScriptComponent>(
-        getRuntimePath(runtimeDataRoot, "Assets/Scripts/test_transform.lua")
-    );
-
-    InputSystem& inputSystem = InputSystem::getInstance();
-    for (Entity& entity : level.getEntities()) {
-        entity.addInputListeners(inputSystem);
+    std::string errorMessage;
+    Level startupLevel = Level::createEmpty();
+    if (Level::loadFromFile(Level::getCurrentLevelPath(), startupLevel, errorMessage)) {
+        Level::loadLevel(std::move(startupLevel));
+    } else {
+        std::cerr << "Failed to load startup level " << Level::getCurrentLevelPath()
+                  << ": " << (errorMessage.empty() ? "unknown error" : errorMessage)
+                  << std::endl;
+        Level::loadLevel(Level::createEmpty());
     }
-
-    renderer.buildTileLayerBatches(*levelAsset);
 
     previousTime = std::chrono::steady_clock::now();
     initialized = true;

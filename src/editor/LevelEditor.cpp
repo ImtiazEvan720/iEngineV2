@@ -11,6 +11,28 @@
 #include "system/Renderer.h"
 
 #include "imgui.h"
+#include "misc/cpp/imgui_stdlib.h"
+
+#include <filesystem>
+#include <utility>
+
+namespace {
+std::filesystem::path resolveLevelSavePath(const std::string& fileName) {
+    namespace fs = std::filesystem;
+
+    fs::path outputFileName(fileName);
+    outputFileName = outputFileName.filename();
+    if (outputFileName.empty()) {
+        return {};
+    }
+
+    if (outputFileName.extension() != ".ilevel") {
+        outputFileName.replace_extension(".ilevel");
+    }
+
+    return fs::path("Assets/Levels") / outputFileName;
+}
+}
 
 void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
     (void)windowWidth;
@@ -18,11 +40,18 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Level")) {
             if (ImGui::MenuItem("Create")) {
-                // Create a new level once editor level management is added.
+                Level::createNewLevel();
+                Renderer::getInstance().clearTileLayerBatches();
+                entityInspector.clearSelection();
+                statusMessage = "Created new empty level.";
             }
 
-            if (ImGui::MenuItem("Save")) {
-                // Save .ilevel data once editor serialization is added.
+            if (ImGui::MenuItem("Save...")) {
+                openLevelSaveWindow();
+            }
+
+            if (ImGui::MenuItem("Load...")) {
+                showLevelLoadWindow = true;
             }
 
             if (ImGui::MenuItem("Delete")) {
@@ -30,7 +59,7 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
             }
 
             if (ImGui::MenuItem("Reload")) {
-                // Reload the active .tmx/.ilevel once editor loading is added.
+                // Reload the active .ilevel once editor loading is added.
             }
 
             ImGui::EndMenu();
@@ -76,6 +105,9 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
     if (tilesetCreator.draw(statusMessage)) {
         spritePalette.refreshTilesets();
     }
+
+    drawLevelSaveWindow();
+    drawLevelLoadWindow();
 
     if (viewportGrid.shouldShowSideMenu()) {
         const bool levelEditorOpen = ImGui::Begin("Level Editor");
@@ -179,8 +211,117 @@ void LevelEditor::drawLevelOutlineTab(const InputSystem& inputSystem) {
     ImGui::Text("Tool: %s", currentTool == Tool::Select ? "Select" : "Move");
 }
 
-void LevelEditor::drawFileExplorerTab() {
-    ImGui::Text("File explorer goes here.");
+void LevelEditor::drawLevelLoadWindow() {
+    if (!showLevelLoadWindow) {
+        return;
+    }
+
+    ImGui::SetNextWindowSize(ImVec2(420.0f, 320.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Load Level", &showLevelLoadWindow)) {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Text("Assets/Levels");
+    ImGui::Separator();
+
+    const std::vector<std::filesystem::path> levelFiles = getLevelFiles();
+    if (levelFiles.empty()) {
+        ImGui::TextDisabled("No .ilevel files found.");
+    }
+
+    for (const std::filesystem::path& path : levelFiles) {
+        const bool selected = path.string() == Level::getCurrentLevelPath();
+        if (ImGui::Selectable(path.filename().string().c_str(), selected)) {
+            loadSelectedLevel(path.string());
+            showLevelLoadWindow = false;
+        }
+    }
+
+    if (!statusMessage.empty()) {
+        ImGui::Separator();
+        ImGui::TextWrapped("%s", statusMessage.c_str());
+    }
+
+    ImGui::End();
+}
+
+void LevelEditor::drawLevelSaveWindow() {
+    if (!showLevelSaveWindow) {
+        return;
+    }
+
+    ImGui::SetNextWindowSize(ImVec2(420.0f, 180.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Save Level", &showLevelSaveWindow)) {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Text("Assets/Levels");
+    ImGui::Separator();
+    ImGui::InputText("File Name", &saveLevelFileName);
+
+    const std::filesystem::path outputPath = resolveLevelSavePath(saveLevelFileName);
+    if (!outputPath.empty()) {
+        ImGui::TextWrapped("Save path: %s", outputPath.string().c_str());
+    }
+
+    if (ImGui::Button("Save")) {
+        saveLevelToPromptPath();
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+        showLevelSaveWindow = false;
+    }
+
+    if (!statusMessage.empty()) {
+        ImGui::Separator();
+        ImGui::TextWrapped("%s", statusMessage.c_str());
+    }
+
+    ImGui::End();
+}
+
+void LevelEditor::openLevelSaveWindow() {
+    const std::filesystem::path currentPath(Level::getCurrentLevelPath());
+    if (!currentPath.filename().empty()) {
+        saveLevelFileName = currentPath.filename().string();
+    }
+
+    showLevelSaveWindow = true;
+}
+
+void LevelEditor::saveLevelToPromptPath() {
+    const std::filesystem::path outputPath = resolveLevelSavePath(saveLevelFileName);
+    if (outputPath.empty() || outputPath.stem().empty()) {
+        statusMessage = "Level file name cannot be empty.";
+        return;
+    }
+
+    std::string errorMessage;
+    if (!Level::saveCurrentLevel(outputPath.string(), errorMessage)) {
+        statusMessage = errorMessage.empty() ? "Failed to save level." : errorMessage;
+        return;
+    }
+
+    statusMessage = "Saved level: " + Level::getCurrentLevelPath();
+    showLevelSaveWindow = false;
+}
+
+void LevelEditor::loadSelectedLevel(const std::string& path) {
+    Level loadedLevel = Level::createEmpty();
+    std::string errorMessage;
+
+    if (!Level::loadFromFile(path, loadedLevel, errorMessage)) {
+        statusMessage = errorMessage.empty() ? "Failed to load level." : errorMessage;
+        return;
+    }
+
+    Level::loadLevel(std::move(loadedLevel));
+    Renderer::getInstance().clearTileLayerBatches();
+    entityInspector.clearSelection();
+    statusMessage = "Loaded level: " + Level::getCurrentLevelPath();
 }
 
 void LevelEditor::drawAssetsMenu() {

@@ -37,7 +37,7 @@ Asset::Type typeFromExtension(const std::filesystem::path& path) {
     }
 #endif
 
-    if (extension == ".tmx") {
+    if (extension == ".ilevel") {
         return Asset::Type::Level;
     }
 
