@@ -1,0 +1,326 @@
+#include "editor/PrefabPanel.h"
+
+#include "Entity.h"
+#include "editor/EditorPrefabTypes.h"
+#include "editor/PrefabSerializer.h"
+#include "editor/ViewportGrid.h"
+#include "math/Vector2F.h"
+#include "misc/Camera2D.h"
+#include "misc/Level.h"
+#include "misc/TextureAsset.h"
+#include "system/AssetManager.h"
+#include "system/Renderer.h"
+
+#include "imgui.h"
+#include "tinyxml2.h"
+
+#include <algorithm>
+#include <cstring>
+#include <filesystem>
+#include <iostream>
+
+namespace {
+const tinyxml2::XMLElement* findPreviewElement(const tinyxml2::XMLElement& entityElement) {
+    for (const tinyxml2::XMLElement* component = entityElement.FirstChildElement("component");
+         component != nullptr;
+         component = component->NextSiblingElement("component")) {
+        const char* type = component->Attribute("type");
+        if (type == nullptr) {
+            continue;
+        }
+
+        const std::string componentType(type);
+        if (componentType == "SpriteComponent") {
+            return component;
+        }
+
+        if (componentType == "AnimationComponent") {
+            const tinyxml2::XMLElement* frame = component->FirstChildElement("frame");
+            if (frame != nullptr) {
+                return frame;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+PrefabPanel::PrefabPreview loadPrefabPreview(const std::string& prefabPath) {
+    PrefabPanel::PrefabPreview preview;
+
+    tinyxml2::XMLDocument document;
+    if (document.LoadFile(prefabPath.c_str()) != tinyxml2::XML_SUCCESS) {
+        return preview;
+    }
+
+    const tinyxml2::XMLElement* prefab = document.FirstChildElement("prefab");
+    const tinyxml2::XMLElement* entity = prefab ? prefab->FirstChildElement("entity") : nullptr;
+    if (entity == nullptr) {
+        return preview;
+    }
+
+    const tinyxml2::XMLElement* visualElement = findPreviewElement(*entity);
+    if (visualElement == nullptr) {
+        return preview;
+    }
+
+    const char* textureName = visualElement->Attribute("texture");
+    if (textureName == nullptr) {
+        return preview;
+    }
+
+    TextureAsset* textureAsset =
+        AssetManager::getInstance().getTextureAssetByName(textureName);
+
+    if (textureAsset == nullptr
+        || textureAsset->getImGuiTextureId() == ImTextureID{}
+        || textureAsset->getWidth() <= 0
+        || textureAsset->getHeight() <= 0) {
+        return preview;
+    }
+
+    const float sourceX = visualElement->FloatAttribute("sourceX");
+    const float sourceY = visualElement->FloatAttribute("sourceY");
+    const float sourceW = visualElement->FloatAttribute("sourceWidth");
+    const float sourceH = visualElement->FloatAttribute("sourceHeight");
+
+    preview.textureId = textureAsset->getImGuiTextureId();
+    preview.sourceWidth = sourceW;
+    preview.sourceHeight = sourceH;
+    preview.width = visualElement->FloatAttribute("sizeX", 0.0f);
+    preview.height = visualElement->FloatAttribute("sizeY", 0.0f);
+
+    preview.uv0 = ImVec2(
+        sourceX / static_cast<float>(textureAsset->getWidth()),
+        sourceY / static_cast<float>(textureAsset->getHeight())
+    );
+
+    preview.uv1 = ImVec2(
+        (sourceX + sourceW) / static_cast<float>(textureAsset->getWidth()),
+        (sourceY + sourceH) / static_cast<float>(textureAsset->getHeight())
+    );
+    preview.valid = true;
+
+    return preview;
+}
+
+}
+
+
+void PrefabPanel::draw(std::string& statusMessage) {
+    if (!prefabsScanned) {
+        refreshPrefabs();
+    }
+
+    if (ImGui::Button("Refresh Prefabs")) {
+        refreshPrefabs();
+        statusMessage = "Refreshed prefabs.";
+    }
+
+    if (!statusMessage.empty()) {
+        ImGui::TextWrapped("%s", statusMessage.c_str());
+    }
+
+    ImGui::Separator();
+
+    if (prefabs.empty()) {
+        ImGui::TextUnformatted("No prefab assets loaded.");
+        return;
+    }
+
+    if (ImGui::BeginChild(
+            "##PrefabList",
+            ImVec2(0.0f, 0.0f),
+            ImGuiChildFlags_Borders,
+            ImGuiWindowFlags_HorizontalScrollbar)) {
+        for (std::size_t index = 0; index < prefabs.size(); ++index) {
+            const PrefabInfo& prefab = prefabs[index];
+            const bool selected = selectedPrefabIndex == static_cast<int>(index);
+
+            ImGui::PushID(static_cast<int>(index));
+            ImGui::BeginGroup();
+
+            if (prefab.preview.valid) {
+                if (selected) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                }
+
+                if (ImGui::ImageButton(
+                        "##prefabPreview",
+                        prefab.preview.textureId,
+                        ImVec2(48.0f, 48.0f),
+                        prefab.preview.uv0,
+                        prefab.preview.uv1)) {
+                    selectedPrefabIndex = static_cast<int>(index);
+                }
+
+                if (selected) {
+                    ImGui::PopStyleColor();
+                }
+
+                ImGui::SameLine();
+                ImGui::TextUnformatted(prefab.name.c_str());
+            } else if (ImGui::Selectable(prefab.name.c_str(), selected)) {
+                selectedPrefabIndex = static_cast<int>(index);
+            }
+
+            ImGui::EndGroup();
+
+            if (ImGui::IsItemClicked()) {
+                selectedPrefabIndex = static_cast<int>(index);
+            }
+
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", prefab.path.c_str());
+            }
+
+            if (ImGui::BeginDragDropSource()) {
+                PrefabDragPayload payload{};
+                std::strncpy(payload.path, prefab.path.c_str(), EditorPrefabDrag::MaxPathLength - 1);
+                ImGui::SetDragDropPayload(EditorPrefabDrag::PayloadType, &payload, sizeof(payload));
+                ImGui::Text("Prefab: %s", prefab.name.c_str());
+
+                if (prefab.preview.valid) {
+                    const ImVec2 mousePosition = ImGui::GetMousePos();
+                    Renderer& renderer = Renderer::getInstance();
+                    const float renderScale = renderer.getRenderScale();
+                    const float cameraZoom = renderer.getCamera().getZoom();
+                    const float previewWidth = prefab.preview.width > 0.0f
+                        ? prefab.preview.width
+                        : prefab.preview.sourceWidth * renderScale;
+                    const float previewHeight = prefab.preview.height > 0.0f
+                        ? prefab.preview.height
+                        : prefab.preview.sourceHeight * renderScale;
+
+                    const ImVec2 halfSize(
+                        previewWidth * cameraZoom * 0.5f,
+                        previewHeight * cameraZoom * 0.5f
+                    );
+
+                    ImGui::GetForegroundDrawList()->AddImage(
+                        prefab.preview.textureId,
+                        ImVec2(mousePosition.x - halfSize.x, mousePosition.y - halfSize.y),
+                        ImVec2(mousePosition.x + halfSize.x, mousePosition.y + halfSize.y),
+                        prefab.preview.uv0,
+                        prefab.preview.uv1
+                    );
+                }
+
+                ImGui::EndDragDropSource();
+            }
+
+            ImGui::PopID();
+        }
+    }
+
+    ImGui::EndChild();
+}
+
+void PrefabPanel::refreshPrefabs() {
+    prefabs.clear();
+    selectedPrefabIndex = -1;
+
+    std::vector<PrefabAsset*> prefabAssets = AssetManager::getInstance().getPrefabAssets();
+    std::sort(
+        prefabAssets.begin(),
+        prefabAssets.end(),
+        [](const PrefabAsset* left, const PrefabAsset* right) {
+            if (left == nullptr || right == nullptr) {
+                return left != nullptr;
+            }
+
+            return left->getPath() < right->getPath();
+        }
+    );
+
+    for (PrefabAsset* prefabAsset : prefabAssets) {
+        if (prefabAsset == nullptr || !prefabAsset->isLoaded()) {
+            continue;
+        }
+
+        const std::string& prefabPath = prefabAsset->getPath();
+        prefabs.push_back(PrefabInfo{
+            prefabAsset->getName(),
+            prefabPath,
+            loadPrefabPreview(prefabPath)
+        });
+    }
+
+    if (!prefabs.empty()) {
+        selectedPrefabIndex = 0;
+    }
+
+    prefabsScanned = true;
+}
+
+void PrefabPanel::drawLevelDropTarget(
+    const ViewportGrid& viewportGrid,
+    const RenderRect& viewport,
+    float toolbarHeight,
+    std::string& statusMessage
+) {
+    const ImGuiPayload* activePayload = ImGui::GetDragDropPayload();
+    if (activePayload == nullptr || !activePayload->IsDataType(EditorPrefabDrag::PayloadType)) {
+        return;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImVec2 displaySize = io.DisplaySize;
+    if (displaySize.x <= 0.0f || displaySize.y <= 0.0f) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(displaySize, ImGuiCond_Always);
+
+    const ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoDecoration |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoBackground |
+        ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoScrollWithMouse;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::Begin("##PrefabLevelDropTarget", nullptr, flags);
+    ImGui::InvisibleButton("##PrefabLevelDropArea", displaySize);
+
+    if (ImGui::BeginDragDropTarget()) {
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(EditorPrefabDrag::PayloadType);
+        if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(PrefabDragPayload)) {
+            const auto* prefabPayload = static_cast<const PrefabDragPayload*>(payload->Data);
+            Vector2F dropPosition = Renderer::getInstance().getCamera().screenToWorld(
+                Vector2F(io.MousePos.x, io.MousePos.y),
+                viewport
+            );
+            if (viewportGrid.shouldSnapToGrid()) {
+                dropPosition = viewportGrid.snapPosition(dropPosition);
+            }
+
+            std::string errorMessage;
+            Entity* entity = PrefabSerializer::instantiate(
+                prefabPayload->path,
+                Level::getCurrentLevel(),
+                dropPosition,
+                errorMessage
+            );
+            if (entity == nullptr) {
+                statusMessage = errorMessage.empty() ? "Failed to instantiate prefab." : errorMessage;
+            } else {
+                statusMessage = "Instantiated prefab as entity " + std::to_string(entity->getId()) + ".";
+            }
+        }
+
+        ImGui::EndDragDropTarget();
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar();
+
+    ImGui::GetForegroundDrawList()->AddText(
+        ImVec2(12.0f, toolbarHeight + 28.0f),
+        IM_COL32(255, 255, 255, 220),
+        "Drop prefab to instantiate it"
+    );
+}

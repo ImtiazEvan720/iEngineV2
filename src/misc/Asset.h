@@ -10,7 +10,8 @@ public:
         Texture,
         Sound,
         Music,
-        Level
+        Level,
+        Prefab
     };
 
     Asset(std::string name, std::string path, Type type = Type::Unknown);

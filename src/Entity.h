@@ -10,6 +10,7 @@
 #include <vector>
 
 class InputSystem;
+class Vector2F;
 
 class Entity {
 public:
@@ -92,6 +93,9 @@ public:
 
     void setName(const std::string& name);
     void setTag(const std::string& tag);
+
+    static Entity* spawnPrefab(const std::string& prefabName, const Vector2F& position, float rotation = 0.0f);
+    static Entity* spawnPrefab(const std::string& prefabName, float x, float y, float rotation = 0.0f);
 
 private:
     static int globalId;

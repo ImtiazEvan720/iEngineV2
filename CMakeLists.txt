@@ -198,7 +198,14 @@ set(IENGINE_SOURCES
     src/components/SpriteComponent.cpp
     src/components/TransformComponent.cpp
     src/components/PlayerController.cpp
+    src/editor/EditorCamera.cpp
+    src/editor/EntityInspectorPanel.cpp
     src/editor/LevelEditor.cpp
+    src/editor/PrefabPanel.cpp
+    src/editor/PrefabSerializer.cpp
+    src/editor/SpritePalettePanel.cpp
+    src/editor/TilesetCreator.cpp
+    src/editor/ViewportGrid.cpp
     src/game/Brick.cpp
     src/game/Bullet.cpp
     src/math/Vector2F.cpp
@@ -207,6 +214,7 @@ set(IENGINE_SOURCES
     src/misc/Camera2D.cpp
     src/misc/Level.cpp
     src/misc/LevelAsset.cpp
+    src/misc/PrefabAsset.cpp
     src/misc/SdlTextureResource.cpp
     src/misc/Sprite.cpp
     src/misc/TextureAsset.cpp

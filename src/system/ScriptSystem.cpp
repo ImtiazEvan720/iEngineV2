@@ -109,10 +109,26 @@ void ScriptSystem::bindEngineTypes() {
         "Entity",
         "getId", &Entity::getId,
         "getName", &Entity::getName,
+        "setName", &Entity::setName,
         "getTag", &Entity::getTag,
+        "setTag", &Entity::setTag,
         "getTransform", [](Entity& entity) {
             return entity.getComponent<TransformComponent>();
-        }
+        },
+        "spawnPrefab", sol::overload(
+            [](const std::string& prefabName, float x, float y) {
+                return Entity::spawnPrefab(prefabName, x, y);
+            },
+            [](const std::string& prefabName, float x, float y, float rotation) {
+                return Entity::spawnPrefab(prefabName, x, y, rotation);
+            },
+            [](const std::string& prefabName, const Vector2F& position) {
+                return Entity::spawnPrefab(prefabName, position);
+            },
+            [](const std::string& prefabName, const Vector2F& position, float rotation) {
+                return Entity::spawnPrefab(prefabName, position, rotation);
+            }
+        )
     );
 }
 

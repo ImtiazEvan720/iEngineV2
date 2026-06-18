@@ -41,6 +41,10 @@ Asset::Type typeFromExtension(const std::filesystem::path& path) {
         return Asset::Type::Level;
     }
 
+    if (extension == ".iprefab") {
+        return Asset::Type::Prefab;
+    }
+
     return Asset::Type::Unknown;
 }
 
@@ -59,20 +63,36 @@ std::unique_ptr<Asset> createAsset(const std::filesystem::path& assetPath, Asset
 #endif
         case Asset::Type::Level:
             return std::make_unique<LevelAsset>(name, path);
+        case Asset::Type::Prefab:
+            return std::make_unique<PrefabAsset>(name, path);
         case Asset::Type::Unknown:
         default:
             return nullptr;
     }
 }
 
+bool sameAssetPath(const Asset& asset, const std::filesystem::path& assetPath) {
+    return std::filesystem::path(asset.getPath()).lexically_normal() == assetPath.lexically_normal();
+}
+
 bool loadAssetPath(std::vector<std::unique_ptr<Asset>>& assets, const std::filesystem::path& assetPath) {
     const Asset::Type assetType = typeFromExtension(assetPath);
     std::unique_ptr<Asset> asset = createAsset(assetPath, assetType);
     if (asset == nullptr) {
-        return true;
+        return false;
     }
 
     const bool loaded = asset->load();
+    assets.erase(
+        std::remove_if(
+            assets.begin(),
+            assets.end(),
+            [&assetPath](const std::unique_ptr<Asset>& existingAsset) {
+                return existingAsset != nullptr && sameAssetPath(*existingAsset, assetPath);
+            }
+        ),
+        assets.end()
+    );
     assets.push_back(std::move(asset));
     return loaded;
 }
@@ -137,6 +157,10 @@ bool AssetManager::loadAssets(const std::string& assetsDirectory) {
 
 void AssetManager::clearAssets() {
     assets.clear();
+}
+
+bool AssetManager::loadAssetFile(const std::string& assetPath) {
+    return loadAssetPath(assets, std::filesystem::path(assetPath));
 }
 
 Asset* AssetManager::getAssetByName(const std::string& name) {
@@ -209,6 +233,40 @@ LevelAsset* AssetManager::getLevelAssetByName(const std::string& name) {
 
 const LevelAsset* AssetManager::getLevelAssetByName(const std::string& name) const {
     return dynamic_cast<const LevelAsset*>(getAssetByName(name));
+}
+
+PrefabAsset* AssetManager::getPrefabAssetByName(const std::string& name) {
+    return dynamic_cast<PrefabAsset*>(getAssetByName(name));
+}
+
+const PrefabAsset* AssetManager::getPrefabAssetByName(const std::string& name) const {
+    return dynamic_cast<const PrefabAsset*>(getAssetByName(name));
+}
+
+std::vector<PrefabAsset*> AssetManager::getPrefabAssets() {
+    std::vector<PrefabAsset*> prefabAssets;
+
+    for (const auto& asset : assets) {
+        auto* prefabAsset = dynamic_cast<PrefabAsset*>(asset.get());
+        if (prefabAsset != nullptr) {
+            prefabAssets.push_back(prefabAsset);
+        }
+    }
+
+    return prefabAssets;
+}
+
+std::vector<const PrefabAsset*> AssetManager::getPrefabAssets() const {
+    std::vector<const PrefabAsset*> prefabAssets;
+
+    for (const auto& asset : assets) {
+        const auto* prefabAsset = dynamic_cast<const PrefabAsset*>(asset.get());
+        if (prefabAsset != nullptr) {
+            prefabAssets.push_back(prefabAsset);
+        }
+    }
+
+    return prefabAssets;
 }
 
 const std::vector<std::unique_ptr<Asset>>& AssetManager::getAssets() const {

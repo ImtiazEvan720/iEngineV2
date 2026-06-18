@@ -35,6 +35,8 @@ const char* Asset::typeToString(Type type) {
             return "Music";
         case Type::Level:
             return "Level";
+        case Type::Prefab:
+            return "Prefab";
         case Type::Unknown:
         default:
             return "Unknown";

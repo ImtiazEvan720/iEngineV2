@@ -1,7 +1,15 @@
 #include "Entity.h"
 
+#include "components/TransformComponent.h"
+#include "editor/PrefabSerializer.h"
+#include "math/Vector2F.h"
+#include "misc/Level.h"
+#include "misc/PrefabAsset.h"
+#include "system/AssetManager.h"
 #include "system/InputListener.h"
 #include "system/InputSystem.h"
+
+#include <iostream>
 
 int Entity::globalId = 0;
 
@@ -132,4 +140,38 @@ void Entity::setName(const std::string& name) {
 
 void Entity::setTag(const std::string& tag) {
     this->tag = tag;
+}
+
+Entity* Entity::spawnPrefab(const std::string& prefabName, const Vector2F& position, float rotation) {
+    PrefabAsset* prefabAsset = AssetManager::getInstance().getPrefabAssetByName(prefabName);
+    if (prefabAsset == nullptr || !prefabAsset->isLoaded()) {
+        std::cerr << "Entity::spawnPrefab failed. Prefab asset is not loaded: "
+                  << prefabName << std::endl;
+        return nullptr;
+    }
+
+    std::string errorMessage;
+
+    Entity* entity = PrefabSerializer::instantiate(
+        prefabAsset->getPath(),
+        Level::getCurrentLevel(),
+        position,
+        errorMessage
+    );
+
+    if (entity == nullptr) {
+        std::cerr << "Entity::spawnPrefab failed for '" << prefabAsset->getPath() << "': "
+                  << (errorMessage.empty() ? "unknown error" : errorMessage) << std::endl;
+        return nullptr;
+    }
+
+    if (TransformComponent* transform = entity->getComponent<TransformComponent>()) {
+        transform->setRotation(rotation);
+    }
+
+    return entity;
+}
+
+Entity* Entity::spawnPrefab(const std::string& prefabName, float x, float y, float rotation) {
+    return spawnPrefab(prefabName, Vector2F(x, y), rotation);
 }
