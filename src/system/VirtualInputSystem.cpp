@@ -46,6 +46,7 @@ VirtualInputSystem& VirtualInputSystem::getInstance() {
 void VirtualInputSystem::clearBindings() {
     keyBindings.clear();
     mouseButtonBindings.clear();
+    touchControlBindings.clear();
 }
 
 void VirtualInputSystem::bindDefaultKeyboardMouse() {
@@ -56,6 +57,11 @@ void VirtualInputSystem::bindDefaultKeyboardMouse() {
     bindKey(RawKey::D, InputAction::MoveRight);
     bindKey(RawKey::Space, InputAction::Fire);
     bindMouseButton(RawMouseButton::Left, InputAction::Fire);
+    bindTouchControl(TouchControl::MoveStickUp, InputAction::MoveUp);
+    bindTouchControl(TouchControl::MoveStickDown, InputAction::MoveDown);
+    bindTouchControl(TouchControl::MoveStickLeft, InputAction::MoveLeft);
+    bindTouchControl(TouchControl::MoveStickRight, InputAction::MoveRight);
+    bindTouchControl(TouchControl::FireButton, InputAction::Fire);
 }
 
 void VirtualInputSystem::bindKey(RawKey key, InputAction action) {
@@ -72,6 +78,14 @@ void VirtualInputSystem::bindMouseButton(RawMouseButton button, InputAction acti
     }
 
     mouseButtonBindings[button] = action;
+}
+
+void VirtualInputSystem::bindTouchControl(TouchControl control, InputAction action) {
+    if (control == TouchControl::Unknown || action == InputAction::Unknown) {
+        return;
+    }
+
+    touchControlBindings[control] = action;
 }
 
 bool VirtualInputSystem::loadBindingsFromFile(const std::string& path, std::string& errorMessage) {
@@ -126,6 +140,15 @@ bool VirtualInputSystem::loadBindingsFromFile(const std::string& path, std::stri
                 bindMouseButton(button, action);
             }
         }
+
+        if (const char* touchControlText = binding->Attribute("touchControl")) {
+            const TouchControl control = touchControlFromString(touchControlText);
+            if (control == TouchControl::Unknown) {
+                std::cerr << "Unknown touch control in binding file: " << touchControlText << std::endl;
+            } else {
+                bindTouchControl(control, action);
+            }
+        }
     }
 
     errorMessage.clear();
@@ -142,6 +165,16 @@ void VirtualInputSystem::updateFromRawInput(const RawInputSystem& rawInputSystem
 
     for (const auto& binding : mouseButtonBindings) {
         setActionState(currentActions, binding.second, rawInputSystem.isMouseButtonDown(binding.first));
+    }
+}
+
+void VirtualInputSystem::updateFromTouchControls(const TouchControlSystem& touchControlSystem) {
+    if (!touchControlSystem.isEnabled()) {
+        return;
+    }
+
+    for (const auto& binding : touchControlBindings) {
+        setActionState(currentActions, binding.second, touchControlSystem.isControlDown(binding.first));
     }
 }
 

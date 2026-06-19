@@ -184,6 +184,10 @@ list(REMOVE_ITEM LUA_SOURCES
 add_library(iEngineLua STATIC ${LUA_SOURCES})
 target_include_directories(iEngineLua PUBLIC "${lua_SOURCE_DIR}/src")
 
+if(IENGINE_TARGET_IOS)
+    target_compile_definitions(iEngineLua PRIVATE LUA_USE_IOS)
+endif()
+
 set(IENGINE_SOURCES
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp
@@ -230,6 +234,7 @@ set(IENGINE_SOURCES
     src/system/sdl/SdlRenderBackend.cpp
     src/system/sdl/SdlWindowBackend.cpp
     src/system/TileLayerRenderer.cpp
+    src/system/TouchControlSystem.cpp
     src/system/VirtualInputSystem.cpp
 )
 

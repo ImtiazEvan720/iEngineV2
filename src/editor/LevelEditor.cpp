@@ -10,6 +10,7 @@
 #include "system/InputSystem.h"
 #include "system/RawInputSystem.h"
 #include "system/Renderer.h"
+#include "system/TouchControlSystem.h"
 #include "system/VirtualInputSystem.h"
 
 #include "imgui.h"
@@ -209,6 +210,7 @@ bool LevelEditor::shouldSnapToGrid() const {
 
 void LevelEditor::drawLevelOutlineTab(const InputSystem& inputSystem) {
     const RawInputSystem& rawInput = RawInputSystem::getInstance();
+    const TouchControlSystem& touchControls = TouchControlSystem::getInstance();
     const VirtualInputSystem& virtualInput = VirtualInputSystem::getInstance();
 
     ImGui::Text("Input: %s", inputSystem.getLastInputText().c_str());
@@ -231,6 +233,15 @@ void LevelEditor::drawLevelOutlineTab(const InputSystem& inputSystem) {
         rawInput.isMouseButtonDown(RawMouseButton::Middle) ? "down" : "up"
     );
     ImGui::Text("Raw Touches: %zu", rawInput.getTouches().size());
+    ImGui::Text(
+        "Touch Controls: %s Up=%s Down=%s Left=%s Right=%s Fire=%s",
+        touchControls.isEnabled() ? "enabled" : "disabled",
+        touchControls.isControlDown(TouchControl::MoveStickUp) ? "down" : "up",
+        touchControls.isControlDown(TouchControl::MoveStickDown) ? "down" : "up",
+        touchControls.isControlDown(TouchControl::MoveStickLeft) ? "down" : "up",
+        touchControls.isControlDown(TouchControl::MoveStickRight) ? "down" : "up",
+        touchControls.isControlDown(TouchControl::FireButton) ? "down" : "up"
+    );
     ImGui::Text(
         "Actions: Up=%s Down=%s Left=%s Right=%s Fire=%s",
         virtualInput.isActionDown(InputAction::MoveUp) ? "down" : "up",

@@ -2,6 +2,7 @@
 #define IENGINEV2_VIRTUALINPUTSYSTEM_H
 
 #include "system/RawInputSystem.h"
+#include "system/TouchControlSystem.h"
 
 #include <string>
 #include <unordered_map>
@@ -29,9 +30,11 @@ public:
     void bindDefaultKeyboardMouse();
     void bindKey(RawKey key, InputAction action);
     void bindMouseButton(RawMouseButton button, InputAction action);
+    void bindTouchControl(TouchControl control, InputAction action);
     bool loadBindingsFromFile(const std::string& path, std::string& errorMessage);
 
     void updateFromRawInput(const RawInputSystem& rawInputSystem);
+    void updateFromTouchControls(const TouchControlSystem& touchControlSystem);
 
     bool isActionDown(InputAction action) const;
     bool wasActionPressed(InputAction action) const;
@@ -44,6 +47,7 @@ private:
 
     std::unordered_map<RawKey, InputAction> keyBindings;
     std::unordered_map<RawMouseButton, InputAction> mouseButtonBindings;
+    std::unordered_map<TouchControl, InputAction> touchControlBindings;
 
     std::unordered_map<InputAction, bool> currentActions;
     std::unordered_map<InputAction, bool> previousActions;

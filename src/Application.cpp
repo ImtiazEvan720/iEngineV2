@@ -14,6 +14,7 @@
 #include "system/sdl/SdlGuiBackend.h"
 #include "system/sdl/SdlRenderBackend.h"
 #include "system/sdl/SdlWindowBackend.h"
+#include "system/TouchControlSystem.h"
 #include "system/VirtualInputSystem.h"
 
 #ifndef IENGINE_SDL_ONLY
@@ -29,11 +30,26 @@
 #include <SDL3/SDL_system.h>
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
 #include <filesystem>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <utility>
+
+#ifdef __EMSCRIPTEN__
+EM_JS(bool, iengineIsTouchDevice, (), {
+    return (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+        (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+});
+#else
+bool iengineIsTouchDevice() {
+    return false;
+}
+#endif
 
 namespace {
 std::string getBackendName(int argc, char* argv[]) {
@@ -104,6 +120,16 @@ std::string getRuntimeDataRoot() {
 #endif
 
     return "";
+}
+
+bool shouldEnableTouchControls() {
+#if defined(IENGINE_IOS) || defined(IENGINE_ANDROID)
+    return true;
+#elif defined(__EMSCRIPTEN__)
+    return iengineIsTouchDevice();
+#else
+    return false;
+#endif
 }
 
 std::string getRuntimePath(const std::string& root, const std::string& relativePath) {
@@ -230,6 +256,12 @@ bool Application::initialize(int argc, char* argv[]) {
         virtualInputSystem.bindDefaultKeyboardMouse();
     }
 
+    TouchControlSystem& touchControlSystem = TouchControlSystem::getInstance();
+    touchControlSystem.setEnabled(shouldEnableTouchControls());
+    std::cout << "Touch controls: "
+              << (touchControlSystem.isEnabled() ? "enabled" : "disabled")
+              << std::endl;
+
     Renderer& renderer = Renderer::getInstance();
     renderer.setRenderBackend(renderBackend.get());
     renderer.setWindowBackend(windowBackend.get());
@@ -265,7 +297,14 @@ void Application::tick() {
 
     rawInputSystem.beginFrame();
     windowBackend->pollEvents(inputSystem, guiBackend.get());
-    VirtualInputSystem::getInstance().updateFromRawInput(rawInputSystem);
+
+    TouchControlSystem& touchControlSystem = TouchControlSystem::getInstance();
+    const RenderRect viewport = windowBackend->getViewport();
+    touchControlSystem.updateFromRawInput(rawInputSystem, viewport.width, viewport.height);
+
+    VirtualInputSystem& virtualInputSystem = VirtualInputSystem::getInstance();
+    virtualInputSystem.updateFromRawInput(rawInputSystem);
+    virtualInputSystem.updateFromTouchControls(touchControlSystem);
 
     PhysicsSystem::getInstance().update(deltaTime);
     Level::getCurrentLevel().update(deltaTime);
