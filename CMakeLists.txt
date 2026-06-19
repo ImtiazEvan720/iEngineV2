@@ -36,6 +36,18 @@ if(EMSCRIPTEN OR IENGINE_TARGET_IOS OR IENGINE_TARGET_ANDROID)
     set(IENGINE_SDL_ONLY ON)
 endif()
 
+set(IENGINE_WITH_EDITOR_DEFAULT ON)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR EMSCRIPTEN OR IENGINE_TARGET_IOS OR IENGINE_TARGET_ANDROID)
+    set(IENGINE_WITH_EDITOR_DEFAULT OFF)
+endif()
+option(IENGINE_WITH_EDITOR "Build iEngine editor UI and tooling" ${IENGINE_WITH_EDITOR_DEFAULT})
+
+set(IENGINE_EMBED_LUA_SCRIPTS_DEFAULT OFF)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(IENGINE_EMBED_LUA_SCRIPTS_DEFAULT ON)
+endif()
+option(IENGINE_EMBED_LUA_SCRIPTS "Embed Assets/Scripts Lua files into the executable" ${IENGINE_EMBED_LUA_SCRIPTS_DEFAULT})
+
 if(IENGINE_SDL_ONLY)
     set(IENGINE_IMGUI_USER_CONFIG "\"IEngineImGuiConfig.h\"")
 else()
@@ -202,15 +214,6 @@ set(IENGINE_SOURCES
     src/components/SpriteComponent.cpp
     src/components/TransformComponent.cpp
     src/components/PlayerController.cpp
-    src/editor/EditorCamera.cpp
-    src/editor/EntityInspectorPanel.cpp
-    src/editor/LevelEditor.cpp
-    src/editor/LevelEditorFileExplorer.cpp
-    src/editor/PrefabPanel.cpp
-    src/editor/PrefabSerializer.cpp
-    src/editor/SpritePalettePanel.cpp
-    src/editor/TilesetCreator.cpp
-    src/editor/ViewportGrid.cpp
     src/game/Brick.cpp
     src/game/Bullet.cpp
     src/math/Vector2F.cpp
@@ -222,6 +225,7 @@ set(IENGINE_SOURCES
     src/misc/PrefabAsset.cpp
     src/misc/SdlTextureResource.cpp
     src/misc/Sprite.cpp
+    src/serialization/PrefabSerializer.cpp
     src/misc/TextureAsset.cpp
     src/system/AssetManager.cpp
     src/system/InputListener.cpp
@@ -237,6 +241,20 @@ set(IENGINE_SOURCES
     src/system/TouchControlSystem.cpp
     src/system/VirtualInputSystem.cpp
 )
+
+if(IENGINE_WITH_EDITOR)
+    list(APPEND IENGINE_SOURCES
+        src/editor/BuildSystem.cpp
+        src/editor/EditorCamera.cpp
+        src/editor/EntityInspectorPanel.cpp
+        src/editor/LevelEditor.cpp
+        src/editor/LevelEditorFileExplorer.cpp
+        src/editor/PrefabPanel.cpp
+        src/editor/SpritePalettePanel.cpp
+        src/editor/TilesetCreator.cpp
+        src/editor/ViewportGrid.cpp
+    )
+endif()
 
 if(NOT IENGINE_SDL_ONLY)
     list(APPEND IENGINE_SOURCES
@@ -256,6 +274,84 @@ else()
     )
 endif()
 
+set(IENGINE_RUNTIME_ASSETS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Assets")
+
+if(IENGINE_EMBED_LUA_SCRIPTS)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+    set(IENGINE_EMBEDDED_SCRIPTS_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    set(IENGINE_EMBEDDED_SCRIPTS_CPP "${IENGINE_EMBEDDED_SCRIPTS_DIR}/EmbeddedScripts.cpp")
+    set(IENGINE_EMBEDDED_SCRIPTS_H "${IENGINE_EMBEDDED_SCRIPTS_DIR}/EmbeddedScripts.h")
+
+    file(GLOB_RECURSE IENGINE_LUA_SCRIPT_FILES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/Assets/Scripts/*.lua"
+    )
+
+    add_custom_command(
+        OUTPUT
+            "${IENGINE_EMBEDDED_SCRIPTS_CPP}"
+            "${IENGINE_EMBEDDED_SCRIPTS_H}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${IENGINE_EMBEDDED_SCRIPTS_DIR}"
+        COMMAND
+            ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_lua_scripts.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/Assets/Scripts"
+            "${IENGINE_EMBEDDED_SCRIPTS_DIR}"
+        DEPENDS
+            ${IENGINE_LUA_SCRIPT_FILES}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_lua_scripts.py"
+        VERBATIM
+    )
+
+    add_custom_target(iEngineGenerateEmbeddedScripts
+        DEPENDS
+            "${IENGINE_EMBEDDED_SCRIPTS_CPP}"
+            "${IENGINE_EMBEDDED_SCRIPTS_H}"
+    )
+
+    list(APPEND IENGINE_SOURCES "${IENGINE_EMBEDDED_SCRIPTS_CPP}")
+
+    set(IENGINE_FILTERED_RUNTIME_ASSETS_DIR "${CMAKE_CURRENT_BINARY_DIR}/runtime_assets/Assets")
+    set(IENGINE_FILTERED_RUNTIME_ASSETS_STAMP "${CMAKE_CURRENT_BINARY_DIR}/runtime_assets/assets.stamp")
+
+    file(GLOB_RECURSE IENGINE_RUNTIME_ASSET_FILES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/Assets/*"
+    )
+    file(GLOB_RECURSE IENGINE_EDITOR_RUNTIME_LEVEL_FILES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Levels/*"
+    )
+    file(GLOB_RECURSE IENGINE_EDITOR_RUNTIME_PREFAB_FILES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Prefabs/*"
+    )
+
+    add_custom_command(
+        OUTPUT "${IENGINE_FILTERED_RUNTIME_ASSETS_STAMP}"
+        COMMAND
+            ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/prepare_runtime_assets.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/Assets"
+            "${IENGINE_FILTERED_RUNTIME_ASSETS_DIR}"
+            "--exclude-scripts"
+            "--overlay"
+            "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Levels:Levels"
+            "--overlay"
+            "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Prefabs:Prefabs"
+        COMMAND ${CMAKE_COMMAND} -E touch "${IENGINE_FILTERED_RUNTIME_ASSETS_STAMP}"
+        DEPENDS
+            ${IENGINE_RUNTIME_ASSET_FILES}
+            ${IENGINE_EDITOR_RUNTIME_LEVEL_FILES}
+            ${IENGINE_EDITOR_RUNTIME_PREFAB_FILES}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/prepare_runtime_assets.py"
+        VERBATIM
+    )
+
+    add_custom_target(iEnginePrepareRuntimeAssets
+        DEPENDS "${IENGINE_FILTERED_RUNTIME_ASSETS_STAMP}"
+    )
+
+    set(IENGINE_RUNTIME_ASSETS_SOURCE "${IENGINE_FILTERED_RUNTIME_ASSETS_DIR}")
+endif()
+
 if(IENGINE_TARGET_ANDROID)
     add_library(iEngineV2 SHARED ${IENGINE_SOURCES})
     set_target_properties(iEngineV2 PROPERTIES OUTPUT_NAME main)
@@ -266,12 +362,26 @@ endif()
 target_compile_features(iEngineV2 PRIVATE cxx_std_17)
 target_compile_definitions(iEngineV2 PRIVATE IMGUI_USER_CONFIG=${IENGINE_IMGUI_USER_CONFIG})
 
+if(IENGINE_WITH_EDITOR)
+    target_compile_definitions(iEngineV2 PRIVATE IENGINE_WITH_EDITOR)
+endif()
+
+if(IENGINE_EMBED_LUA_SCRIPTS)
+    add_dependencies(iEngineV2 iEngineGenerateEmbeddedScripts)
+    add_dependencies(iEngineV2 iEnginePrepareRuntimeAssets)
+    target_compile_definitions(iEngineV2 PRIVATE IENGINE_EMBED_LUA_SCRIPTS)
+endif()
+
 target_include_directories(iEngineV2 PRIVATE
     src
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     ${stb_SOURCE_DIR}
 )
+
+if(IENGINE_EMBED_LUA_SCRIPTS)
+    target_include_directories(iEngineV2 PRIVATE "${IENGINE_EMBEDDED_SCRIPTS_DIR}")
+endif()
 
 target_link_libraries(iEngineV2 PRIVATE
     box2d::box2d
@@ -286,7 +396,7 @@ if(EMSCRIPTEN)
     target_link_options(iEngineV2 PRIVATE
         "-sUSE_SDL=3"
         "-sALLOW_MEMORY_GROWTH=1"
-        "--preload-file=${CMAKE_CURRENT_SOURCE_DIR}/Assets@/Assets"
+        "--preload-file=${IENGINE_RUNTIME_ASSETS_SOURCE}@/Assets"
         "--preload-file=${CMAKE_CURRENT_SOURCE_DIR}/config.xml@/config.xml"
     )
     set_target_properties(iEngineV2 PROPERTIES SUFFIX ".html")
@@ -304,14 +414,27 @@ elseif(IENGINE_TARGET_IOS)
         XCODE_ATTRIBUTE_ENABLE_BITCODE "NO"
     )
 
-    add_custom_command(TARGET iEngineV2 POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
-            "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/config.xml"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/Assets"
-            "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/Assets"
-    )
+    if(IENGINE_EMBED_LUA_SCRIPTS)
+        add_custom_command(TARGET iEngineV2 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
+                "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/config.xml"
+            COMMAND ${CMAKE_COMMAND} -E rm -rf
+                "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/Assets"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${IENGINE_RUNTIME_ASSETS_SOURCE}"
+                "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/Assets"
+        )
+    else()
+        add_custom_command(TARGET iEngineV2 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
+                "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/config.xml"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${IENGINE_RUNTIME_ASSETS_SOURCE}"
+                "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/Assets"
+        )
+    endif()
 elseif(IENGINE_TARGET_ANDROID)
     target_compile_definitions(iEngineV2 PRIVATE IENGINE_ANDROID IENGINE_SDL_ONLY)
     target_link_libraries(iEngineV2 PRIVATE SDL3::SDL3)
@@ -323,14 +446,27 @@ else()
         SDL3::SDL3
     )
 
-    add_custom_command(TARGET iEngineV2 POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
-            "$<TARGET_FILE_DIR:iEngineV2>/config.xml"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/Assets"
-            "$<TARGET_FILE_DIR:iEngineV2>/Assets"
-    )
+    if(IENGINE_EMBED_LUA_SCRIPTS)
+        add_custom_command(TARGET iEngineV2 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
+                "$<TARGET_FILE_DIR:iEngineV2>/config.xml"
+            COMMAND ${CMAKE_COMMAND} -E rm -rf
+                "$<TARGET_FILE_DIR:iEngineV2>/Assets"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${IENGINE_RUNTIME_ASSETS_SOURCE}"
+                "$<TARGET_FILE_DIR:iEngineV2>/Assets"
+        )
+    else()
+        add_custom_command(TARGET iEngineV2 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
+                "$<TARGET_FILE_DIR:iEngineV2>/config.xml"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${IENGINE_RUNTIME_ASSETS_SOURCE}"
+                "$<TARGET_FILE_DIR:iEngineV2>/Assets"
+        )
+    endif()
 endif()
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT iEngineV2)

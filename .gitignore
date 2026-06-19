@@ -1,6 +1,7 @@
 .DS_Store
 .vscode/
 build/
+build-release/
 build-web/
 build-ios/
 android/.gradle/

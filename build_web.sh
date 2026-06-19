@@ -13,5 +13,8 @@ fi
 
 source "$EMSDK_ENV"
 
-emcmake cmake -S . -B build-web
+emcmake cmake -S . -B build-web \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DIENGINE_WITH_EDITOR=OFF \
+    -DIENGINE_EMBED_LUA_SCRIPTS=ON
 cmake --build build-web

@@ -40,6 +40,9 @@ private:
     void drawLevelLoadWindow();
     void drawLevelSaveWindow();
     void drawAssetsMenu();
+    void drawBuildMenu();
+    void drawBuildOutputWindow();
+    void startBuild(const std::string& label, const std::string& scriptName);
     std::vector<std::filesystem::path> getLevelFiles() const;
     void openLevelSaveWindow();
     void saveLevelToPromptPath();
@@ -52,6 +55,7 @@ private:
     bool enabled = true;
     bool showLevelLoadWindow = false;
     bool showLevelSaveWindow = false;
+    bool showBuildOutputWindow = false;
     int draggingEntityId = -1;
     Tool currentTool = Tool::Select;
     float dragOffset[2] = {0.0f, 0.0f};

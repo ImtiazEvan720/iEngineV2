@@ -5,8 +5,35 @@
 #include "components/TransformComponent.h"
 #include "math/Vector2F.h"
 
+#ifdef IENGINE_EMBED_LUA_SCRIPTS
+#include "EmbeddedScripts.h"
+#endif
+
+#include <filesystem>
 #include <iostream>
 #include <utility>
+
+#ifdef IENGINE_EMBED_LUA_SCRIPTS
+namespace {
+std::string getEmbeddedScriptKey(const std::string& scriptPath) {
+    std::filesystem::path path(scriptPath);
+    std::string genericPath = path.generic_string();
+
+    const std::string relativePrefix = "Assets/Scripts/";
+    if (genericPath.rfind(relativePrefix, 0) == 0) {
+        return genericPath.substr(relativePrefix.size());
+    }
+
+    const std::string absoluteMarker = "/Assets/Scripts/";
+    const std::size_t markerPosition = genericPath.find(absoluteMarker);
+    if (markerPosition != std::string::npos) {
+        return genericPath.substr(markerPosition + absoluteMarker.size());
+    }
+
+    return path.filename().generic_string();
+}
+}
+#endif
 
 ScriptSystem& ScriptSystem::getInstance() {
     static ScriptSystem instance;
@@ -43,14 +70,32 @@ bool ScriptSystem::loadScript(ScriptComponent& component) {
     ScriptInstance script;
     script.environment = sol::environment(lua, sol::create, lua.globals());
 
+#ifdef IENGINE_EMBED_LUA_SCRIPTS
+    const std::string scriptKey = getEmbeddedScriptKey(component.getScriptPath());
+    const char* embeddedSource = EmbeddedScripts::get(scriptKey);
+    if (embeddedSource == nullptr) {
+        std::cerr << "Embedded Lua script not found: " << scriptKey
+                  << " from " << component.getScriptPath() << std::endl;
+        return false;
+    }
+
+    sol::protected_function_result loadResult = lua.script(
+        embeddedSource,
+        script.environment,
+        sol::script_pass_on_error
+    );
+    const std::string loadContext = "loading embedded " + scriptKey;
+#else
     sol::protected_function_result loadResult = lua.script_file(
         component.getScriptPath(),
         script.environment,
         sol::script_pass_on_error
     );
+    const std::string loadContext = "loading " + component.getScriptPath();
+#endif
 
     if (!loadResult.valid()) {
-        return reportScriptError("loading " + component.getScriptPath(), loadResult);
+        return reportScriptError(loadContext, loadResult);
     }
 
     script.onStart = script.environment.get<sol::protected_function>("onStart");
@@ -59,7 +104,11 @@ bool ScriptSystem::loadScript(ScriptComponent& component) {
     auto [iterator, inserted] = scripts.emplace(&component, std::move(script));
     (void)inserted;
 
+#ifdef IENGINE_EMBED_LUA_SCRIPTS
+    std::cout << "Loaded embedded Lua script: " << scriptKey << std::endl;
+#else
     std::cout << "Loaded Lua script: " << component.getScriptPath() << std::endl;
+#endif
     return callOnStart(iterator->second, *entity);
 }
 

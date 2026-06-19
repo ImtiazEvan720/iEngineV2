@@ -56,7 +56,11 @@ void SdlGuiBackend::render(const InputSystem& inputSystem) {
         return;
     }
 
+#ifdef IENGINE_WITH_EDITOR
     levelEditor.draw(inputSystem, windowBackend->getViewport().width);
+#else
+    (void)inputSystem;
+#endif
 
     ImGui::Render();
     ImGui_ImplSDLRenderer3_RenderDrawData(

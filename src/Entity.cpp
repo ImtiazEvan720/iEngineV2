@@ -1,10 +1,10 @@
 #include "Entity.h"
 
 #include "components/TransformComponent.h"
-#include "editor/PrefabSerializer.h"
 #include "math/Vector2F.h"
 #include "misc/Level.h"
 #include "misc/PrefabAsset.h"
+#include "serialization/PrefabSerializer.h"
 #include "system/AssetManager.h"
 #include "system/InputListener.h"
 #include "system/InputSystem.h"

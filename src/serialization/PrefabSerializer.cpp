@@ -1,4 +1,4 @@
-#include "editor/PrefabSerializer.h"
+#include "serialization/PrefabSerializer.h"
 
 #include "Entity.h"
 #include "components/AnimationComponent.h"
@@ -42,66 +42,6 @@ bool parseBool(const char* value, bool fallback = false) {
     return text == "true" || text == "1" || text == "yes";
 }
 
-
-bool loadPrefabPreview(const std::string& prefabPath, ImTextureID& textureId, ImVec2& uv0, ImVec2& uv1) {
-    tinyxml2::XMLDocument document;
-    if (document.LoadFile(prefabPath.c_str()) != tinyxml2::XML_SUCCESS) {
-        return false;
-    }
-
-    const tinyxml2::XMLElement* prefab = document.FirstChildElement("prefab");
-    const tinyxml2::XMLElement* entity = prefab ? prefab->FirstChildElement("entity") : nullptr;
-    if (entity == nullptr) {
-        return false;
-    }
-
-    const tinyxml2::XMLElement* spriteComponent = nullptr;
-
-    for (const tinyxml2::XMLElement* component = entity->FirstChildElement("component");
-         component != nullptr;
-         component = component->NextSiblingElement("component")) {
-        const char* type = component->Attribute("type");
-        if (type != nullptr && std::string(type) == "SpriteComponent") {
-            spriteComponent = component;
-            break;
-        }
-    }
-
-    if (spriteComponent == nullptr) {
-        return false;
-    }
-
-    const char* textureName = spriteComponent->Attribute("texture");
-    if (textureName == nullptr) {
-        return false;
-    }
-
-    TextureAsset* textureAsset =
-        AssetManager::getInstance().getTextureAssetByName(textureName);
-
-    if (textureAsset == nullptr || textureAsset->getImGuiTextureId() == ImTextureID{}) {
-        return false;
-    }
-
-    const float sourceX = spriteComponent->FloatAttribute("sourceX");
-    const float sourceY = spriteComponent->FloatAttribute("sourceY");
-    const float sourceW = spriteComponent->FloatAttribute("sourceWidth");
-    const float sourceH = spriteComponent->FloatAttribute("sourceHeight");
-
-    textureId = textureAsset->getImGuiTextureId();
-
-    uv0 = ImVec2(
-        sourceX / static_cast<float>(textureAsset->getWidth()),
-        sourceY / static_cast<float>(textureAsset->getHeight())
-    );
-
-    uv1 = ImVec2(
-        (sourceX + sourceW) / static_cast<float>(textureAsset->getWidth()),
-        (sourceY + sourceH) / static_cast<float>(textureAsset->getHeight())
-    );
-
-    return true;
-}
 
 const char* bodyTypeToString(CollisionComponent::BodyType bodyType) {
     switch (bodyType) {

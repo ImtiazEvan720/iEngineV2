@@ -2,12 +2,12 @@
 
 #include "Entity.h"
 #include "editor/EditorPrefabTypes.h"
-#include "editor/PrefabSerializer.h"
 #include "editor/ViewportGrid.h"
 #include "math/Vector2F.h"
 #include "misc/Camera2D.h"
 #include "misc/Level.h"
 #include "misc/TextureAsset.h"
+#include "serialization/PrefabSerializer.h"
 #include "system/AssetManager.h"
 #include "system/Renderer.h"
 

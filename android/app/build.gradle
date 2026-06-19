@@ -3,12 +3,24 @@ plugins {
 }
 
 def generatedAssetsDir = file("$buildDir/generated/engineAssets")
+def releaseTaskRequested = gradle.startParameter.taskNames.any {
+    it.toLowerCase(Locale.ROOT).contains("release")
+}
 
 tasks.register("syncEngineAssets", Sync) {
     into generatedAssetsDir
     from("../../config.xml")
     from("../../Assets") {
         into "Assets"
+        if (releaseTaskRequested) {
+            exclude "Scripts/**"
+        }
+    }
+    from("../../build/bin/Assets/Levels") {
+        into "Assets/Levels"
+    }
+    from("../../build/bin/Assets/Prefabs") {
+        into "Assets/Prefabs"
     }
 }
 
@@ -26,7 +38,9 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments "-DANDROID_PLATFORM=android-23", "-DANDROID_STL=c++_shared"
+                arguments "-DANDROID_PLATFORM=android-23",
+                    "-DANDROID_STL=c++_shared",
+                    "-DIENGINE_EMBED_LUA_SCRIPTS=${releaseTaskRequested ? "ON" : "OFF"}"
                 abiFilters "arm64-v8a"
             }
         }

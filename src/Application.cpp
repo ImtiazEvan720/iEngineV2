@@ -111,11 +111,27 @@ bool runStartupChecks() {
     return true;
 }
 
-std::string getRuntimeDataRoot() {
+std::string getRuntimeDataRoot(int argc, char* argv[]) {
 #ifdef IENGINE_ANDROID
     const char* internalStoragePath = SDL_GetAndroidInternalStoragePath();
     if (internalStoragePath != nullptr && internalStoragePath[0] != '\0') {
         return internalStoragePath;
+    }
+#endif
+
+#ifndef __EMSCRIPTEN__
+    if (argc > 0 && argv != nullptr && argv[0] != nullptr && argv[0][0] != '\0') {
+        std::filesystem::path executablePath(argv[0]);
+        if (executablePath.is_relative()) {
+            executablePath = std::filesystem::absolute(executablePath);
+        }
+
+        const std::filesystem::path executableDirectory = executablePath.parent_path();
+        if (!executableDirectory.empty()
+            && (std::filesystem::exists(executableDirectory / "config.xml")
+                || std::filesystem::exists(executableDirectory / "Assets"))) {
+            return executableDirectory.string();
+        }
     }
 #endif
 
@@ -194,7 +210,7 @@ bool Application::initialize(int argc, char* argv[]) {
     int windowHeight = 720;
     int framerateLimit = 60;
     std::string windowTitle = "iEngine(Alpha)";
-    const std::string runtimeDataRoot = getRuntimeDataRoot();
+    const std::string runtimeDataRoot = getRuntimeDataRoot(argc, argv);
     const std::string configPath = getRuntimePath(runtimeDataRoot, "config.xml");
     const std::string assetsPath = getRuntimePath(runtimeDataRoot, "Assets");
 
@@ -269,10 +285,11 @@ bool Application::initialize(int argc, char* argv[]) {
 
     std::string errorMessage;
     Level startupLevel = Level::createEmpty();
-    if (Level::loadFromFile(Level::getCurrentLevelPath(), startupLevel, errorMessage)) {
+    const std::string startupLevelPath = getRuntimePath(runtimeDataRoot, Level::getCurrentLevelPath());
+    if (Level::loadFromFile(startupLevelPath, startupLevel, errorMessage)) {
         Level::loadLevel(std::move(startupLevel));
     } else {
-        std::cerr << "Failed to load startup level " << Level::getCurrentLevelPath()
+        std::cerr << "Failed to load startup level " << startupLevelPath
                   << ": " << (errorMessage.empty() ? "unknown error" : errorMessage)
                   << std::endl;
         Level::loadLevel(Level::createEmpty());

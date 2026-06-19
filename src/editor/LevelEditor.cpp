@@ -3,6 +3,7 @@
 #include "components/AnimationComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
+#include "editor/BuildSystem.h"
 #include "math/Vector2F.h"
 #include "misc/Camera2D.h"
 #include "misc/Level.h"
@@ -34,6 +35,20 @@ std::filesystem::path resolveLevelSavePath(const std::string& fileName) {
     }
 
     return fs::path("Assets/Levels") / outputFileName;
+}
+
+std::string getBuildScriptCommand(const std::string& scriptName) {
+    namespace fs = std::filesystem;
+
+    if (fs::exists(scriptName)) {
+        return "./" + scriptName;
+    }
+
+    if (fs::exists(fs::path("..") / ".." / scriptName)) {
+        return "cd ../.. && ./" + scriptName;
+    }
+
+    return "./" + scriptName;
 }
 }
 
@@ -81,6 +96,7 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
         }
 
         drawAssetsMenu();
+        drawBuildMenu();
 
         if (ImGui::BeginMenu("Tools")) {
             ImGui::MenuItem("Editor Enabled", nullptr, &enabled);
@@ -111,6 +127,7 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
 
     drawLevelSaveWindow();
     drawLevelLoadWindow();
+    drawBuildOutputWindow();
 
     if (viewportGrid.shouldShowSideMenu()) {
         const bool levelEditorOpen = ImGui::Begin("Level Editor");
@@ -385,6 +402,113 @@ void LevelEditor::drawAssetsMenu() {
     }
 
     ImGui::EndMenu();
+}
+
+void LevelEditor::drawBuildMenu() {
+    if (!ImGui::BeginMenu("Build")) {
+        return;
+    }
+
+    BuildSystem& buildSystem = BuildSystem::getInstance();
+    const bool canStartBuild = !buildSystem.isRunning();
+
+    if (ImGui::MenuItem("Desktop Release", nullptr, false, canStartBuild)) {
+        startBuild("desktop release", "build_release.sh");
+    }
+
+    if (ImGui::MenuItem("Web", nullptr, false, canStartBuild)) {
+        startBuild("web", "build_web.sh");
+    }
+
+    if (ImGui::MenuItem("iOS Simulator", nullptr, false, canStartBuild)) {
+        startBuild("iOS simulator", "build_ios.sh");
+    }
+
+    if (ImGui::MenuItem("Android Debug APK", nullptr, false, canStartBuild)) {
+        startBuild("Android debug APK", "build_android.sh");
+    }
+
+    ImGui::Separator();
+
+    if (ImGui::MenuItem("Show Output")) {
+        showBuildOutputWindow = true;
+    }
+
+    if (ImGui::MenuItem("Clear Output", nullptr, false, canStartBuild)) {
+        buildSystem.clearOutput();
+    }
+
+    ImGui::EndMenu();
+}
+
+void LevelEditor::startBuild(const std::string& label, const std::string& scriptName) {
+    BuildSystem& buildSystem = BuildSystem::getInstance();
+
+    showBuildOutputWindow = true;
+    if (buildSystem.run(getBuildScriptCommand(scriptName))) {
+        statusMessage = "Started " + label + " build.";
+    } else {
+        statusMessage = "A build is already running.";
+    }
+}
+
+void LevelEditor::drawBuildOutputWindow() {
+    if (!showBuildOutputWindow) {
+        return;
+    }
+
+    BuildSystem& buildSystem = BuildSystem::getInstance();
+
+    ImGui::SetNextWindowSize(ImVec2(720.0f, 420.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Build Output", &showBuildOutputWindow)) {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Text("Status: %s", buildSystem.getStatusText().c_str());
+
+    const bool canStartBuild = !buildSystem.isRunning();
+    if (ImGui::Button("Build Desktop Release")) {
+        startBuild("desktop release", "build_release.sh");
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Build Web")) {
+        startBuild("web", "build_web.sh");
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Build iOS")) {
+        startBuild("iOS simulator", "build_ios.sh");
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Build Android")) {
+        startBuild("Android debug APK", "build_android.sh");
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Clear") && canStartBuild) {
+        buildSystem.clearOutput();
+    }
+
+    ImGui::Separator();
+
+    const std::string output = buildSystem.getOutput();
+    if (ImGui::BeginChild(
+            "##BuildOutputLog",
+            ImVec2(0.0f, 0.0f),
+            ImGuiChildFlags_Borders,
+            ImGuiWindowFlags_HorizontalScrollbar)) {
+        ImGui::TextUnformatted(output.c_str());
+
+        if (buildSystem.isRunning()) {
+            ImGui::SetScrollHereY(1.0f);
+        }
+    }
+
+    ImGui::EndChild();
+    ImGui::End();
 }
 
 void LevelEditor::handleViewportEntityInteraction() {
