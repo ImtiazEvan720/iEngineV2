@@ -9,10 +9,12 @@
 #include "system/IWindowBackend.h"
 #include "system/InputSystem.h"
 #include "system/PhysicsSystem.h"
+#include "system/RawInputSystem.h"
 #include "system/Renderer.h"
 #include "system/sdl/SdlGuiBackend.h"
 #include "system/sdl/SdlRenderBackend.h"
 #include "system/sdl/SdlWindowBackend.h"
+#include "system/VirtualInputSystem.h"
 
 #ifndef IENGINE_SDL_ONLY
 #include "system/sfml/SfmlGuiBackend.h"
@@ -220,6 +222,14 @@ bool Application::initialize(int argc, char* argv[]) {
         std::cerr << "One or more assets failed to load." << std::endl;
     }
 
+    VirtualInputSystem& virtualInputSystem = VirtualInputSystem::getInstance();
+    const std::string inputBindingsPath = getRuntimePath(runtimeDataRoot, "Assets/Input/default.input.xml");
+    std::string inputBindingsError;
+    if (!virtualInputSystem.loadBindingsFromFile(inputBindingsPath, inputBindingsError)) {
+        std::cerr << inputBindingsError << " Falling back to default input bindings." << std::endl;
+        virtualInputSystem.bindDefaultKeyboardMouse();
+    }
+
     Renderer& renderer = Renderer::getInstance();
     renderer.setRenderBackend(renderBackend.get());
     renderer.setWindowBackend(windowBackend.get());
@@ -251,7 +261,11 @@ void Application::tick() {
     previousTime = currentTime;
 
     InputSystem& inputSystem = InputSystem::getInstance();
+    RawInputSystem& rawInputSystem = RawInputSystem::getInstance();
+
+    rawInputSystem.beginFrame();
     windowBackend->pollEvents(inputSystem, guiBackend.get());
+    VirtualInputSystem::getInstance().updateFromRawInput(rawInputSystem);
 
     PhysicsSystem::getInstance().update(deltaTime);
     Level::getCurrentLevel().update(deltaTime);
@@ -263,6 +277,8 @@ void Application::tick() {
     Renderer::getInstance().render();
     guiBackend->render(inputSystem);
     windowBackend->endFrame();
+
+    rawInputSystem.endFrame();
 }
 
 void Application::shutdown() {

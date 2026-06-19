@@ -2,6 +2,7 @@
 
 #include "system/IGuiBackend.h"
 #include "system/InputSystem.h"
+#include "system/RawInputSystem.h"
 
 #include <SFML/Graphics/Color.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
@@ -34,6 +35,25 @@ InputKey mapKey(sf::Keyboard::Key key) {
     }
 }
 
+RawKey mapRawKey(sf::Keyboard::Key key) {
+    switch (key) {
+        case sf::Keyboard::Key::W:
+            return RawKey::W;
+        case sf::Keyboard::Key::A:
+            return RawKey::A;
+        case sf::Keyboard::Key::S:
+            return RawKey::S;
+        case sf::Keyboard::Key::D:
+            return RawKey::D;
+        case sf::Keyboard::Key::Space:
+            return RawKey::Space;
+        case sf::Keyboard::Key::Escape:
+            return RawKey::Escape;
+        default:
+            return RawKey::Unknown;
+    }
+}
+
 InputMouseButton mapMouseButton(sf::Mouse::Button button) {
     switch (button) {
         case sf::Mouse::Button::Left:
@@ -44,6 +64,19 @@ InputMouseButton mapMouseButton(sf::Mouse::Button button) {
             return InputMouseButton::Middle;
         default:
             return InputMouseButton::Unknown;
+    }
+}
+
+RawMouseButton mapRawMouseButton(sf::Mouse::Button button) {
+    switch (button) {
+        case sf::Mouse::Button::Left:
+            return RawMouseButton::Left;
+        case sf::Mouse::Button::Right:
+            return RawMouseButton::Right;
+        case sf::Mouse::Button::Middle:
+            return RawMouseButton::Middle;
+        default:
+            return RawMouseButton::Unknown;
     }
 }
 }
@@ -99,6 +132,8 @@ void SfmlWindowBackend::pollEvents(InputSystem& inputSystem, IGuiBackend* guiBac
         return;
     }
 
+    RawInputSystem& rawInputSystem = RawInputSystem::getInstance();
+
     while (const std::optional event = window->pollEvent()) {
         if (guiBackend != nullptr) {
             guiBackend->processNativeEvent(&*event);
@@ -106,11 +141,20 @@ void SfmlWindowBackend::pollEvents(InputSystem& inputSystem, IGuiBackend* guiBac
 
         if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
             inputSystem.processKeyPressed(mapKey(keyPressed->code));
+            rawInputSystem.setKeyDown(mapRawKey(keyPressed->code));
         } else if (const auto* keyReleased = event->getIf<sf::Event::KeyReleased>()) {
             inputSystem.processKeyReleased(mapKey(keyReleased->code));
+            rawInputSystem.setKeyUp(mapRawKey(keyReleased->code));
+        } else if (const auto* mouseMoved = event->getIf<sf::Event::MouseMoved>()) {
+            rawInputSystem.setMousePosition(mouseMoved->position.x, mouseMoved->position.y);
         } else if (const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()) {
             inputSystem.processMousePressed(
                 mapMouseButton(mousePressed->button),
+                mousePressed->position.x,
+                mousePressed->position.y
+            );
+            rawInputSystem.setMouseButtonDown(
+                mapRawMouseButton(mousePressed->button),
                 mousePressed->position.x,
                 mousePressed->position.y
             );
@@ -119,6 +163,29 @@ void SfmlWindowBackend::pollEvents(InputSystem& inputSystem, IGuiBackend* guiBac
                 mapMouseButton(mouseReleased->button),
                 mouseReleased->position.x,
                 mouseReleased->position.y
+            );
+            rawInputSystem.setMouseButtonUp(
+                mapRawMouseButton(mouseReleased->button),
+                mouseReleased->position.x,
+                mouseReleased->position.y
+            );
+        } else if (const auto* touchBegan = event->getIf<sf::Event::TouchBegan>()) {
+            rawInputSystem.setTouchDown(
+                static_cast<int>(touchBegan->finger),
+                static_cast<float>(touchBegan->position.x),
+                static_cast<float>(touchBegan->position.y)
+            );
+        } else if (const auto* touchMoved = event->getIf<sf::Event::TouchMoved>()) {
+            rawInputSystem.setTouchMove(
+                static_cast<int>(touchMoved->finger),
+                static_cast<float>(touchMoved->position.x),
+                static_cast<float>(touchMoved->position.y)
+            );
+        } else if (const auto* touchEnded = event->getIf<sf::Event::TouchEnded>()) {
+            rawInputSystem.setTouchUp(
+                static_cast<int>(touchEnded->finger),
+                static_cast<float>(touchEnded->position.x),
+                static_cast<float>(touchEnded->position.y)
             );
         }
 

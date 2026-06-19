@@ -8,7 +8,9 @@
 #include "misc/Level.h"
 #include "misc/Sprite.h"
 #include "system/InputSystem.h"
+#include "system/RawInputSystem.h"
 #include "system/Renderer.h"
+#include "system/VirtualInputSystem.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -206,9 +208,37 @@ bool LevelEditor::shouldSnapToGrid() const {
 }
 
 void LevelEditor::drawLevelOutlineTab(const InputSystem& inputSystem) {
+    const RawInputSystem& rawInput = RawInputSystem::getInstance();
+    const VirtualInputSystem& virtualInput = VirtualInputSystem::getInstance();
+
     ImGui::Text("Input: %s", inputSystem.getLastInputText().c_str());
     ImGui::Text("Editor: %s", enabled ? "Enabled" : "Disabled");
     ImGui::Text("Tool: %s", currentTool == Tool::Select ? "Select" : "Move");
+    ImGui::Separator();
+    ImGui::Text("Raw Mouse: %d, %d", rawInput.getMouseX(), rawInput.getMouseY());
+    ImGui::Text(
+        "Raw Keys: W=%s A=%s S=%s D=%s Space=%s",
+        rawInput.isKeyDown(RawKey::W) ? "down" : "up",
+        rawInput.isKeyDown(RawKey::A) ? "down" : "up",
+        rawInput.isKeyDown(RawKey::S) ? "down" : "up",
+        rawInput.isKeyDown(RawKey::D) ? "down" : "up",
+        rawInput.isKeyDown(RawKey::Space) ? "down" : "up"
+    );
+    ImGui::Text(
+        "Raw Mouse Buttons: Left=%s Right=%s Middle=%s",
+        rawInput.isMouseButtonDown(RawMouseButton::Left) ? "down" : "up",
+        rawInput.isMouseButtonDown(RawMouseButton::Right) ? "down" : "up",
+        rawInput.isMouseButtonDown(RawMouseButton::Middle) ? "down" : "up"
+    );
+    ImGui::Text("Raw Touches: %zu", rawInput.getTouches().size());
+    ImGui::Text(
+        "Actions: Up=%s Down=%s Left=%s Right=%s Fire=%s",
+        virtualInput.isActionDown(InputAction::MoveUp) ? "down" : "up",
+        virtualInput.isActionDown(InputAction::MoveDown) ? "down" : "up",
+        virtualInput.isActionDown(InputAction::MoveLeft) ? "down" : "up",
+        virtualInput.isActionDown(InputAction::MoveRight) ? "down" : "up",
+        virtualInput.isActionDown(InputAction::Fire) ? "down" : "up"
+    );
 }
 
 void LevelEditor::drawLevelLoadWindow() {

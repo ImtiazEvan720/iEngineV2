@@ -223,12 +223,14 @@ set(IENGINE_SOURCES
     src/system/InputListener.cpp
     src/system/InputSystem.cpp
     src/system/PhysicsSystem.cpp
+    src/system/RawInputSystem.cpp
     src/system/Renderer.cpp
     src/system/ScriptSystem.cpp
     src/system/sdl/SdlGuiBackend.cpp
     src/system/sdl/SdlRenderBackend.cpp
     src/system/sdl/SdlWindowBackend.cpp
     src/system/TileLayerRenderer.cpp
+    src/system/VirtualInputSystem.cpp
 )
 
 if(NOT IENGINE_SDL_ONLY)

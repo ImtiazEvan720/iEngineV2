@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<input>
+  <bindings>
+    <binding action="MoveUp" key="W"/>
+    <binding action="MoveDown" key="S"/>
+    <binding action="MoveLeft" key="A"/>
+    <binding action="MoveRight" key="D"/>
+    <binding action="Fire" key="Space"/>
+    <binding action="Fire" mouse="Left"/>
+  </bindings>
+</input>

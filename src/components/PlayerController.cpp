@@ -11,6 +11,7 @@
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
 #include "system/Renderer.h"
+#include "system/VirtualInputSystem.h"
 
 #include <iostream>
 
@@ -26,48 +27,6 @@ void PlayerController::onStart() {
     if (animator == nullptr) {
         std::cerr << "PlayerController requires an AnimationComponent to function properly." << std::endl;
     }
-}
-
-void PlayerController::onKeyPressed(InputKey key) {
-    std::cout << "PlayerController key pressed: " << static_cast<int>(key) << std::endl;
-    if(key == InputKey::W) {
-        isMovingUp = 1;
-        isMovingLeft = 0;
-        isMoving = true;
-    } else if(key == InputKey::S) {
-        isMovingUp = -1;
-        isMovingLeft = 0;
-        isMoving = true;
-    } else if(key == InputKey::A) {
-        isMovingLeft = 1;
-        isMovingUp = 0;
-        isMoving = true;
-    } else if(key == InputKey::D) {
-        isMovingLeft = -1;
-        isMovingUp = 0;
-        isMoving = true;
-    } else if(key == InputKey::Space) {
-        fire();
-    }
-}
-
-void PlayerController::onKeyReleased(InputKey key) {
-    std::cout << "PlayerController key released: " << static_cast<int>(key) << std::endl;
-
-    if(key == InputKey::W || key == InputKey::S || key == InputKey::A || key == InputKey::D) {
-        isMoving = false;
-    }
-          
-}
-
-void PlayerController::onMousePressed(InputMouseButton button, int x, int y) {
-    std::cout << "PlayerController mouse pressed: " << static_cast<int>(button)
-              << " at " << x << ", " << y << std::endl;
-}
-
-void PlayerController::onMouseReleased(InputMouseButton button, int x, int y) {
-    std::cout << "PlayerController mouse released: " << static_cast<int>(button)
-              << " at " << x << ", " << y << std::endl;
 }
 
 void PlayerController::fire() {
@@ -116,34 +75,45 @@ void PlayerController::fire() {
 void PlayerController::onUpdate(float deltaTime) { 
     // std::cout << "PlayerController updating. Delta time: " << deltaTime << " seconds." << std::endl; 
 
-    if (isMoving && transform != nullptr) {
+    if (transform == nullptr) {
+        return;
+    }
+
+    VirtualInputSystem& input = VirtualInputSystem::getInstance();
+
+    if (input.wasActionPressed(InputAction::Fire)) {
+        fire();
+    }
+
+    Vector2F position = transform->getPosition();
+    float rotation = transform->getRotation();
+    bool moving = false;
+    const float speed = 100.0f;
+
+    if (input.isActionDown(InputAction::MoveUp)) {
+        position.y -= speed * deltaTime;
+        rotation = 0.0f;
+        moving = true;
+    } else if (input.isActionDown(InputAction::MoveDown)) {
+        position.y += speed * deltaTime;
+        rotation = 180.0f;
+        moving = true;
+    } else if (input.isActionDown(InputAction::MoveLeft)) {
+        position.x -= speed * deltaTime;
+        rotation = -90.0f;
+        moving = true;
+    } else if (input.isActionDown(InputAction::MoveRight)) {
+        position.x += speed * deltaTime;
+        rotation = 90.0f;
+        moving = true;
+    }
+
+    if (moving) {
 
         if(animator != nullptr) {
             animator->play();
         } else {
             std::cerr << "PlayerController is moving but has no AnimationComponent to play." << std::endl;
-        }
-
-        Vector2F position = transform->getPosition();
-        float rotation = 0.0f;
-        if (isMovingUp > 0) {
-            position.y -= 100.0f * deltaTime;
-            rotation = 0.0f;
-        }
-        
-        if (isMovingUp < 0) {
-            position.y += 100.0f * deltaTime;
-            rotation = 180.0f;
-        }
-
-        if (isMovingLeft > 0) {
-            position.x -= 100.0f * deltaTime;
-            rotation = -90.0f;
-        }
-        
-        if (isMovingLeft < 0) {
-            position.x += 100.0f * deltaTime;
-            rotation = 90.0f;
         }
 
         transform->setPosition(position);
