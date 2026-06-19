@@ -41,6 +41,7 @@ private:
     void drawEntityTreeNode(Entity& entity, std::string& statusMessage);
     void drawEntityComponents(Entity& entity, std::string& statusMessage);
     void drawAddComponentCombo(Entity& entity, std::string& statusMessage);
+    bool drawRemoveComponentButton(Entity& entity, const char* componentName, std::string& statusMessage);
     void drawEntityIdentityFields(Entity& entity, std::string& statusMessage);
     bool drawPrefabActions(Level& level, std::string& statusMessage);
     Entity* findSelectedEntity(Level& level) const;
@@ -52,6 +53,7 @@ private:
 
     int selectedEntityId = -1;
     int selectedAddComponentIndex = 0;
+    int selectedScriptIndex = 0;
     std::string prefabName;
     EntityEditState entityEditState;
 };

@@ -99,14 +99,51 @@ void ensureComponent(Entity& entity, Args&&... args) {
 
 struct ComponentAddEntry {
     const char* name;
-    std::function<bool(Entity&)> add;
+    bool needsScriptPath = false;
+    std::function<bool(Entity&, const std::string&)> add;
 };
+
+struct ComponentRemoveEntry {
+    const char* name;
+    std::function<bool(Entity&)> remove;
+};
+
+template <typename TComponent>
+void removeDependencyIfPresent(Entity& entity) {
+    if (entity.getComponent<TComponent>() != nullptr) {
+        entity.removeComponent<TComponent>();
+    }
+}
+
+std::vector<std::string> findLuaScripts() {
+    std::vector<std::string> scripts;
+    const std::filesystem::path scriptsPath = std::filesystem::path("Assets") / "Scripts";
+
+    if (!std::filesystem::exists(scriptsPath)) {
+        return scripts;
+    }
+
+    try {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(scriptsPath)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".lua") {
+                scripts.push_back(entry.path().generic_string());
+            }
+        }
+    } catch (const std::filesystem::filesystem_error&) {
+        scripts.clear();
+    }
+
+    std::sort(scripts.begin(), scripts.end());
+    return scripts;
+}
 
 const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
     static const std::vector<ComponentAddEntry> registry = {
         {
             "TransformComponent",
-            [](Entity& entity) {
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
                 return addComponentIfMissing<TransformComponent>(
                     entity,
                     Vector2F(0.0f, 0.0f),
@@ -116,7 +153,9 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
         },
         {
             "CollisionComponent",
-            [](Entity& entity) {
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
                 ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
                 return addComponentIfMissing<CollisionComponent>(
                     entity,
@@ -129,15 +168,30 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
             }
         },
         {
+            "ScriptComponent",
+            true,
+            [](Entity& entity, const std::string& scriptPath) {
+                if (scriptPath.empty()) {
+                    return false;
+                }
+
+                return addComponentIfMissing<ScriptComponent>(entity, scriptPath);
+            }
+        },
+        {
             "PlayerController",
-            [](Entity& entity) {
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
                 ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
                 return addComponentIfMissing<PlayerController>(entity);
             }
         },
         {
             "Brick",
-            [](Entity& entity) {
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
                 ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
                 ensureComponent<CollisionComponent>(
                     entity,
@@ -152,7 +206,9 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
         },
         {
             "Bullet",
-            [](Entity& entity) {
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
                 ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
                 ensureComponent<CollisionComponent>(
                     entity,
@@ -168,6 +224,101 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
     };
 
     return registry;
+}
+
+std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
+    std::vector<ComponentRemoveEntry> entries;
+
+    if (entity.getComponent<TransformComponent>() != nullptr) {
+        entries.push_back({
+            "TransformComponent",
+            [](Entity& target) {
+                removeDependencyIfPresent<PlayerController>(target);
+                removeDependencyIfPresent<Bullet>(target);
+                return target.removeComponent<TransformComponent>();
+            }
+        });
+    }
+
+    if (entity.getComponent<SpriteComponent>() != nullptr) {
+        entries.push_back({
+            "SpriteComponent",
+            [](Entity& target) {
+                return target.removeComponent<SpriteComponent>();
+            }
+        });
+    }
+
+    if (entity.getComponent<AnimationComponent>() != nullptr) {
+        entries.push_back({
+            "AnimationComponent",
+            [](Entity& target) {
+                removeDependencyIfPresent<PlayerController>(target);
+                return target.removeComponent<AnimationComponent>();
+            }
+        });
+    }
+
+    if (entity.getComponent<CollisionComponent>() != nullptr) {
+        entries.push_back({
+            "CollisionComponent",
+            [](Entity& target) {
+                removeDependencyIfPresent<Brick>(target);
+                removeDependencyIfPresent<Bullet>(target);
+                return target.removeComponent<CollisionComponent>();
+            }
+        });
+    }
+
+    if (entity.getComponent<ScriptComponent>() != nullptr) {
+        entries.push_back({
+            "ScriptComponent",
+            [](Entity& target) {
+                return target.removeComponent<ScriptComponent>();
+            }
+        });
+    }
+
+    if (entity.getComponent<PlayerController>() != nullptr) {
+        entries.push_back({
+            "PlayerController",
+            [](Entity& target) {
+                return target.removeComponent<PlayerController>();
+            }
+        });
+    }
+
+    if (entity.getComponent<Brick>() != nullptr) {
+        entries.push_back({
+            "Brick",
+            [](Entity& target) {
+                return target.removeComponent<Brick>();
+            }
+        });
+    }
+
+    if (entity.getComponent<Bullet>() != nullptr) {
+        entries.push_back({
+            "Bullet",
+            [](Entity& target) {
+                return target.removeComponent<Bullet>();
+            }
+        });
+    }
+
+    return entries;
+}
+
+bool removeComponentByName(Entity& entity, const std::string& componentName) {
+    const std::vector<ComponentRemoveEntry> entries = getComponentRemoveEntries(entity);
+
+    for (const ComponentRemoveEntry& entry : entries) {
+        if (componentName == entry.name) {
+            return entry.remove(entity);
+        }
+    }
+
+    return false;
 }
 }
 
@@ -314,6 +465,12 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
     if (auto* transform = entity.getComponent<TransformComponent>()) {
         hasComponents = true;
         if (ImGui::TreeNodeEx("TransformComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (drawRemoveComponentButton(entity, "TransformComponent", statusMessage)) {
+                ImGui::TreePop();
+                ImGui::TreePop();
+                return;
+            }
+
             if (editable) {
                 drawTransformComponentFields(*transform, statusMessage);
             } else {
@@ -333,6 +490,12 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
     if (auto* spriteComponent = entity.getComponent<SpriteComponent>()) {
         hasComponents = true;
         if (ImGui::TreeNodeEx("SpriteComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (drawRemoveComponentButton(entity, "SpriteComponent", statusMessage)) {
+                ImGui::TreePop();
+                ImGui::TreePop();
+                return;
+            }
+
             if (editable) {
                 drawSpriteComponentFields(*spriteComponent, statusMessage);
             } else {
@@ -353,6 +516,12 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
     if (auto* animationComponent = entity.getComponent<AnimationComponent>()) {
         hasComponents = true;
         if (ImGui::TreeNodeEx("AnimationComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (drawRemoveComponentButton(entity, "AnimationComponent", statusMessage)) {
+                ImGui::TreePop();
+                ImGui::TreePop();
+                return;
+            }
+
             if (editable) {
                 drawAnimationComponentFields(*animationComponent, statusMessage);
             } else {
@@ -371,6 +540,12 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
     if (auto* collisionComponent = entity.getComponent<CollisionComponent>()) {
         hasComponents = true;
         if (ImGui::TreeNodeEx("CollisionComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (drawRemoveComponentButton(entity, "CollisionComponent", statusMessage)) {
+                ImGui::TreePop();
+                ImGui::TreePop();
+                return;
+            }
+
             if (editable) {
                 drawCollisionComponentFields(*collisionComponent, statusMessage);
             } else {
@@ -386,6 +561,12 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
     if (auto* scriptComponent = entity.getComponent<ScriptComponent>()) {
         hasComponents = true;
         if (ImGui::TreeNodeEx("ScriptComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (drawRemoveComponentButton(entity, "ScriptComponent", statusMessage)) {
+                ImGui::TreePop();
+                ImGui::TreePop();
+                return;
+            }
+
             drawScriptComponentFields(*scriptComponent);
             ImGui::TreePop();
         }
@@ -393,17 +574,44 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
 
     if (entity.getComponent<PlayerController>() != nullptr) {
         hasComponents = true;
-        ImGui::BulletText("PlayerController");
+        if (ImGui::TreeNodeEx("PlayerController", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (drawRemoveComponentButton(entity, "PlayerController", statusMessage)) {
+                ImGui::TreePop();
+                ImGui::TreePop();
+                return;
+            }
+
+            ImGui::TextUnformatted("No editable fields.");
+            ImGui::TreePop();
+        }
     }
 
     if (entity.getComponent<Brick>() != nullptr) {
         hasComponents = true;
-        ImGui::BulletText("Brick");
+        if (ImGui::TreeNodeEx("Brick", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (drawRemoveComponentButton(entity, "Brick", statusMessage)) {
+                ImGui::TreePop();
+                ImGui::TreePop();
+                return;
+            }
+
+            ImGui::TextUnformatted("No editable fields.");
+            ImGui::TreePop();
+        }
     }
 
     if (entity.getComponent<Bullet>() != nullptr) {
         hasComponents = true;
-        ImGui::BulletText("Bullet");
+        if (ImGui::TreeNodeEx("Bullet", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (drawRemoveComponentButton(entity, "Bullet", statusMessage)) {
+                ImGui::TreePop();
+                ImGui::TreePop();
+                return;
+            }
+
+            ImGui::Text("Speed: %.2f", entity.getComponent<Bullet>()->speed);
+            ImGui::TreePop();
+        }
     }
 
     if (!hasComponents) {
@@ -425,6 +633,8 @@ void EntityInspectorPanel::drawAddComponentCombo(Entity& entity, std::string& st
     }
 
     const ComponentAddEntry& selectedEntry = registry[static_cast<std::size_t>(selectedAddComponentIndex)];
+    std::vector<std::string> luaScripts;
+    std::string selectedScriptPath;
 
     ImGui::SetNextItemWidth(220.0f);
     if (ImGui::BeginCombo("Component", selectedEntry.name)) {
@@ -442,10 +652,50 @@ void EntityInspectorPanel::drawAddComponentCombo(Entity& entity, std::string& st
         ImGui::EndCombo();
     }
 
-    ImGui::SameLine();
+    if (selectedEntry.needsScriptPath) {
+        luaScripts = findLuaScripts();
+
+        if (selectedScriptIndex < 0 ||
+            selectedScriptIndex >= static_cast<int>(luaScripts.size())) {
+            selectedScriptIndex = 0;
+        }
+
+        const char* scriptPreview = luaScripts.empty()
+            ? "No Lua scripts found"
+            : luaScripts[static_cast<std::size_t>(selectedScriptIndex)].c_str();
+
+        ImGui::SetNextItemWidth(320.0f);
+        if (ImGui::BeginCombo("Lua Script", scriptPreview)) {
+            for (std::size_t index = 0; index < luaScripts.size(); ++index) {
+                const bool selected = selectedScriptIndex == static_cast<int>(index);
+                if (ImGui::Selectable(luaScripts[index].c_str(), selected)) {
+                    selectedScriptIndex = static_cast<int>(index);
+                }
+
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+
+        if (luaScripts.empty()) {
+            ImGui::TextDisabled("Add .lua files under Assets/Scripts.");
+        } else {
+            selectedScriptPath = luaScripts[static_cast<std::size_t>(selectedScriptIndex)];
+        }
+    }
+
+    if (!selectedEntry.needsScriptPath) {
+        ImGui::SameLine();
+    }
+
     if (ImGui::Button("Add Component")) {
         const ComponentAddEntry& entry = registry[static_cast<std::size_t>(selectedAddComponentIndex)];
-        if (entry.add(entity)) {
+        if (entry.needsScriptPath && selectedScriptPath.empty()) {
+            statusMessage = "No Lua scripts found under Assets/Scripts.";
+        } else if (entry.add(entity, selectedScriptPath)) {
             entity.addInputListeners(InputSystem::getInstance());
             syncEditStateFromEntity(entity, true);
             statusMessage = "Added " + std::string(entry.name) + ".";
@@ -453,6 +703,30 @@ void EntityInspectorPanel::drawAddComponentCombo(Entity& entity, std::string& st
             statusMessage = "Entity already has " + std::string(entry.name) + ".";
         }
     }
+}
+
+bool EntityInspectorPanel::drawRemoveComponentButton(
+    Entity& entity,
+    const char* componentName,
+    std::string& statusMessage
+) {
+    if (selectedEntityId != entity.getId()) {
+        return false;
+    }
+
+    const std::string buttonLabel = "Remove Component##" + std::string(componentName);
+    if (ImGui::Button(buttonLabel.c_str())) {
+        if (removeComponentByName(entity, componentName)) {
+            syncEditStateFromEntity(entity, true);
+            statusMessage = "Removed " + std::string(componentName) + ".";
+            return true;
+        }
+
+        statusMessage = "Failed to remove " + std::string(componentName) + ".";
+    }
+
+    ImGui::Separator();
+    return false;
 }
 
 void EntityInspectorPanel::drawEntityIdentityFields(Entity& entity, std::string& statusMessage) {
