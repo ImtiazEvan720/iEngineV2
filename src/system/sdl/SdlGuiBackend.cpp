@@ -49,6 +49,10 @@ void SdlGuiBackend::update(float deltaTime) {
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
+
+#ifdef IENGINE_WITH_EDITOR
+    levelEditor.updateEditorOnly(deltaTime);
+#endif
 }
 
 void SdlGuiBackend::render(const InputSystem& inputSystem) {

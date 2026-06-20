@@ -2,6 +2,7 @@
 
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
+#include "system/ProjectManager.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -36,7 +37,7 @@ std::filesystem::path findAssetsRoot() {
         }
     }
 
-    return "Assets";
+    return ProjectManager::getInstance().getAssetsPath();
 }
 
 std::vector<TextureAsset*> getLoadedTextureAssets() {

@@ -12,7 +12,12 @@ CollisionComponent::CollisionComponent(float width, float height)
     : CollisionComponent(width, height, BodyType::Static, false, "Collider") {}
 
 CollisionComponent::CollisionComponent(float width, float height, BodyType bodyType, bool isSensor, std::string name)
-    : width(width), height(height), bodyType(bodyType), sensor(isSensor), name(std::move(name)) {}
+    : width(width),
+      height(height),
+      offset(Vector2F::zero()),
+      bodyType(bodyType),
+      sensor(isSensor),
+      name(std::move(name)) {}
 
 void CollisionComponent::onStart() {
     PhysicsSystem& physicsSystem = PhysicsSystem::getInstance();
@@ -31,7 +36,7 @@ void CollisionComponent::onStart() {
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = toBox2DBodyType(bodyType);
     const Vector2F worldPosition = transform->getWorldPosition();
-    bodyDef.position = {worldPosition.x, worldPosition.y};
+    bodyDef.position = {worldPosition.x + offset.x, worldPosition.y + offset.y};
     bodyDef.rotation = b2MakeRot(transform->getWorldRotation() * degreesToRadians);
     bodyDef.userData = this;
 
@@ -81,6 +86,10 @@ const std::string& CollisionComponent::getName() const {
     return name;
 }
 
+const Vector2F& CollisionComponent::getOffset() const {
+    return offset;
+}
+
 float CollisionComponent::getWidth() const {
     return width;
 }
@@ -99,6 +108,11 @@ bool CollisionComponent::isSensor() const {
 
 void CollisionComponent::setName(const std::string& name) {
     this->name = name;
+}
+
+void CollisionComponent::setOffset(const Vector2F& offset) {
+    this->offset = offset;
+    syncBodyToTransform();
 }
 
 void CollisionComponent::setSize(float width, float height) {
@@ -144,7 +158,11 @@ void CollisionComponent::syncBodyToTransform() {
 
     constexpr float degreesToRadians = 3.14159265358979323846f / 180.0f;
     const Vector2F worldPosition = transform->getWorldPosition();
-    b2Body_SetTransform(bodyId, {worldPosition.x, worldPosition.y}, b2MakeRot(transform->getWorldRotation() * degreesToRadians));
+    b2Body_SetTransform(
+        bodyId,
+        {worldPosition.x + offset.x, worldPosition.y + offset.y},
+        b2MakeRot(transform->getWorldRotation() * degreesToRadians)
+    );
 }
 
 b2BodyType CollisionComponent::toBox2DBodyType(BodyType bodyType) {

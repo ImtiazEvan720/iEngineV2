@@ -10,6 +10,7 @@
 #include "misc/Sprite.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
+#include "system/ProjectManager.h"
 #include "system/Renderer.h"
 
 #include "imgui.h"
@@ -66,7 +67,7 @@ std::filesystem::path findAssetsRoot() {
         }
     }
 
-    return "Assets";
+    return ProjectManager::getInstance().getAssetsPath();
 }
 
 tinyxml2::XMLElement* findTileElementById(tinyxml2::XMLElement* tilesetRoot, int tileId) {

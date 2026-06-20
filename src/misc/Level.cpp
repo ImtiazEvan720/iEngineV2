@@ -148,9 +148,12 @@ void saveCollisionComponent(
     const CollisionComponent& collisionComponent
 ) {
     tinyxml2::XMLElement* component = addComponentElement(document, entityElement, "CollisionComponent");
+    const Vector2F& offset = collisionComponent.getOffset();
     component->SetAttribute("name", collisionComponent.getName().c_str());
     component->SetAttribute("width", collisionComponent.getWidth());
     component->SetAttribute("height", collisionComponent.getHeight());
+    component->SetAttribute("offsetX", offset.x);
+    component->SetAttribute("offsetY", offset.y);
     component->SetAttribute("bodyType", bodyTypeToString(collisionComponent.getBodyType()));
     component->SetAttribute("isSensor", boolText(collisionComponent.isSensor()));
 }
@@ -256,13 +259,17 @@ bool addComponentFromElement(const tinyxml2::XMLElement& component, Entity& enti
     }
 
     if (componentType == "CollisionComponent") {
-        entity.addComponent<CollisionComponent>(
+        CollisionComponent& collisionComponent = entity.addComponent<CollisionComponent>(
             component.FloatAttribute("width", 1.0f),
             component.FloatAttribute("height", 1.0f),
             parseBodyType(component.Attribute("bodyType") == nullptr ? "Static" : component.Attribute("bodyType")),
             parseBool(component.Attribute("isSensor"), false),
             component.Attribute("name") == nullptr ? "Collider" : component.Attribute("name")
         );
+        collisionComponent.setOffset(Vector2F(
+            component.FloatAttribute("offsetX", 0.0f),
+            component.FloatAttribute("offsetY", 0.0f)
+        ));
         return true;
     }
 

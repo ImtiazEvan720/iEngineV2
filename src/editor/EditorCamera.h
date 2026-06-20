@@ -8,8 +8,8 @@
 class EditorCamera {
 public:
     void beginFrame();
-    void handleZoom(bool enabled, std::string& statusMessage);
-    void handlePan(bool enabled);
+    bool handleZoom(bool enabled, std::string& statusMessage);
+    bool handlePan(bool enabled);
 
     bool isPanActive() const;
     RenderRect getViewport() const;

@@ -21,6 +21,9 @@ public:
     bool buildTileLayerBatches(LevelAsset& levelAsset);
     void clearTileLayerBatches();
     void update(float deltaTime);
+    void setEditorViewportActivity(bool dragDropActive, bool gridVisible, bool cameraActive);
+    void updateEditorOnly(float deltaTime);
+    bool shouldRenderEditorViewport() const;
     void render();
 
     Renderer(const Renderer& other) = delete;
@@ -35,6 +38,10 @@ private:
     IRenderBackend* renderBackend = nullptr;
     IWindowBackend* windowBackend = nullptr;
     float renderScale = 4.0f;
+    bool editorDragDropActive = false;
+    bool editorGridVisible = false;
+    bool editorCameraActive = false;
+    bool editorViewportRenderRequested = false;
     Camera2D camera;
     TileLayerRenderer tileLayerRenderer;
 };

@@ -12,14 +12,14 @@ void EditorCamera::beginFrame() {
     consumedPinchZoomThisFrame = false;
 }
 
-void EditorCamera::handleZoom(bool enabled, std::string& statusMessage) {
+bool EditorCamera::handleZoom(bool enabled, std::string& statusMessage) {
     if (!enabled) {
-        return;
+        return false;
     }
 
     const ImGuiPayload* activePayload = ImGui::GetDragDropPayload();
     if (activePayload != nullptr) {
-        return;
+        return false;
     }
 
     const ImGuiIO& io = ImGui::GetIO();
@@ -33,7 +33,7 @@ void EditorCamera::handleZoom(bool enabled, std::string& statusMessage) {
     const bool wheelZoom = zoomGesture && io.MouseWheel != 0.0f;
 
     if (io.WantCaptureMouse || (!pinchZoom && !wheelZoom)) {
-        return;
+        return false;
     }
 
     float zoomMultiplier = 1.0f;
@@ -53,18 +53,19 @@ void EditorCamera::handleZoom(bool enabled, std::string& statusMessage) {
     );
 
     statusMessage = "Viewport zoom: " + std::to_string(renderer.getCamera().getZoom());
+    return true;
 }
 
-void EditorCamera::handlePan(bool enabled) {
+bool EditorCamera::handlePan(bool enabled) {
     constexpr float WheelPanPixels = 48.0f;
 
     if (!enabled) {
-        return;
+        return false;
     }
 
     const ImGuiPayload* activePayload = ImGui::GetDragDropPayload();
     if (activePayload != nullptr) {
-        return;
+        return false;
     }
 
     const ImGuiIO& io = ImGui::GetIO();
@@ -76,13 +77,13 @@ void EditorCamera::handlePan(bool enabled) {
     const bool dragPan = isPanActive();
 
     if (io.WantCaptureMouse || (!dragPan && !wheelPan)) {
-        return;
+        return false;
     }
 
     Camera2D& camera = Renderer::getInstance().getCamera();
     const float zoom = camera.getZoom();
     if (zoom <= 0.0f) {
-        return;
+        return false;
     }
 
     Vector2F position = camera.getPosition();
@@ -98,6 +99,7 @@ void EditorCamera::handlePan(bool enabled) {
     }
 
     camera.setPosition(position);
+    return dragPan || wheelPan;
 }
 
 bool EditorCamera::isPanActive() const {

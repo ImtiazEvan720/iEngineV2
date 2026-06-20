@@ -192,9 +192,12 @@ void saveCollision(
     const CollisionComponent& collisionComponent
 ) {
     tinyxml2::XMLElement* component = addComponentElement(document, entityElement, "CollisionComponent");
+    const Vector2F& offset = collisionComponent.getOffset();
     component->SetAttribute("name", collisionComponent.getName().c_str());
     component->SetAttribute("width", collisionComponent.getWidth());
     component->SetAttribute("height", collisionComponent.getHeight());
+    component->SetAttribute("offsetX", offset.x);
+    component->SetAttribute("offsetY", offset.y);
     component->SetAttribute("bodyType", bodyTypeToString(collisionComponent.getBodyType()));
     component->SetAttribute("isSensor", boolText(collisionComponent.isSensor()));
 }
@@ -388,13 +391,17 @@ Entity* PrefabSerializer::instantiate(
             const float height = component->FloatAttribute("height", 1.0f);
             const bool isSensor = parseBool(component->Attribute("isSensor"), false);
             const char* colliderName = component->Attribute("name");
-            entity.addComponent<CollisionComponent>(
+            CollisionComponent& collisionComponent = entity.addComponent<CollisionComponent>(
                 width,
                 height,
                 bodyTypeFromString(component->Attribute("bodyType")),
                 isSensor,
                 colliderName == nullptr ? "Collider" : colliderName
             );
+            collisionComponent.setOffset(Vector2F(
+                component->FloatAttribute("offsetX", 0.0f),
+                component->FloatAttribute("offsetY", 0.0f)
+            ));
         } else if (componentType == "ScriptComponent") {
             const char* scriptPath = component->Attribute("path");
             if (scriptPath != nullptr && scriptPath[0] != '\0') {

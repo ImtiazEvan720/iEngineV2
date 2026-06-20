@@ -228,9 +228,11 @@ set(IENGINE_SOURCES
     src/serialization/PrefabSerializer.cpp
     src/misc/TextureAsset.cpp
     src/system/AssetManager.cpp
+    src/system/EngineState.cpp
     src/system/InputListener.cpp
     src/system/InputSystem.cpp
     src/system/PhysicsSystem.cpp
+    src/system/ProjectManager.cpp
     src/system/RawInputSystem.cpp
     src/system/Renderer.cpp
     src/system/ScriptSystem.cpp
@@ -249,6 +251,7 @@ if(IENGINE_WITH_EDITOR)
         src/editor/EntityInspectorPanel.cpp
         src/editor/LevelEditor.cpp
         src/editor/LevelEditorFileExplorer.cpp
+        src/editor/LevelEditorProject.cpp
         src/editor/PrefabPanel.cpp
         src/editor/SpritePalettePanel.cpp
         src/editor/TilesetCreator.cpp
@@ -398,6 +401,7 @@ if(EMSCRIPTEN)
         "-sALLOW_MEMORY_GROWTH=1"
         "--preload-file=${IENGINE_RUNTIME_ASSETS_SOURCE}@/Assets"
         "--preload-file=${CMAKE_CURRENT_SOURCE_DIR}/config.xml@/config.xml"
+        "--preload-file=${CMAKE_CURRENT_SOURCE_DIR}/project.iengine@/project.iengine"
     )
     set_target_properties(iEngineV2 PROPERTIES SUFFIX ".html")
 elseif(IENGINE_TARGET_IOS)
@@ -419,6 +423,9 @@ elseif(IENGINE_TARGET_IOS)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
                 "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/config.xml"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/project.iengine"
+                "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/project.iengine"
             COMMAND ${CMAKE_COMMAND} -E rm -rf
                 "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/Assets"
             COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -430,6 +437,9 @@ elseif(IENGINE_TARGET_IOS)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
                 "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/config.xml"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/project.iengine"
+                "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/project.iengine"
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "${IENGINE_RUNTIME_ASSETS_SOURCE}"
                 "$<TARGET_BUNDLE_CONTENT_DIR:iEngineV2>/Assets"
@@ -451,6 +461,9 @@ else()
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
                 "$<TARGET_FILE_DIR:iEngineV2>/config.xml"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/project.iengine"
+                "$<TARGET_FILE_DIR:iEngineV2>/project.iengine"
             COMMAND ${CMAKE_COMMAND} -E rm -rf
                 "$<TARGET_FILE_DIR:iEngineV2>/Assets"
             COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -462,6 +475,9 @@ else()
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${CMAKE_CURRENT_SOURCE_DIR}/config.xml"
                 "$<TARGET_FILE_DIR:iEngineV2>/config.xml"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/project.iengine"
+                "$<TARGET_FILE_DIR:iEngineV2>/project.iengine"
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "${IENGINE_RUNTIME_ASSETS_SOURCE}"
                 "$<TARGET_FILE_DIR:iEngineV2>/Assets"

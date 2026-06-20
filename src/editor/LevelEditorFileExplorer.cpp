@@ -1,5 +1,7 @@
 #include "editor/LevelEditor.h"
 
+#include "system/ProjectManager.h"
+
 #include "imgui.h"
 
 #include <algorithm>
@@ -10,7 +12,7 @@ std::vector<std::filesystem::path> LevelEditor::getLevelFiles() const {
     namespace fs = std::filesystem;
 
     std::vector<fs::path> levelFiles;
-    const fs::path levelsDirectory("Assets/Levels");
+    const fs::path levelsDirectory = ProjectManager::getInstance().getAssetsPath() / "Levels";
     if (!fs::exists(levelsDirectory) || !fs::is_directory(levelsDirectory)) {
         return levelFiles;
     }
@@ -36,7 +38,9 @@ void LevelEditor::drawFileExplorerTab() {
 
     const std::vector<std::filesystem::path> levelFiles = getLevelFiles();
     if (levelFiles.empty()) {
-        ImGui::TextDisabled("No .ilevel files found in Assets/Levels.");
+        const std::filesystem::path levelsPath =
+            ProjectManager::getInstance().getAssetsPath() / "Levels";
+        ImGui::TextDisabled("No .ilevel files found in %s.", levelsPath.string().c_str());
         return;
     }
 

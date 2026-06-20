@@ -40,6 +40,10 @@ void SfmlGuiBackend::update(float deltaTime) {
     }
 
     ImGui::SFML::Update(windowBackend->getWindow(), sf::seconds(deltaTime));
+
+#ifdef IENGINE_WITH_EDITOR
+    levelEditor.updateEditorOnly(deltaTime);
+#endif
 }
 
 void SfmlGuiBackend::render(const InputSystem& inputSystem) {

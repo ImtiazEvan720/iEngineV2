@@ -32,6 +32,7 @@ private:
         float spriteOrigin[2] = {0.0f, 0.0f};
         float animationFrameDuration = 0.0f;
         bool animationPlaying = false;
+        float collisionOffset[2] = {0.0f, 0.0f};
         float collisionSize[2] = {0.0f, 0.0f};
         int collisionBodyType = 0;
         bool collisionSensor = false;

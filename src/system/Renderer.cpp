@@ -70,6 +70,28 @@ void Renderer::update(float deltaTime) {
     tileLayerRenderer.update(deltaTime);
 }
 
+void Renderer::setEditorViewportActivity(
+    bool dragDropActive,
+    bool gridVisible,
+    bool cameraActive
+) {
+    editorDragDropActive = dragDropActive;
+    editorGridVisible = gridVisible;
+    editorCameraActive = cameraActive;
+}
+
+void Renderer::updateEditorOnly(float deltaTime) {
+    (void)deltaTime;
+    editorViewportRenderRequested =
+        editorDragDropActive
+        || editorGridVisible
+        || editorCameraActive;
+}
+
+bool Renderer::shouldRenderEditorViewport() const {
+    return editorViewportRenderRequested;
+}
+
 void Renderer::render() {
     if (renderBackend == nullptr || windowBackend == nullptr) {
         return;

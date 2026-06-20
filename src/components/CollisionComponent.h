@@ -2,6 +2,7 @@
 #define IENGINEV2_COLLISIONCOMPONENT_H
 
 #include "components/Component.h"
+#include "math/Vector2F.h"
 
 #include <box2d/box2d.h>
 
@@ -34,11 +35,13 @@ public:
     b2BodyId getBodyId() const;
     b2ShapeId getShapeId() const;
     const std::string& getName() const;
+    const Vector2F& getOffset() const;
     float getWidth() const;
     float getHeight() const;
     BodyType getBodyType() const;
     bool isSensor() const;
     void setName(const std::string& name);
+    void setOffset(const Vector2F& offset);
     void setSize(float width, float height);
     void setBodyType(BodyType bodyType);
     void setSensor(bool sensor);
@@ -52,6 +55,7 @@ private:
 
     float width;
     float height;
+    Vector2F offset;
     BodyType bodyType;
     bool sensor;
     std::string name;

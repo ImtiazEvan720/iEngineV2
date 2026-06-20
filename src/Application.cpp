@@ -4,11 +4,13 @@
 #include "misc/Level.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
+#include "system/EngineState.h"
 #include "system/IGuiBackend.h"
 #include "system/IRenderBackend.h"
 #include "system/IWindowBackend.h"
 #include "system/InputSystem.h"
 #include "system/PhysicsSystem.h"
+#include "system/ProjectManager.h"
 #include "system/RawInputSystem.h"
 #include "system/Renderer.h"
 #include "system/sdl/SdlGuiBackend.h"
@@ -211,8 +213,10 @@ bool Application::initialize(int argc, char* argv[]) {
     int framerateLimit = 60;
     std::string windowTitle = "iEngine(Alpha)";
     const std::string runtimeDataRoot = getRuntimeDataRoot(argc, argv);
+    ProjectManager& projectManager = ProjectManager::getInstance();
+    projectManager.setDefaultProjectRoot(runtimeDataRoot);
+
     const std::string configPath = getRuntimePath(runtimeDataRoot, "config.xml");
-    const std::string assetsPath = getRuntimePath(runtimeDataRoot, "Assets");
 
     if (!loadWindowConfig(configPath, windowWidth, windowHeight, framerateLimit, windowTitle)) {
         return false;
@@ -260,12 +264,13 @@ bool Application::initialize(int argc, char* argv[]) {
     }
 
     AssetManager& assetManager = AssetManager::getInstance();
-    if (!assetManager.loadAssets(assetsPath)) {
+    if (!assetManager.loadAssets(projectManager.getAssetsPath().string())) {
         std::cerr << "One or more assets failed to load." << std::endl;
     }
 
     VirtualInputSystem& virtualInputSystem = VirtualInputSystem::getInstance();
-    const std::string inputBindingsPath = getRuntimePath(runtimeDataRoot, "Assets/Input/default.input.xml");
+    const std::string inputBindingsPath =
+        (projectManager.getAssetsPath() / "Input" / "default.input.xml").string();
     std::string inputBindingsError;
     if (!virtualInputSystem.loadBindingsFromFile(inputBindingsPath, inputBindingsError)) {
         std::cerr << inputBindingsError << " Falling back to default input bindings." << std::endl;
@@ -285,7 +290,7 @@ bool Application::initialize(int argc, char* argv[]) {
 
     std::string errorMessage;
     Level startupLevel = Level::createEmpty();
-    const std::string startupLevelPath = getRuntimePath(runtimeDataRoot, Level::getCurrentLevelPath());
+    const std::string startupLevelPath = projectManager.getStartupLevelPath().string();
     if (Level::loadFromFile(startupLevelPath, startupLevel, errorMessage)) {
         Level::loadLevel(std::move(startupLevel));
     } else {
@@ -294,6 +299,12 @@ bool Application::initialize(int argc, char* argv[]) {
                   << std::endl;
         Level::loadLevel(Level::createEmpty());
     }
+
+#ifdef IENGINE_WITH_EDITOR
+    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Edit);
+#else
+    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Play);
+#endif
 
     previousTime = std::chrono::steady_clock::now();
     initialized = true;
@@ -323,11 +334,14 @@ void Application::tick() {
     virtualInputSystem.updateFromRawInput(rawInputSystem);
     virtualInputSystem.updateFromTouchControls(touchControlSystem);
 
-    PhysicsSystem::getInstance().update(deltaTime);
-    Level::getCurrentLevel().update(deltaTime);
-    Renderer::getInstance().update(deltaTime);
+    if (!EngineState::getInstance().isGamePaused()) {
+        PhysicsSystem::getInstance().update(deltaTime);
+        Level::getCurrentLevel().update(deltaTime);
+        Renderer::getInstance().update(deltaTime);
+    }
 
     guiBackend->update(deltaTime);
+    Renderer::getInstance().updateEditorOnly(deltaTime);
 
     windowBackend->beginFrame(RenderColor{45, 45, 50, 255});
     Renderer::getInstance().render();

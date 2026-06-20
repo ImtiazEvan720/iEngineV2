@@ -17,6 +17,7 @@
 #include "system/AssetManager.h"
 #include "system/IRenderBackend.h"
 #include "system/InputSystem.h"
+#include "system/ProjectManager.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -75,7 +76,8 @@ std::string sanitizePrefabName(const std::string& value) {
 }
 
 std::filesystem::path getPrefabPath(const std::string& prefabName) {
-    std::filesystem::path path = std::filesystem::path("Assets") / "Prefabs" / sanitizePrefabName(prefabName);
+    std::filesystem::path path =
+        ProjectManager::getInstance().getAssetsPath() / "Prefabs" / sanitizePrefabName(prefabName);
     path.replace_extension(".iprefab");
     return path;
 }
@@ -117,7 +119,8 @@ void removeDependencyIfPresent(Entity& entity) {
 
 std::vector<std::string> findLuaScripts() {
     std::vector<std::string> scripts;
-    const std::filesystem::path scriptsPath = std::filesystem::path("Assets") / "Scripts";
+    const std::filesystem::path scriptsPath =
+        ProjectManager::getInstance().getAssetsPath() / "Scripts";
 
     if (!std::filesystem::exists(scriptsPath)) {
         return scripts;
@@ -681,7 +684,9 @@ void EntityInspectorPanel::drawAddComponentCombo(Entity& entity, std::string& st
         }
 
         if (luaScripts.empty()) {
-            ImGui::TextDisabled("Add .lua files under Assets/Scripts.");
+            const std::filesystem::path scriptsPath =
+                ProjectManager::getInstance().getAssetsPath() / "Scripts";
+            ImGui::TextDisabled("Add .lua files under %s.", scriptsPath.string().c_str());
         } else {
             selectedScriptPath = luaScripts[static_cast<std::size_t>(selectedScriptIndex)];
         }
@@ -694,7 +699,9 @@ void EntityInspectorPanel::drawAddComponentCombo(Entity& entity, std::string& st
     if (ImGui::Button("Add Component")) {
         const ComponentAddEntry& entry = registry[static_cast<std::size_t>(selectedAddComponentIndex)];
         if (entry.needsScriptPath && selectedScriptPath.empty()) {
-            statusMessage = "No Lua scripts found under Assets/Scripts.";
+            const std::filesystem::path scriptsPath =
+                ProjectManager::getInstance().getAssetsPath() / "Scripts";
+            statusMessage = "No Lua scripts found under " + scriptsPath.string() + ".";
         } else if (entry.add(entity, selectedScriptPath)) {
             entity.addInputListeners(InputSystem::getInstance());
             syncEditStateFromEntity(entity, true);
@@ -884,6 +891,15 @@ void EntityInspectorPanel::drawCollisionComponentFields(
         statusMessage = "Updated CollisionComponent name.";
     }
 
+    ImGui::InputFloat2("Offset", entityEditState.collisionOffset, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        collisionComponent.setOffset(Vector2F(
+            entityEditState.collisionOffset[0],
+            entityEditState.collisionOffset[1]
+        ));
+        statusMessage = "Updated CollisionComponent offset.";
+    }
+
     ImGui::InputFloat2("Size", entityEditState.collisionSize, "%.2f");
     if (ImGui::IsItemDeactivatedAfterEdit()) {
         entityEditState.collisionSize[0] = std::max(0.001f, entityEditState.collisionSize[0]);
@@ -947,6 +963,9 @@ void EntityInspectorPanel::syncEditStateFromEntity(Entity& entity, bool force) {
     }
 
     if (CollisionComponent* collisionComponent = entity.getComponent<CollisionComponent>()) {
+        const Vector2F& offset = collisionComponent->getOffset();
+        entityEditState.collisionOffset[0] = offset.x;
+        entityEditState.collisionOffset[1] = offset.y;
         entityEditState.collisionSize[0] = collisionComponent->getWidth();
         entityEditState.collisionSize[1] = collisionComponent->getHeight();
         entityEditState.collisionBodyType = bodyTypeToIndex(collisionComponent->getBodyType());
