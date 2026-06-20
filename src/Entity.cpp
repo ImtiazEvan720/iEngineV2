@@ -9,6 +9,7 @@
 #include "system/InputListener.h"
 #include "system/InputSystem.h"
 
+#include <algorithm>
 #include <iostream>
 
 int Entity::globalId = 0;
@@ -22,12 +23,18 @@ Entity::~Entity() {
 
 Entity::Entity(Entity&& other) noexcept
     : components(std::move(other.components)),
+      parentEntity(other.parentEntity),
+      children(std::move(other.children)),
       name(std::move(other.name)),
       tag(std::move(other.tag)),
       id(other.id),
+      enabled(other.enabled),
       destroyed(other.destroyed),
       updating(false) {
     refreshComponentOwners();
+    rebindParentLinksFrom(&other);
+    other.parentEntity = nullptr;
+    other.children.clear();
 }
 
 Entity& Entity::operator=(Entity&& other) noexcept {
@@ -41,9 +48,15 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     name = std::move(other.name);
     tag = std::move(other.tag);
     id = other.id;
+    parentEntity = other.parentEntity;
+    children = std::move(other.children);
+    enabled = other.enabled;
     destroyed = other.destroyed;
     updating = false;
     refreshComponentOwners();
+    rebindParentLinksFrom(&other);
+    other.parentEntity = nullptr;
+    other.children.clear();
 
     return *this;
 }
@@ -52,10 +65,12 @@ void Entity::refreshComponentOwners() {
     for (const auto& component : components) {
         component->setEntity(this);
     }
+
+    syncTransformParent();
 }
 
 void Entity::update(float deltaTime) {
-    if (destroyed) {
+    if (destroyed || !enabled) {
         return;
     }
 
@@ -80,6 +95,15 @@ void Entity::destroy() {
     if (destroyed) {
         return;
     }
+
+    std::vector<Entity*> childSnapshot = children;
+    for (Entity* child : childSnapshot) {
+        if (child != nullptr && child->parentEntity == this) {
+            child->clearParent();
+        }
+    }
+    children.clear();
+    clearParent();
 
     destroyed = true;
 
@@ -107,6 +131,10 @@ bool Entity::isDestroyed() const {
 }
 
 void Entity::addInputListeners(InputSystem& inputSystem) {
+    if (!enabled) {
+        return;
+    }
+
     for (const auto& component : components) {
         if (auto* listener = dynamic_cast<InputListener*>(component.get())) {
             inputSystem.addListener(listener);
@@ -134,12 +162,171 @@ const std::string& Entity::getTag() const {
     return tag;
 }
 
+bool Entity::isEnabled() const {
+    return enabled;
+}
+
+Entity* Entity::getParent() {
+    return parentEntity;
+}
+
+const Entity* Entity::getParent() const {
+    return parentEntity;
+}
+
+const std::vector<Entity*>& Entity::getChildren() const {
+    return children;
+}
+
+bool Entity::isChildOf(const Entity& possibleParent) const {
+    const Entity* current = parentEntity;
+    while (current != nullptr) {
+        if (current == &possibleParent) {
+            return true;
+        }
+
+        current = current->parentEntity;
+    }
+
+    return false;
+}
+
+void Entity::setEnabled(bool enabled) {
+    if (this->enabled == enabled) {
+        return;
+    }
+
+    this->enabled = enabled;
+
+    if (!this->enabled) {
+        removeInputListeners(InputSystem::getInstance());
+    } else {
+        addInputListeners(InputSystem::getInstance());
+    }
+
+    for (const auto& component : components) {
+        component->onEnable(this->enabled);
+    }
+}
+
+bool Entity::setParent(Entity* parent, bool keepWorldTransform) {
+    if (parent == this) {
+        return false;
+    }
+
+    if (parent != nullptr && parent->isChildOf(*this)) {
+        return false;
+    }
+
+    if (parentEntity == parent) {
+        return true;
+    }
+
+    TransformComponent* transform = getComponent<TransformComponent>();
+    Vector2F worldPosition = Vector2F::zero();
+    float worldRotation = 0.0f;
+    if (transform != nullptr && keepWorldTransform) {
+        worldPosition = transform->getWorldPosition();
+        worldRotation = transform->getWorldRotation();
+    }
+
+    if (parentEntity != nullptr) {
+        parentEntity->removeChildReference(this);
+    }
+
+    parentEntity = parent;
+
+    if (parentEntity != nullptr
+        && std::find(
+            parentEntity->children.begin(),
+            parentEntity->children.end(),
+            this
+        ) == parentEntity->children.end()) {
+        parentEntity->children.push_back(this);
+    }
+
+    syncTransformParent();
+
+    if (transform != nullptr && keepWorldTransform) {
+        TransformComponent* parentTransform =
+            parentEntity == nullptr ? nullptr : parentEntity->getComponent<TransformComponent>();
+
+        if (parentTransform != nullptr) {
+            const Vector2F parentWorldPosition = parentTransform->getWorldPosition();
+            transform->setPosition(Vector2F(
+                worldPosition.x - parentWorldPosition.x,
+                worldPosition.y - parentWorldPosition.y
+            ));
+            transform->setRotation(worldRotation - parentTransform->getWorldRotation());
+        } else {
+            transform->setPosition(worldPosition);
+            transform->setRotation(worldRotation);
+        }
+    }
+
+    syncChildTransformParents();
+    return true;
+}
+
+void Entity::clearParent(bool keepWorldTransform) {
+    (void)setParent(nullptr, keepWorldTransform);
+}
+
 void Entity::setName(const std::string& name) {
     this->name = name;
 }
 
 void Entity::setTag(const std::string& tag) {
     this->tag = tag;
+}
+
+void Entity::removeChildReference(Entity* child) {
+    children.erase(
+        std::remove(children.begin(), children.end(), child),
+        children.end()
+    );
+}
+
+void Entity::syncTransformParent() {
+    TransformComponent* transform = getComponent<TransformComponent>();
+    if (transform == nullptr) {
+        return;
+    }
+
+    TransformComponent* parentTransform =
+        parentEntity == nullptr ? nullptr : parentEntity->getComponent<TransformComponent>();
+    transform->setParent(parentTransform);
+}
+
+void Entity::syncChildTransformParents() {
+    for (Entity* child : children) {
+        if (child != nullptr) {
+            child->syncTransformParent();
+        }
+    }
+}
+
+void Entity::rebindParentLinksFrom(Entity* oldAddress) {
+    if (oldAddress == nullptr) {
+        return;
+    }
+
+    if (parentEntity != nullptr) {
+        for (Entity*& child : parentEntity->children) {
+            if (child == oldAddress) {
+                child = this;
+            }
+        }
+    }
+
+    for (Entity* child : children) {
+        if (child != nullptr && child->parentEntity == oldAddress) {
+            child->parentEntity = this;
+            child->syncTransformParent();
+        }
+    }
+
+    syncTransformParent();
 }
 
 Entity* Entity::spawnPrefab(const std::string& prefabName, const Vector2F& position, float rotation) {

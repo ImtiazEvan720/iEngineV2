@@ -275,6 +275,7 @@ bool PrefabSerializer::saveEntity(const Entity& entity, const std::string& path,
     tinyxml2::XMLElement* entityElement = document.NewElement("entity");
     entityElement->SetAttribute("name", entity.getName().c_str());
     entityElement->SetAttribute("tag", entity.getTag().c_str());
+    entityElement->SetAttribute("enabled", entity.isEnabled());
     prefab->InsertEndChild(entityElement);
 
     if (const TransformComponent* transform = entity.getComponent<TransformComponent>()) {
@@ -351,6 +352,7 @@ Entity* PrefabSerializer::instantiate(
     Entity& entity = level.createEntity();
     entity.setName(entityElement->Attribute("name") == nullptr ? "PrefabEntity" : entityElement->Attribute("name"));
     entity.setTag(entityElement->Attribute("tag") == nullptr ? "Prefab" : entityElement->Attribute("tag"));
+    entity.setEnabled(entityElement->BoolAttribute("enabled", true));
 
     float rotation = 0.0f;
     for (const tinyxml2::XMLElement* component = entityElement->FirstChildElement("component");
@@ -408,7 +410,7 @@ Entity* PrefabSerializer::instantiate(
                 entity.addComponent<ScriptComponent>(scriptPath);
             }
         } else if (componentType == "PlayerController") {
-            entity.addComponent<PlayerController>();
+            entity.addComponent<ScriptComponent>("Assets/Scripts/player_controller.lua");
         } else if (componentType == "Brick") {
             entity.addComponent<Brick>();
         } else if (componentType == "Bullet") {

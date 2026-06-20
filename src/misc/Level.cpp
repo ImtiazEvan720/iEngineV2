@@ -20,7 +20,9 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace {
 std::string currentLevelPath = "Assets/Levels/current.ilevel";
@@ -282,7 +284,7 @@ bool addComponentFromElement(const tinyxml2::XMLElement& component, Entity& enti
     }
 
     if (componentType == "PlayerController") {
-        entity.addComponent<PlayerController>();
+        entity.addComponent<ScriptComponent>("Assets/Scripts/player_controller.lua");
         return true;
     }
 
@@ -346,6 +348,10 @@ bool Level::saveCurrentLevel(const std::string& path, std::string& errorMessage)
         entityElement->SetAttribute("id", entity.getId());
         entityElement->SetAttribute("name", entity.getName().c_str());
         entityElement->SetAttribute("tag", entity.getTag().c_str());
+        entityElement->SetAttribute("enabled", entity.isEnabled());
+        if (const Entity* parent = entity.getParent()) {
+            entityElement->SetAttribute("parentId", parent->getId());
+        }
         entitiesElement->InsertEndChild(entityElement);
 
         if (const TransformComponent* transform = entity.getComponent<TransformComponent>()) {
@@ -424,6 +430,13 @@ bool Level::loadFromFile(const std::string& path, Level& level, std::string& err
 
     Level loadedLevel = createEmpty();
     loadedLevel.sourcePath = path;
+    std::unordered_map<int, Entity*> entitiesBySavedId;
+
+    struct PendingParentLink {
+        Entity* entity = nullptr;
+        int parentId = -1;
+    };
+    std::vector<PendingParentLink> pendingParentLinks;
 
     for (const tinyxml2::XMLElement* entityElement = entitiesElement == nullptr ? nullptr : entitiesElement->FirstChildElement("entity");
          entityElement != nullptr;
@@ -431,6 +444,17 @@ bool Level::loadFromFile(const std::string& path, Level& level, std::string& err
         Entity& entity = loadedLevel.createEntity();
         entity.setName(entityElement->Attribute("name") == nullptr ? "Entity" : entityElement->Attribute("name"));
         entity.setTag(entityElement->Attribute("tag") == nullptr ? "Default" : entityElement->Attribute("tag"));
+        entity.setEnabled(entityElement->BoolAttribute("enabled", true));
+
+        const int savedEntityId = entityElement->IntAttribute("id", -1);
+        if (savedEntityId >= 0) {
+            entitiesBySavedId[savedEntityId] = &entity;
+        }
+
+        const int parentId = entityElement->IntAttribute("parentId", -1);
+        if (parentId >= 0) {
+            pendingParentLinks.push_back(PendingParentLink{&entity, parentId});
+        }
 
         const tinyxml2::XMLElement* transformElement = nullptr;
         const tinyxml2::XMLElement* collisionElement = nullptr;
@@ -468,6 +492,13 @@ bool Level::loadFromFile(const std::string& path, Level& level, std::string& err
             if (!addComponentFromElement(*component, entity, errorMessage)) {
                 return false;
             }
+        }
+    }
+
+    for (const PendingParentLink& pendingLink : pendingParentLinks) {
+        const auto parentIterator = entitiesBySavedId.find(pendingLink.parentId);
+        if (pendingLink.entity != nullptr && parentIterator != entitiesBySavedId.end()) {
+            pendingLink.entity->setParent(parentIterator->second, false);
         }
     }
 
@@ -605,7 +636,7 @@ const std::deque<Entity>& Level::getEntities() const {
 
 void Level::update(float deltaTime) {
     for (Entity& entity : entities) {
-        if (entity.isDestroyed()) {
+        if (entity.isDestroyed() || !entity.isEnabled()) {
             continue;
         }
 

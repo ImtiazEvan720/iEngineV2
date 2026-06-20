@@ -339,7 +339,7 @@ void SpritePalettePanel::drawSelectedTilesetGrid(std::string& statusMessage) {
                 );
             }
 
-            if (ImGui::BeginDragDropSource()) {
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
                 const TileDragPayload payload{
                     selectedTilesetIndex,
                     tileId

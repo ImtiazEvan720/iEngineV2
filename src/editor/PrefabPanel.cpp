@@ -174,7 +174,7 @@ void PrefabPanel::draw(std::string& statusMessage) {
                 ImGui::SetTooltip("%s", prefab.path.c_str());
             }
 
-            if (ImGui::BeginDragDropSource()) {
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
                 PrefabDragPayload payload{};
                 std::strncpy(payload.path, prefab.path.c_str(), EditorPrefabDrag::MaxPathLength - 1);
                 ImGui::SetDragDropPayload(EditorPrefabDrag::PayloadType, &payload, sizeof(payload));

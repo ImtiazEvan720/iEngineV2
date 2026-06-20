@@ -31,6 +31,18 @@
 #include <vector>
 
 namespace {
+constexpr const char* EntityParentDragPayloadType = "IENGINE_ENTITY_PARENT";
+
+Entity* findEntityById(Level& level, int entityId) {
+    for (Entity& entity : level.getEntities()) {
+        if (entity.getId() == entityId && !entity.isDestroyed()) {
+            return &entity;
+        }
+    }
+
+    return nullptr;
+}
+
 int bodyTypeToIndex(CollisionComponent::BodyType bodyType) {
     switch (bodyType) {
         case CollisionComponent::BodyType::Kinematic:
@@ -187,7 +199,10 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
             [](Entity& entity, const std::string& scriptPath) {
                 (void)scriptPath;
                 ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
-                return addComponentIfMissing<PlayerController>(entity);
+                return addComponentIfMissing<ScriptComponent>(
+                    entity,
+                    "Assets/Scripts/player_controller.lua"
+                );
             }
         },
         {
@@ -362,9 +377,26 @@ bool EntityInspectorPanel::draw(std::string& statusMessage) {
             ImGuiTreeNodeFlags_SpanAvailWidth
         );
 
+        if (ImGui::BeginDragDropTarget()) {
+            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
+            if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(int)) {
+                const int draggedEntityId = *static_cast<const int*>(payload->Data);
+                Entity* draggedEntity = findEntityById(level, draggedEntityId);
+                if (draggedEntity != nullptr) {
+                    draggedEntity->clearParent();
+                    syncEditStateFromEntity(*draggedEntity, true);
+                    statusMessage = "Cleared parent for entity " + std::to_string(draggedEntity->getId()) + ".";
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+
         if (levelOpen) {
             for (Entity& entity : entities) {
-                drawEntityTreeNode(entity, statusMessage);
+                if (!entity.isDestroyed() && entity.getParent() == nullptr) {
+                    drawEntityTreeNode(entity, statusMessage);
+                }
             }
 
             ImGui::TreePop();
@@ -420,6 +452,33 @@ void EntityInspectorPanel::drawEntityTreeNode(Entity& entity, std::string& statu
         selectEntity(entity);
     }
 
+    if (ImGui::BeginDragDropSource()) {
+        const int entityId = entity.getId();
+        ImGui::SetDragDropPayload(EntityParentDragPayloadType, &entityId, sizeof(entityId));
+        ImGui::Text("Entity: %s", entity.getName().c_str());
+        ImGui::EndDragDropSource();
+    }
+
+    if (ImGui::BeginDragDropTarget()) {
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
+        if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(int)) {
+            const int draggedEntityId = *static_cast<const int*>(payload->Data);
+            Entity* draggedEntity = findEntityById(Level::getCurrentLevel(), draggedEntityId);
+            if (draggedEntity != nullptr && draggedEntity != &entity) {
+                if (draggedEntity->setParent(&entity)) {
+                    syncEditStateFromEntity(*draggedEntity, true);
+                    statusMessage =
+                        "Parented entity " + std::to_string(draggedEntity->getId())
+                        + " to entity " + std::to_string(entity.getId()) + ".";
+                } else {
+                    statusMessage = "Cannot parent entity there.";
+                }
+            }
+        }
+
+        ImGui::EndDragDropTarget();
+    }
+
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "id: %d\nname: %s\ntag: %s",
@@ -432,6 +491,7 @@ void EntityInspectorPanel::drawEntityTreeNode(Entity& entity, std::string& statu
     if (open) {
         ImGui::Text("Id: %d", entity.getId());
         ImGui::Text("State: %s", entity.isDestroyed() ? "Destroyed" : "Active");
+        ImGui::Text("Enabled: %s", entity.isEnabled() ? "Yes" : "No");
 
         if (selectedEntityId == entity.getId()) {
             syncEditStateFromEntity(entity);
@@ -442,6 +502,23 @@ void EntityInspectorPanel::drawEntityTreeNode(Entity& entity, std::string& statu
         }
 
         drawEntityComponents(entity, statusMessage);
+
+        const std::vector<Entity*>& children = entity.getChildren();
+        if (!children.empty()
+            && ImGui::TreeNodeEx(
+                "Children",
+                ImGuiTreeNodeFlags_DefaultOpen |
+                ImGuiTreeNodeFlags_OpenOnArrow |
+                ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            for (Entity* child : children) {
+                if (child != nullptr && !child->isDestroyed()) {
+                    drawEntityTreeNode(*child, statusMessage);
+                }
+            }
+
+            ImGui::TreePop();
+        }
+
         ImGui::TreePop();
     }
 
@@ -748,6 +825,23 @@ void EntityInspectorPanel::drawEntityIdentityFields(Entity& entity, std::string&
         entity.setTag(entityEditState.tag);
         statusMessage = "Updated entity tag.";
     }
+
+    ImGui::Checkbox("Enabled", &entityEditState.enabled);
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        entity.setEnabled(entityEditState.enabled);
+        statusMessage = "Updated entity enabled state.";
+    }
+
+    if (Entity* parent = entity.getParent()) {
+        ImGui::Text("Parent: %s (%d)", parent->getName().c_str(), parent->getId());
+        if (ImGui::Button("Clear Parent")) {
+            entity.clearParent();
+            syncEditStateFromEntity(entity, true);
+            statusMessage = "Cleared entity parent.";
+        }
+    } else {
+        ImGui::TextUnformatted("Parent: none");
+    }
 }
 
 bool EntityInspectorPanel::drawPrefabActions(Level& level, std::string& statusMessage) {
@@ -933,6 +1027,7 @@ void EntityInspectorPanel::syncEditStateFromEntity(Entity& entity, bool force) {
     entityEditState.entityId = entity.getId();
     entityEditState.name = entity.getName();
     entityEditState.tag = entity.getTag();
+    entityEditState.enabled = entity.isEnabled();
 
     if (TransformComponent* transform = entity.getComponent<TransformComponent>()) {
         const Vector2F& position = transform->getPosition();
@@ -972,4 +1067,5 @@ void EntityInspectorPanel::syncEditStateFromEntity(Entity& entity, bool force) {
         entityEditState.collisionSensor = collisionComponent->isSensor();
         entityEditState.collisionName = collisionComponent->getName();
     }
+    entityEditState.enabled = entity.isEnabled();
 }

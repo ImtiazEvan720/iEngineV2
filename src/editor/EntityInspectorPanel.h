@@ -25,6 +25,7 @@ private:
         int entityId = -1;
         std::string name;
         std::string tag;
+        bool enabled = true;
         float position[2] = {0.0f, 0.0f};
         float rotation = 0.0f;
         float spriteSource[4] = {0.0f, 0.0f, 0.0f, 0.0f};

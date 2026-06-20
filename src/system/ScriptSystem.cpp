@@ -1,9 +1,11 @@
 #include "system/ScriptSystem.h"
 
 #include "Entity.h"
+#include "components/AnimationComponent.h"
 #include "components/ScriptComponent.h"
 #include "components/TransformComponent.h"
 #include "math/Vector2F.h"
+#include "system/VirtualInputSystem.h"
 
 #ifdef IENGINE_EMBED_LUA_SCRIPTS
 #include "EmbeddedScripts.h"
@@ -135,6 +137,33 @@ void ScriptSystem::bindEngineTypes() {
         std::cout << "[Lua] " << message << std::endl;
     };
 
+    sol::table inputTable = lua.create_table();
+    inputTable["isActionDown"] = [](const std::string& actionName) {
+        return VirtualInputSystem::getInstance().isActionDown(inputActionFromString(actionName));
+    };
+    inputTable["wasActionPressed"] = [](const std::string& actionName) {
+        return VirtualInputSystem::getInstance().wasActionPressed(inputActionFromString(actionName));
+    };
+    inputTable["wasActionReleased"] = [](const std::string& actionName) {
+        return VirtualInputSystem::getInstance().wasActionReleased(inputActionFromString(actionName));
+    };
+    lua["Input"] = inputTable;
+
+    lua["spawnPrefab"] = sol::overload(
+        [](const std::string& prefabName, float x, float y) {
+            return Entity::spawnPrefab(prefabName, x, y);
+        },
+        [](const std::string& prefabName, float x, float y, float rotation) {
+            return Entity::spawnPrefab(prefabName, x, y, rotation);
+        },
+        [](const std::string& prefabName, const Vector2F& position) {
+            return Entity::spawnPrefab(prefabName, position);
+        },
+        [](const std::string& prefabName, const Vector2F& position, float rotation) {
+            return Entity::spawnPrefab(prefabName, position, rotation);
+        }
+    );
+
     lua.new_usertype<Vector2F>(
         "Vector2F",
         sol::constructors<Vector2F(float, float)>(),
@@ -154,6 +183,16 @@ void ScriptSystem::bindEngineTypes() {
         "setRotation", &TransformComponent::setRotation
     );
 
+    lua.new_usertype<AnimationComponent>(
+        "AnimationComponent",
+        "play", &AnimationComponent::play,
+        "pause", &AnimationComponent::pause,
+        "reset", &AnimationComponent::reset,
+        "isPlaying", &AnimationComponent::isPlaying,
+        "isFinished", &AnimationComponent::isFinished,
+        "setLooping", &AnimationComponent::setLooping
+    );
+
     lua.new_usertype<Entity>(
         "Entity",
         "getId", &Entity::getId,
@@ -163,6 +202,9 @@ void ScriptSystem::bindEngineTypes() {
         "setTag", &Entity::setTag,
         "getTransform", [](Entity& entity) {
             return entity.getComponent<TransformComponent>();
+        },
+        "getAnimation", [](Entity& entity) {
+            return entity.getComponent<AnimationComponent>();
         },
         "spawnPrefab", sol::overload(
             [](const std::string& prefabName, float x, float y) {

@@ -30,6 +30,7 @@ public:
 
     void onStart() override;
     void onUpdate(float deltaTime) override;
+    void onEnable(bool value) override;
     void onDestroy() override;
 
     b2BodyId getBodyId() const;

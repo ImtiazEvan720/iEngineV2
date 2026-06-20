@@ -66,6 +66,20 @@ void CollisionComponent::onUpdate(float deltaTime) {
     syncBodyToTransform();
 }
 
+void CollisionComponent::onEnable(bool value) {
+    if (!value) {
+        onDestroy();
+        return;
+    }
+
+    if (!b2Body_IsValid(bodyId)) {
+        onStart();
+        return;
+    }
+
+    syncBodyToTransform();
+}
+
 void CollisionComponent::onDestroy() {
     if (b2Body_IsValid(bodyId)) {
         b2DestroyBody(bodyId);

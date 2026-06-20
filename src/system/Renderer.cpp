@@ -102,7 +102,7 @@ void Renderer::render() {
 
     const Level& level = Level::getCurrentLevel();
     for (const Entity& entity : level.getEntities()) {
-        if (entity.isDestroyed()) {
+        if (entity.isDestroyed() || !entity.isEnabled()) {
             continue;
         }
 

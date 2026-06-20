@@ -33,6 +33,11 @@ public:
         reference.setEntity(this);
         components.push_back(std::move(component));
         reference.onStart();
+        if (!enabled) {
+            reference.onEnable(false);
+        }
+        syncTransformParent();
+        syncChildTransformParents();
 
         return reference;
     }
@@ -74,6 +79,8 @@ public:
             if (dynamic_cast<TComponent*>(it->get()) != nullptr) {
                 (*it)->onDestroy();
                 components.erase(it);
+                syncTransformParent();
+                syncChildTransformParents();
                 return true;
             }
         }
@@ -90,9 +97,17 @@ public:
     int getId() const;
     const std::string& getName() const;
     const std::string& getTag() const;
+    bool isEnabled() const;
+    Entity* getParent();
+    const Entity* getParent() const;
+    const std::vector<Entity*>& getChildren() const;
+    bool isChildOf(const Entity& possibleParent) const;
 
     void setName(const std::string& name);
     void setTag(const std::string& tag);
+    void setEnabled(bool enabled);
+    bool setParent(Entity* parent, bool keepWorldTransform = true);
+    void clearParent(bool keepWorldTransform = true);
 
     static Entity* spawnPrefab(const std::string& prefabName, const Vector2F& position, float rotation = 0.0f);
     static Entity* spawnPrefab(const std::string& prefabName, float x, float y, float rotation = 0.0f);
@@ -102,11 +117,18 @@ private:
 
     void refreshComponentOwners();
     void destroyComponents();
+    void removeChildReference(Entity* child);
+    void syncTransformParent();
+    void syncChildTransformParents();
+    void rebindParentLinksFrom(Entity* oldAddress);
 
     std::vector<std::unique_ptr<Component>> components;
+    Entity* parentEntity = nullptr;
+    std::vector<Entity*> children;
     std::string name;
     std::string tag;
     int id;
+    bool enabled = true;
     bool destroyed = false;
     bool updating = false;
 };

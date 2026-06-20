@@ -247,14 +247,17 @@ set(IENGINE_SOURCES
 if(IENGINE_WITH_EDITOR)
     list(APPEND IENGINE_SOURCES
         src/editor/BuildSystem.cpp
+        src/editor/ColliderGizmo.cpp
         src/editor/EditorCamera.cpp
         src/editor/EntityInspectorPanel.cpp
         src/editor/LevelEditor.cpp
         src/editor/LevelEditorFileExplorer.cpp
         src/editor/LevelEditorProject.cpp
+        src/editor/LevelEditorViewport.cpp
         src/editor/PrefabPanel.cpp
         src/editor/SpritePalettePanel.cpp
         src/editor/TilesetCreator.cpp
+        src/editor/TransformGizmo.cpp
         src/editor/ViewportGrid.cpp
     )
 endif()
