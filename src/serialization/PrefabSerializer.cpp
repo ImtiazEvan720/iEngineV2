@@ -24,8 +24,8 @@ std::vector<const Entity*> getSortedPrefabChildren(const Entity& entity) {
         children.begin(),
         children.end(),
         [](const Entity* left, const Entity* right) {
-            if (left->getEditorDisplayOrder() != right->getEditorDisplayOrder()) {
-                return left->getEditorDisplayOrder() < right->getEditorDisplayOrder();
+            if (left->getDisplayOrder() != right->getDisplayOrder()) {
+                return left->getDisplayOrder() < right->getDisplayOrder();
             }
 
             return left->getId() < right->getId();
@@ -44,7 +44,7 @@ void saveEntityRecursive(
     entityElement->SetAttribute("name", entity.getName().c_str());
     entityElement->SetAttribute("tag", entity.getTag().c_str());
     entityElement->SetAttribute("enabled", entity.isEnabled());
-    entityElement->SetAttribute("displayOrder", entity.getEditorDisplayOrder());
+    entityElement->SetAttribute("displayOrder", entity.getDisplayOrder());
     parentElement.InsertEndChild(entityElement);
 
     ComponentSerializerRegistry::getInstance().saveComponents(document, *entityElement, entity);
@@ -77,7 +77,7 @@ Entity* instantiateEntityRecursive(
     entity.setName(entityElement.Attribute("name") == nullptr ? "PrefabEntity" : entityElement.Attribute("name"));
     entity.setTag(entityElement.Attribute("tag") == nullptr ? "Prefab" : entityElement.Attribute("tag"));
     entity.setEnabled(entityElement.BoolAttribute("enabled", true));
-    entity.setEditorDisplayOrder(entityElement.IntAttribute("displayOrder", entity.getEditorDisplayOrder()));
+    entity.setDisplayOrder(entityElement.IntAttribute("displayOrder", entity.getDisplayOrder()));
 
     if (parent != nullptr && !entity.setParent(parent, false)) {
         errorMessage = "Failed to attach prefab child to parent entity.";

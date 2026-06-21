@@ -98,7 +98,7 @@ public:
     const std::string& getName() const;
     const std::string& getTag() const;
     bool isEnabled() const;
-    int getEditorDisplayOrder() const;
+    int getDisplayOrder() const;
     Entity* getParent();
     const Entity* getParent() const;
     const std::vector<Entity*>& getChildren() const;
@@ -107,7 +107,7 @@ public:
     void setName(const std::string& name);
     void setTag(const std::string& tag);
     void setEnabled(bool enabled);
-    void setEditorDisplayOrder(int order);
+    void setDisplayOrder(int order);
     bool setParent(Entity* parent, bool keepWorldTransform = true);
     void clearParent(bool keepWorldTransform = true);
 
@@ -130,7 +130,7 @@ private:
     std::string name;
     std::string tag;
     int id;
-    int editorDisplayOrder;
+    int displayOrder;
     bool enabled = true;
     bool destroyed = false;
     bool updating = false;

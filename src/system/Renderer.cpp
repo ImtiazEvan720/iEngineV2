@@ -6,7 +6,9 @@
 #include "misc/Level.h"
 #include "system/IWindowBackend.h"
 
+#include <algorithm>
 #include <iostream>
+#include <vector>
 
 Renderer& Renderer::getInstance() {
     static Renderer instance;
@@ -101,10 +103,29 @@ void Renderer::render() {
     tileLayerRenderer.render(*renderBackend, camera, viewport);
 
     const Level& level = Level::getCurrentLevel();
+    std::vector<const Entity*> renderableEntities;
     for (const Entity& entity : level.getEntities()) {
         if (entity.isDestroyed() || !entity.isEnabled()) {
             continue;
         }
+
+        renderableEntities.push_back(&entity);
+    }
+
+    std::sort(
+        renderableEntities.begin(),
+        renderableEntities.end(),
+        [](const Entity* left, const Entity* right) {
+            if (left->getDisplayOrder() != right->getDisplayOrder()) {
+                return left->getDisplayOrder() < right->getDisplayOrder();
+            }
+
+            return left->getId() < right->getId();
+        }
+    );
+
+    for (const Entity* renderableEntity : renderableEntities) {
+        const Entity& entity = *renderableEntity;
 
         const AnimationComponent* animationComponent = entity.getComponent<AnimationComponent>();
         const SpriteComponent* spriteComponent = entity.getComponent<SpriteComponent>();

@@ -15,7 +15,7 @@
 int Entity::globalId = 0;
 
 Entity::Entity()
-    : name("Entity"), tag("Default"), id(globalId++), editorDisplayOrder(id) {}
+    : name("Entity"), tag("Default"), id(globalId++), displayOrder(id) {}
 
 Entity::~Entity() {
     destroy();
@@ -28,7 +28,7 @@ Entity::Entity(Entity&& other) noexcept
       name(std::move(other.name)),
       tag(std::move(other.tag)),
       id(other.id),
-      editorDisplayOrder(other.editorDisplayOrder),
+      displayOrder(other.displayOrder),
       enabled(other.enabled),
       destroyed(other.destroyed),
       updating(false) {
@@ -49,7 +49,7 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     name = std::move(other.name);
     tag = std::move(other.tag);
     id = other.id;
-    editorDisplayOrder = other.editorDisplayOrder;
+    displayOrder = other.displayOrder;
     parentEntity = other.parentEntity;
     children = std::move(other.children);
     enabled = other.enabled;
@@ -173,8 +173,8 @@ bool Entity::isEnabled() const {
     return enabled;
 }
 
-int Entity::getEditorDisplayOrder() const {
-    return editorDisplayOrder;
+int Entity::getDisplayOrder() const {
+    return displayOrder;
 }
 
 Entity* Entity::getParent() {
@@ -220,8 +220,8 @@ void Entity::setEnabled(bool enabled) {
     }
 }
 
-void Entity::setEditorDisplayOrder(int order) {
-    editorDisplayOrder = order;
+void Entity::setDisplayOrder(int order) {
+    displayOrder = order;
 }
 
 bool Entity::setParent(Entity* parent, bool keepWorldTransform) {

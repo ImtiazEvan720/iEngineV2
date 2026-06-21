@@ -49,8 +49,8 @@ bool compareEntityDisplayOrder(const Entity* left, const Entity* right) {
         return left != nullptr;
     }
 
-    if (left->getEditorDisplayOrder() != right->getEditorDisplayOrder()) {
-        return left->getEditorDisplayOrder() < right->getEditorDisplayOrder();
+    if (left->getDisplayOrder() != right->getDisplayOrder()) {
+        return left->getDisplayOrder() < right->getDisplayOrder();
     }
 
     return left->getId() < right->getId();
@@ -93,7 +93,7 @@ std::vector<Entity*> getSortedSiblings(Level& level, Entity* parent) {
 void normalizeDisplayOrder(std::vector<Entity*>& entities) {
     for (std::size_t index = 0; index < entities.size(); ++index) {
         if (entities[index] != nullptr) {
-            entities[index]->setEditorDisplayOrder(static_cast<int>(index));
+            entities[index]->setDisplayOrder(static_cast<int>(index));
         }
     }
 }

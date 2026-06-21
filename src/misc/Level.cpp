@@ -349,7 +349,7 @@ bool Level::saveCurrentLevel(const std::string& path, std::string& errorMessage)
         entityElement->SetAttribute("name", entity.getName().c_str());
         entityElement->SetAttribute("tag", entity.getTag().c_str());
         entityElement->SetAttribute("enabled", entity.isEnabled());
-        entityElement->SetAttribute("displayOrder", entity.getEditorDisplayOrder());
+        entityElement->SetAttribute("displayOrder", entity.getDisplayOrder());
         if (const Entity* parent = entity.getParent()) {
             entityElement->SetAttribute("parentId", parent->getId());
         }
@@ -447,7 +447,7 @@ bool Level::loadFromFile(const std::string& path, Level& level, std::string& err
         entity.setName(entityElement->Attribute("name") == nullptr ? "Entity" : entityElement->Attribute("name"));
         entity.setTag(entityElement->Attribute("tag") == nullptr ? "Default" : entityElement->Attribute("tag"));
         entity.setEnabled(entityElement->BoolAttribute("enabled", true));
-        entity.setEditorDisplayOrder(entityElement->IntAttribute("displayOrder", defaultDisplayOrder));
+        entity.setDisplayOrder(entityElement->IntAttribute("displayOrder", defaultDisplayOrder));
         ++defaultDisplayOrder;
 
         const int savedEntityId = entityElement->IntAttribute("id", -1);
