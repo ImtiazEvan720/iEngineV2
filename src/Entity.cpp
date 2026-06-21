@@ -15,7 +15,7 @@
 int Entity::globalId = 0;
 
 Entity::Entity()
-    : name("Entity"), tag("Default"), id(globalId++) {}
+    : name("Entity"), tag("Default"), id(globalId++), editorDisplayOrder(id) {}
 
 Entity::~Entity() {
     destroy();
@@ -28,6 +28,7 @@ Entity::Entity(Entity&& other) noexcept
       name(std::move(other.name)),
       tag(std::move(other.tag)),
       id(other.id),
+      editorDisplayOrder(other.editorDisplayOrder),
       enabled(other.enabled),
       destroyed(other.destroyed),
       updating(false) {
@@ -48,6 +49,7 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     name = std::move(other.name);
     tag = std::move(other.tag);
     id = other.id;
+    editorDisplayOrder = other.editorDisplayOrder;
     parentEntity = other.parentEntity;
     children = std::move(other.children);
     enabled = other.enabled;
@@ -91,7 +93,7 @@ void Entity::update(float deltaTime) {
     }
 }
 
-void Entity::destroy() {
+void Entity::destroy(bool destroyChildren) {
     if (destroyed) {
         return;
     }
@@ -99,9 +101,14 @@ void Entity::destroy() {
     std::vector<Entity*> childSnapshot = children;
     for (Entity* child : childSnapshot) {
         if (child != nullptr && child->parentEntity == this) {
-            child->clearParent();
+            if (destroyChildren) {
+                child->destroy(destroyChildren);
+            } else {
+                child->clearParent();
+            }
         }
     }
+
     children.clear();
     clearParent();
 
@@ -166,6 +173,10 @@ bool Entity::isEnabled() const {
     return enabled;
 }
 
+int Entity::getEditorDisplayOrder() const {
+    return editorDisplayOrder;
+}
+
 Entity* Entity::getParent() {
     return parentEntity;
 }
@@ -207,6 +218,10 @@ void Entity::setEnabled(bool enabled) {
     for (const auto& component : components) {
         component->onEnable(this->enabled);
     }
+}
+
+void Entity::setEditorDisplayOrder(int order) {
+    editorDisplayOrder = order;
 }
 
 bool Entity::setParent(Entity* parent, bool keepWorldTransform) {

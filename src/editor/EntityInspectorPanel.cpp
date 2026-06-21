@@ -32,6 +32,7 @@
 
 namespace {
 constexpr const char* EntityParentDragPayloadType = "IENGINE_ENTITY_PARENT";
+constexpr const char* EntityReorderDragPayloadType = "IENGINE_ENTITY_REORDER";
 
 Entity* findEntityById(Level& level, int entityId) {
     for (Entity& entity : level.getEntities()) {
@@ -41,6 +42,114 @@ Entity* findEntityById(Level& level, int entityId) {
     }
 
     return nullptr;
+}
+
+bool compareEntityDisplayOrder(const Entity* left, const Entity* right) {
+    if (left == nullptr || right == nullptr) {
+        return left != nullptr;
+    }
+
+    if (left->getEditorDisplayOrder() != right->getEditorDisplayOrder()) {
+        return left->getEditorDisplayOrder() < right->getEditorDisplayOrder();
+    }
+
+    return left->getId() < right->getId();
+}
+
+std::vector<Entity*> getSortedRootEntities(Level& level) {
+    std::vector<Entity*> result;
+
+    for (Entity& entity : level.getEntities()) {
+        if (!entity.isDestroyed() && entity.getParent() == nullptr) {
+            result.push_back(&entity);
+        }
+    }
+
+    std::sort(result.begin(), result.end(), compareEntityDisplayOrder);
+    return result;
+}
+
+std::vector<Entity*> getSortedChildren(Entity& entity) {
+    std::vector<Entity*> result;
+
+    for (Entity* child : entity.getChildren()) {
+        if (child != nullptr && !child->isDestroyed()) {
+            result.push_back(child);
+        }
+    }
+
+    std::sort(result.begin(), result.end(), compareEntityDisplayOrder);
+    return result;
+}
+
+std::vector<Entity*> getSortedSiblings(Level& level, Entity* parent) {
+    if (parent == nullptr) {
+        return getSortedRootEntities(level);
+    }
+
+    return getSortedChildren(*parent);
+}
+
+void normalizeDisplayOrder(std::vector<Entity*>& entities) {
+    for (std::size_t index = 0; index < entities.size(); ++index) {
+        if (entities[index] != nullptr) {
+            entities[index]->setEditorDisplayOrder(static_cast<int>(index));
+        }
+    }
+}
+
+bool moveEntityDisplayOrder(
+    Level& level,
+    Entity& draggedEntity,
+    Entity& targetEntity,
+    bool beforeTarget
+) {
+    if (&draggedEntity == &targetEntity) {
+        return false;
+    }
+
+    if (draggedEntity.getParent() != targetEntity.getParent()) {
+        return false;
+    }
+
+    std::vector<Entity*> siblings = getSortedSiblings(level, targetEntity.getParent());
+    auto draggedIterator = std::find(siblings.begin(), siblings.end(), &draggedEntity);
+    auto targetIterator = std::find(siblings.begin(), siblings.end(), &targetEntity);
+    if (draggedIterator == siblings.end() || targetIterator == siblings.end()) {
+        return false;
+    }
+
+    Entity* dragged = *draggedIterator;
+    siblings.erase(draggedIterator);
+
+    targetIterator = std::find(siblings.begin(), siblings.end(), &targetEntity);
+    if (targetIterator == siblings.end()) {
+        siblings.push_back(dragged);
+    } else {
+        if (!beforeTarget) {
+            ++targetIterator;
+        }
+
+        siblings.insert(targetIterator, dragged);
+    }
+
+    normalizeDisplayOrder(siblings);
+    return true;
+}
+
+void moveEntityToSiblingEnd(Level& level, Entity& entity) {
+    std::vector<Entity*> siblings = getSortedSiblings(level, entity.getParent());
+    siblings.erase(
+        std::remove(siblings.begin(), siblings.end(), &entity),
+        siblings.end()
+    );
+    siblings.push_back(&entity);
+    normalizeDisplayOrder(siblings);
+}
+
+void moveEntityToRootEnd(Level& level, Entity& entity) {
+    entity.clearParent();
+    moveEntityToSiblingEnd(level, entity);
 }
 
 int bodyTypeToIndex(CollisionComponent::BodyType bodyType) {
@@ -378,14 +487,26 @@ bool EntityInspectorPanel::draw(std::string& statusMessage) {
         );
 
         if (ImGui::BeginDragDropTarget()) {
-            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
-            if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(int)) {
-                const int draggedEntityId = *static_cast<const int*>(payload->Data);
+            const ImGuiPayload* reorderPayload = ImGui::AcceptDragDropPayload(EntityReorderDragPayloadType);
+            if (reorderPayload != nullptr && reorderPayload->IsDelivery() && reorderPayload->DataSize == sizeof(int)) {
+                const int draggedEntityId = *static_cast<const int*>(reorderPayload->Data);
+                Entity* draggedEntity = findEntityById(level, draggedEntityId);
+                if (draggedEntity != nullptr) {
+                    moveEntityToRootEnd(level, *draggedEntity);
+                    syncEditStateFromEntity(*draggedEntity, true);
+                    statusMessage = "Moved entity " + std::to_string(draggedEntity->getId()) + " to root order.";
+                }
+            } else {
+                const ImGuiPayload* parentPayload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
+                if (parentPayload != nullptr && parentPayload->IsDelivery() && parentPayload->DataSize == sizeof(int)) {
+                    const int draggedEntityId = *static_cast<const int*>(parentPayload->Data);
                 Entity* draggedEntity = findEntityById(level, draggedEntityId);
                 if (draggedEntity != nullptr) {
                     draggedEntity->clearParent();
+                    moveEntityToSiblingEnd(level, *draggedEntity);
                     syncEditStateFromEntity(*draggedEntity, true);
                     statusMessage = "Cleared parent for entity " + std::to_string(draggedEntity->getId()) + ".";
+                }
                 }
             }
 
@@ -393,9 +514,10 @@ bool EntityInspectorPanel::draw(std::string& statusMessage) {
         }
 
         if (levelOpen) {
-            for (Entity& entity : entities) {
-                if (!entity.isDestroyed() && entity.getParent() == nullptr) {
-                    drawEntityTreeNode(entity, statusMessage);
+            std::vector<Entity*> rootEntities = getSortedRootEntities(level);
+            for (Entity* entity : rootEntities) {
+                if (entity != nullptr) {
+                    drawEntityTreeNode(*entity, statusMessage);
                 }
             }
 
@@ -404,6 +526,7 @@ bool EntityInspectorPanel::draw(std::string& statusMessage) {
     }
 
     ImGui::EndChild();
+    processPendingDelete(level, statusMessage);
     return prefabSaved;
 }
 
@@ -427,6 +550,15 @@ void EntityInspectorPanel::clearSelection() {
     entityEditState = EntityEditState{};
 }
 
+void EntityInspectorPanel::requestDeleteSelected(std::string& statusMessage) {
+    if (selectedEntityId < 0) {
+        statusMessage = "No entity selected.";
+        return;
+    }
+
+    pendingDeleteEntityId = selectedEntityId;
+}
+
 void EntityInspectorPanel::drawEntityTreeNode(Entity& entity, std::string& statusMessage) {
     ImGui::PushID(entity.getId());
 
@@ -446,6 +578,18 @@ void EntityInspectorPanel::drawEntityTreeNode(Entity& entity, std::string& statu
         flags |= ImGuiTreeNodeFlags_Selected;
     }
 
+    if (ImGui::SmallButton("::")) {
+        selectEntity(entity);
+    }
+
+    if (ImGui::BeginDragDropSource()) {
+        const int entityId = entity.getId();
+        ImGui::SetDragDropPayload(EntityReorderDragPayloadType, &entityId, sizeof(entityId));
+        ImGui::Text("Move: %s", entity.getName().c_str());
+        ImGui::EndDragDropSource();
+    }
+
+    ImGui::SameLine();
     const bool open = ImGui::TreeNodeEx(label.c_str(), flags);
 
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
@@ -460,18 +604,40 @@ void EntityInspectorPanel::drawEntityTreeNode(Entity& entity, std::string& statu
     }
 
     if (ImGui::BeginDragDropTarget()) {
-        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
-        if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(int)) {
-            const int draggedEntityId = *static_cast<const int*>(payload->Data);
+        Level& level = Level::getCurrentLevel();
+        const ImGuiPayload* reorderPayload = ImGui::AcceptDragDropPayload(EntityReorderDragPayloadType);
+        if (reorderPayload != nullptr && reorderPayload->IsDelivery() && reorderPayload->DataSize == sizeof(int)) {
+            const int draggedEntityId = *static_cast<const int*>(reorderPayload->Data);
             Entity* draggedEntity = findEntityById(Level::getCurrentLevel(), draggedEntityId);
             if (draggedEntity != nullptr && draggedEntity != &entity) {
-                if (draggedEntity->setParent(&entity)) {
+                const ImVec2 itemMin = ImGui::GetItemRectMin();
+                const ImVec2 itemMax = ImGui::GetItemRectMax();
+                const bool beforeTarget = ImGui::GetMousePos().y < ((itemMin.y + itemMax.y) * 0.5f);
+                if (moveEntityDisplayOrder(level, *draggedEntity, entity, beforeTarget)) {
                     syncEditStateFromEntity(*draggedEntity, true);
                     statusMessage =
-                        "Parented entity " + std::to_string(draggedEntity->getId())
-                        + " to entity " + std::to_string(entity.getId()) + ".";
+                        "Reordered entity " + std::to_string(draggedEntity->getId())
+                        + (beforeTarget ? " before " : " after ")
+                        + std::to_string(entity.getId()) + ".";
                 } else {
-                    statusMessage = "Cannot parent entity there.";
+                    statusMessage = "Can only reorder entities with the same parent.";
+                }
+            }
+        } else {
+            const ImGuiPayload* parentPayload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
+            if (parentPayload != nullptr && parentPayload->IsDelivery() && parentPayload->DataSize == sizeof(int)) {
+                const int draggedEntityId = *static_cast<const int*>(parentPayload->Data);
+                Entity* draggedEntity = findEntityById(Level::getCurrentLevel(), draggedEntityId);
+                if (draggedEntity != nullptr && draggedEntity != &entity) {
+                    if (draggedEntity->setParent(&entity)) {
+                        moveEntityToSiblingEnd(level, *draggedEntity);
+                        syncEditStateFromEntity(*draggedEntity, true);
+                        statusMessage =
+                            "Parented entity " + std::to_string(draggedEntity->getId())
+                            + " to entity " + std::to_string(entity.getId()) + ".";
+                    } else {
+                        statusMessage = "Cannot parent entity there.";
+                    }
                 }
             }
         }
@@ -503,7 +669,7 @@ void EntityInspectorPanel::drawEntityTreeNode(Entity& entity, std::string& statu
 
         drawEntityComponents(entity, statusMessage);
 
-        const std::vector<Entity*>& children = entity.getChildren();
+        std::vector<Entity*> children = getSortedChildren(entity);
         if (!children.empty()
             && ImGui::TreeNodeEx(
                 "Children",
@@ -511,12 +677,16 @@ void EntityInspectorPanel::drawEntityTreeNode(Entity& entity, std::string& statu
                 ImGuiTreeNodeFlags_OpenOnArrow |
                 ImGuiTreeNodeFlags_SpanAvailWidth)) {
             for (Entity* child : children) {
-                if (child != nullptr && !child->isDestroyed()) {
+                if (child != nullptr) {
                     drawEntityTreeNode(*child, statusMessage);
                 }
             }
 
             ImGui::TreePop();
+        }
+
+        if (ImGui::SmallButton("Delete Entity")) {
+            pendingDeleteEntityId = entity.getId();
         }
 
         ImGui::TreePop();
@@ -895,6 +1065,28 @@ Entity* EntityInspectorPanel::findSelectedEntity(Level& level) const {
     }
 
     return nullptr;
+}
+
+void EntityInspectorPanel::processPendingDelete(Level& level, std::string& statusMessage) {
+    if (pendingDeleteEntityId < 0) {
+        return;
+    }
+
+    const int deletedId = pendingDeleteEntityId;
+    pendingDeleteEntityId = -1;
+
+    if (!level.destroyEntityByIdHierarchy(deletedId)) {
+        statusMessage = "Failed to delete entity " + std::to_string(deletedId) + ".";
+        return;
+    }
+
+    level.cleanupDestroyedEntities();
+
+    if (selectedEntityId >= 0 && findEntityById(level, selectedEntityId) == nullptr) {
+        clearSelection();
+    }
+
+    statusMessage = "Deleted entity " + std::to_string(deletedId) + ".";
 }
 
 void EntityInspectorPanel::drawTransformComponentFields(

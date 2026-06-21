@@ -222,9 +222,19 @@ set(IENGINE_SOURCES
     src/misc/Camera2D.cpp
     src/misc/Level.cpp
     src/misc/LevelAsset.cpp
+    src/misc/LevelManager.cpp
     src/misc/PrefabAsset.cpp
     src/misc/SdlTextureResource.cpp
     src/misc/Sprite.cpp
+    src/serialization/ComponentSerializationHelpers.cpp
+    src/serialization/ComponentSerializer.cpp
+    src/serialization/ComponentSerializerRegistry.cpp
+    src/serialization/components/AnimationComponentSerializer.cpp
+    src/serialization/components/CollisionComponentSerializer.cpp
+    src/serialization/components/GameComponentSerializers.cpp
+    src/serialization/components/ScriptComponentSerializer.cpp
+    src/serialization/components/SpriteComponentSerializer.cpp
+    src/serialization/components/TransformComponentSerializer.cpp
     src/serialization/PrefabSerializer.cpp
     src/misc/TextureAsset.cpp
     src/system/AssetManager.cpp
@@ -254,6 +264,7 @@ if(IENGINE_WITH_EDITOR)
         src/editor/LevelEditorFileExplorer.cpp
         src/editor/LevelEditorProject.cpp
         src/editor/LevelEditorViewport.cpp
+        src/editor/LevelManagerPanel.cpp
         src/editor/PrefabPanel.cpp
         src/editor/SpritePalettePanel.cpp
         src/editor/TilesetCreator.cpp

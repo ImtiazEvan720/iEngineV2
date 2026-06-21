@@ -34,6 +34,9 @@ public:
     bool destroyEntity(Entity& entity);
     bool destroyEntity(Entity* entity);
     bool destroyEntityById(int id);
+    bool destroyEntityHierarchy(Entity& entity);
+    bool destroyEntityHierarchy(Entity* entity);
+    bool destroyEntityByIdHierarchy(int id);
     void cleanupDestroyedEntities();
     void clearEntities();
 

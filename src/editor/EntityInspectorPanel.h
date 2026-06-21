@@ -18,6 +18,8 @@ public:
     int getSelectedEntityId() const;
     void selectEntity(Entity& entity, bool forceSync = false);
     void clearSelection();
+    void requestDeleteSelected(std::string& statusMessage);
+    void processPendingDelete(Level& level, std::string& statusMessage);
     void syncEditStateFromEntity(Entity& entity, bool force = false);
 
 private:
@@ -54,6 +56,7 @@ private:
     void drawScriptComponentFields(ScriptComponent& scriptComponent);
 
     int selectedEntityId = -1;
+    int pendingDeleteEntityId = -1;
     int selectedAddComponentIndex = 0;
     int selectedScriptIndex = 0;
     std::string prefabName;

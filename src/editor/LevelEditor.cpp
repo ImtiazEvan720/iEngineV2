@@ -105,8 +105,9 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
                 statusMessage = "Created empty entity " + std::to_string(entity.getId()) + ".";
             }
 
-            if (ImGui::MenuItem("Delete Selected")) {
-                // Delete the selected entity once selection is added.
+            const bool hasSelectedEntity = entityInspector.getSelectedEntityId() >= 0;
+            if (ImGui::MenuItem("Delete Selected", nullptr, false, hasSelectedEntity)) {
+                entityInspector.requestDeleteSelected(statusMessage);
             }
 
             ImGui::EndMenu();
@@ -141,6 +142,8 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
         ImGui::EndMainMenuBar();
     }
 
+    entityInspector.processPendingDelete(Level::getCurrentLevel(), statusMessage);
+
     if (tilesetCreator.draw(statusMessage)) {
         spritePalette.refreshTilesets();
     }
@@ -174,6 +177,14 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
 
             if (ImGui::BeginTabItem("Prefabs")) {
                 prefabPanel.draw(statusMessage);
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Levels")) {
+                if (levelManagerPanel.draw(statusMessage)) {
+                    Renderer::getInstance().clearTileLayerBatches();
+                    entityInspector.clearSelection();
+                }
                 ImGui::EndTabItem();
             }
 

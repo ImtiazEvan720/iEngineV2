@@ -89,7 +89,7 @@ public:
     }
 
     void update(float deltaTime);
-    void destroy();
+    void destroy(bool destroyChildren = true);
     bool isDestroyed() const;
     void addInputListeners(InputSystem& inputSystem);
     void removeInputListeners(InputSystem& inputSystem);
@@ -98,6 +98,7 @@ public:
     const std::string& getName() const;
     const std::string& getTag() const;
     bool isEnabled() const;
+    int getEditorDisplayOrder() const;
     Entity* getParent();
     const Entity* getParent() const;
     const std::vector<Entity*>& getChildren() const;
@@ -106,6 +107,7 @@ public:
     void setName(const std::string& name);
     void setTag(const std::string& tag);
     void setEnabled(bool enabled);
+    void setEditorDisplayOrder(int order);
     bool setParent(Entity* parent, bool keepWorldTransform = true);
     void clearParent(bool keepWorldTransform = true);
 
@@ -128,6 +130,7 @@ private:
     std::string name;
     std::string tag;
     int id;
+    int editorDisplayOrder;
     bool enabled = true;
     bool destroyed = false;
     bool updating = false;

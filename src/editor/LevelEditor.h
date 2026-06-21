@@ -4,6 +4,7 @@
 #include "editor/EditorCamera.h"
 #include "editor/EntityInspectorPanel.h"
 #include "editor/LevelEditorViewport.h"
+#include "editor/LevelManagerPanel.h"
 #include "editor/PrefabPanel.h"
 #include "editor/SpritePalettePanel.h"
 #include "editor/TilesetCreator.h"
@@ -76,6 +77,7 @@ private:
     std::string selectedProjectPath;
     EditorCamera camera;
     EntityInspectorPanel entityInspector;
+    LevelManagerPanel levelManagerPanel;
     SpritePalettePanel spritePalette;
     PrefabPanel prefabPanel;
     TilesetCreator tilesetCreator;
