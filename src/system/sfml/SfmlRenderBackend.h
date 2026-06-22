@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SFMLRENDERBACKEND_H
-#define IENGINEV2_SFMLRENDERBACKEND_H
+#pragma once
 
 #include "system/IRenderBackend.h"
 
@@ -24,5 +23,3 @@ public:
 private:
     SfmlWindowBackend& windowBackend;
 };
-
-#endif

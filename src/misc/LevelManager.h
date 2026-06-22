@@ -1,6 +1,4 @@
-
-#ifndef IENGINEV2_LEVELMANAGER_H
-#define IENGINEV2_LEVELMANAGER_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -38,5 +36,3 @@ private:
 
     LevelManager() = default;
 };
-
-#endif

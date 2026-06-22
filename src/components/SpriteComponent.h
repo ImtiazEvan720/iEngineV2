@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SPRITECOMPONENT_H
-#define IENGINEV2_SPRITECOMPONENT_H
+#pragma once
 
 #include "components/Component.h"
 #include "misc/Sprite.h"
@@ -16,5 +15,3 @@ public:
 private:
     Sprite sprite;
 };
-
-#endif

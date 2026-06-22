@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SFMLTEXTURERESOURCE_H
-#define IENGINEV2_SFMLTEXTURERESOURCE_H
+#pragma once
 
 #include "misc/ITextureResource.h"
 
@@ -23,5 +22,3 @@ private:
     int width = 0;
     int height = 0;
 };
-
-#endif

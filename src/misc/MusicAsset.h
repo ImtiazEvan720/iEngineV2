@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_MUSICASSET_H
-#define IENGINEV2_MUSICASSET_H
+#pragma once
 
 #include "misc/Asset.h"
 
@@ -20,5 +19,3 @@ public:
 private:
     std::unique_ptr<sf::Music> music;
 };
-
-#endif

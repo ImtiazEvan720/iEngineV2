@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_IENGINEIMGUISFMLCONFIG_H
-#define IENGINEV2_IENGINEIMGUISFMLCONFIG_H
+#pragma once
 
 #define ImDrawIdx unsigned int
 
@@ -35,5 +34,3 @@
                          static_cast<std::uint8_t>(z * 255.f),                                  \
                          static_cast<std::uint8_t>(w * 255.f));                                 \
     }
-
-#endif

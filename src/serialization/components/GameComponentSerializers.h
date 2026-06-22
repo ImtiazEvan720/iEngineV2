@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_GAMECOMPONENTSERIALIZERS_H
-#define IENGINEV2_GAMECOMPONENTSERIALIZERS_H
+#pragma once
 
 #include "serialization/ComponentSerializer.h"
 
@@ -41,5 +40,3 @@ public:
         std::string& errorMessage
     ) const override;
 };
-
-#endif

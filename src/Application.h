@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_APPLICATION_H
-#define IENGINEV2_APPLICATION_H
+#pragma once
 
 #include <chrono>
 #include <memory>
@@ -30,5 +29,3 @@ private:
     std::chrono::steady_clock::time_point previousTime;
     bool initialized = false;
 };
-
-#endif

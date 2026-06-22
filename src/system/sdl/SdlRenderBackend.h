@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SDLRENDERBACKEND_H
-#define IENGINEV2_SDLRENDERBACKEND_H
+#pragma once
 
 #include "system/IRenderBackend.h"
 
@@ -24,5 +23,3 @@ public:
 private:
     SdlWindowBackend& windowBackend;
 };
-
-#endif

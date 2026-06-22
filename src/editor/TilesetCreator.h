@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_TILESETCREATOR_H
-#define IENGINEV2_TILESETCREATOR_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -41,5 +40,3 @@ private:
     int previewImageHeight = 0;
     std::vector<unsigned char> previewPixels;
 };
-
-#endif

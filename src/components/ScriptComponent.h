@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SCRIPTCOMPONENT_H
-#define IENGINEV2_SCRIPTCOMPONENT_H
+#pragma once
 
 #include "components/Component.h"
 
@@ -20,5 +19,3 @@ private:
     std::string scriptPath;
     bool loaded = false;
 };
-
-#endif

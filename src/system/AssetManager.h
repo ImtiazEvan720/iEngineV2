@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_ASSETMANAGER_H
-#define IENGINEV2_ASSETMANAGER_H
+#pragma once
 
 #include "misc/Asset.h"
 #include "misc/LevelAsset.h"
@@ -48,5 +47,3 @@ private:
 
     std::vector<std::unique_ptr<Asset>> assets;
 };
-
-#endif

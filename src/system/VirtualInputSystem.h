@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_VIRTUALINPUTSYSTEM_H
-#define IENGINEV2_VIRTUALINPUTSYSTEM_H
+#pragma once
 
 #include "system/RawInputSystem.h"
 #include "system/TouchControlSystem.h"
@@ -57,5 +56,3 @@ RawKey rawKeyFromString(const std::string& value);
 RawMouseButton rawMouseButtonFromString(const std::string& value);
 InputAction inputActionFromString(const std::string& value);
 const char* inputActionToString(InputAction action);
-
-#endif

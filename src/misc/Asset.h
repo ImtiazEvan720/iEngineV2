@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_ASSET_H
-#define IENGINEV2_ASSET_H
+#pragma once
 
 #include <string>
 
@@ -40,5 +39,3 @@ private:
     Type type;
     bool loaded;
 };
-
-#endif

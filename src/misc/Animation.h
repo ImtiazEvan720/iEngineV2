@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_ANIMATION_H
-#define IENGINEV2_ANIMATION_H
+#pragma once
 
 #include "misc/Sprite.h"
 
@@ -25,5 +24,3 @@ private:
     std::vector<Sprite> frames;
     float frameDuration = 0.1f;
 };
-
-#endif

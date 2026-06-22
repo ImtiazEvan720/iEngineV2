@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_RAWINPUTSYSTEM_H
-#define IENGINEV2_RAWINPUTSYSTEM_H
+#pragma once
 
 #include <unordered_map>
 #include <vector>
@@ -83,5 +82,3 @@ private:
 
     std::vector<RawTouch> touches;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_TILELAYERRENDERER_H
-#define IENGINEV2_TILELAYERRENDERER_H
+#pragma once
 
 #include "misc/Camera2D.h"
 #include "misc/LevelAsset.h"
@@ -61,5 +60,3 @@ private:
 
     std::vector<RenderLayer> layers;
 };
-
-#endif

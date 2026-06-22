@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_TOUCHCONTROLSYSTEM_H
-#define IENGINEV2_TOUCHCONTROLSYSTEM_H
+#pragma once
 
 #include "system/RawInputSystem.h"
 
@@ -53,5 +52,3 @@ private:
 
 TouchControl touchControlFromString(const std::string& value);
 const char* touchControlToString(TouchControl control);
-
-#endif

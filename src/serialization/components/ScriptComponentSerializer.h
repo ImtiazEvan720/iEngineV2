@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SCRIPTCOMPONENTSERIALIZER_H
-#define IENGINEV2_SCRIPTCOMPONENTSERIALIZER_H
+#pragma once
 
 #include "serialization/ComponentSerializer.h"
 
@@ -15,5 +14,3 @@ public:
         std::string& errorMessage
     ) const override;
 };
-
-#endif

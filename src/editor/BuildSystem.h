@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_BUILDSYSTEM_H
-#define IENGINEV2_BUILDSYSTEM_H
+#pragma once
 
 #include <mutex>
 #include <string>
@@ -46,5 +45,3 @@ private:
     std::string activeCommand;
     std::string output;
 };
-
-#endif

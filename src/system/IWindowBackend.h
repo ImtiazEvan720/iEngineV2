@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_IWINDOWBACKEND_H
-#define IENGINEV2_IWINDOWBACKEND_H
+#pragma once
 
 #include "system/IRenderBackend.h"
 
@@ -24,5 +23,3 @@ public:
     virtual RenderRect getViewport() const = 0;
     virtual float consumePendingPinchZoomFactor() { return 1.0f; }
 };
-
-#endif

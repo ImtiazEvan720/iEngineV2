@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SOUNDASSET_H
-#define IENGINEV2_SOUNDASSET_H
+#pragma once
 
 #include "misc/Asset.h"
 
@@ -20,5 +19,3 @@ public:
 private:
     std::unique_ptr<sf::SoundBuffer> soundBuffer;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_TRANSFORMCOMPONENTSERIALIZER_H
-#define IENGINEV2_TRANSFORMCOMPONENTSERIALIZER_H
+#pragma once
 
 #include "serialization/ComponentSerializer.h"
 
@@ -16,5 +15,3 @@ public:
     ) const override;
     bool loadBeforeOtherComponents() const override;
 };
-
-#endif

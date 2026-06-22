@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_LEVELEDITOR_H
-#define IENGINEV2_LEVELEDITOR_H
+#pragma once
 
 #include "editor/EditorCamera.h"
 #include "editor/EntityInspectorPanel.h"
@@ -84,5 +83,3 @@ private:
     LevelEditorViewport viewport;
     ViewportGrid viewportGrid;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_LEVEL_H
-#define IENGINEV2_LEVEL_H
+#pragma once
 
 #include "Entity.h"
 
@@ -52,5 +51,3 @@ private:
     std::deque<Entity> entities;
     std::string sourcePath;
 };
-
-#endif

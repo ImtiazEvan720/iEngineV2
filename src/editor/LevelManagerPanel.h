@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_LEVELMANAGERPANEL_H
-#define IENGINEV2_LEVELMANAGERPANEL_H
+#pragma once
 
 #include "misc/LevelManager.h"
 
@@ -16,5 +15,3 @@ private:
 
     std::string pendingRemoveFileName;
 };
-
-#endif

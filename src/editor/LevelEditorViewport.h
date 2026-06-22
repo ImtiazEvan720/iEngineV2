@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_LEVELEDITORVIEWPORT_H
-#define IENGINEV2_LEVELEDITORVIEWPORT_H
+#pragma once
 
 #include "editor/ColliderGizmo.h"
 #include "editor/TransformGizmo.h"
@@ -51,5 +50,3 @@ private:
     ColliderGizmo colliderGizmo;
     TransformGizmo transformGizmo;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_EDITORTILESETTYPES_H
-#define IENGINEV2_EDITORTILESETTYPES_H
+#pragma once
 
 #include <string>
 #include <unordered_map>
@@ -39,5 +38,3 @@ struct EditorTileset {
     TextureAsset* textureAsset = nullptr;
     std::unordered_map<int, EditorTileAnimation> animations;
 };
-
-#endif

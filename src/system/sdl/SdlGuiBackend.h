@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SDLGUIBACKEND_H
-#define IENGINEV2_SDLGUIBACKEND_H
+#pragma once
 
 #include "system/IGuiBackend.h"
 
@@ -27,5 +26,3 @@ private:
 #endif
     bool initialized = false;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_PROJECTMANAGER_H
-#define IENGINEV2_PROJECTMANAGER_H
+#pragma once
 
 #include <filesystem>
 #include <string>
@@ -52,5 +51,3 @@ private:
 
     ProjectInfo currentProject;
 };
-
-#endif

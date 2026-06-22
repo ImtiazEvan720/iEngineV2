@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_LEVELASSET_H
-#define IENGINEV2_LEVELASSET_H
+#pragma once
 
 #include "misc/Asset.h"
 #include "misc/TextureAsset.h"
@@ -92,5 +91,3 @@ private:
     std::vector<TilesetInfo> tilesets;
     std::vector<LevelGroupInfo> groups;
 };
-
-#endif

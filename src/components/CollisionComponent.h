@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_COLLISIONCOMPONENT_H
-#define IENGINEV2_COLLISIONCOMPONENT_H
+#pragma once
 
 #include "components/Component.h"
 #include "math/Vector2F.h"
@@ -64,5 +63,3 @@ private:
     b2ShapeId shapeId = b2_nullShapeId;
     CollisionListener* listener = nullptr;
 };
-
-#endif

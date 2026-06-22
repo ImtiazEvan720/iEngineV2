@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_IRENDERBACKEND_H
-#define IENGINEV2_IRENDERBACKEND_H
+#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -50,5 +49,3 @@ public:
         const std::vector<RenderVertex>& vertices
     ) = 0;
 };
-
-#endif

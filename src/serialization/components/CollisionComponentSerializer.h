@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_COLLISIONCOMPONENTSERIALIZER_H
-#define IENGINEV2_COLLISIONCOMPONENTSERIALIZER_H
+#pragma once
 
 #include "serialization/ComponentSerializer.h"
 
@@ -16,5 +15,3 @@ public:
     ) const override;
     bool requiresTransformBeforeLoad() const override;
 };
-
-#endif

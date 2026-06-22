@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_COMPONENTSERIALIZATIONHELPERS_H
-#define IENGINEV2_COMPONENTSERIALIZATIONHELPERS_H
+#pragma once
 
 #include "misc/Sprite.h"
 #include "system/IRenderBackend.h"
@@ -29,5 +28,3 @@ TextureAsset* getTextureAsset(const tinyxml2::XMLElement& element);
 void setSpriteAttributes(tinyxml2::XMLElement& element, const Sprite& sprite);
 Sprite makeSpriteFromAttributes(const tinyxml2::XMLElement& element, TextureAsset& textureAsset);
 }
-
-#endif

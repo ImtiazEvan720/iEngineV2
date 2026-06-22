@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_PREFABASSET_H
-#define IENGINEV2_PREFABASSET_H
+#pragma once
 
 #include "misc/Asset.h"
 
@@ -11,5 +10,3 @@ public:
 
     bool load() override;
 };
-
-#endif

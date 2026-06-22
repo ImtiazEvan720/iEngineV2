@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SFMLWINDOWBACKEND_H
-#define IENGINEV2_SFMLWINDOWBACKEND_H
+#pragma once
 
 #include "system/IWindowBackend.h"
 
@@ -31,5 +30,3 @@ public:
 private:
     std::unique_ptr<sf::RenderWindow> window;
 };
-
-#endif

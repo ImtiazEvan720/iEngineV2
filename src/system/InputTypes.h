@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_INPUTTYPES_H
-#define IENGINEV2_INPUTTYPES_H
+#pragma once
 
 enum class InputKey {
     Unknown,
@@ -16,5 +15,3 @@ enum class InputMouseButton {
     Right,
     Middle
 };
-
-#endif

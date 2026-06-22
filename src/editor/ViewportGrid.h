@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_VIEWPORTGRID_H
-#define IENGINEV2_VIEWPORTGRID_H
+#pragma once
 
 #include "math/Vector2F.h"
 #include "system/IRenderBackend.h"
@@ -23,5 +22,3 @@ private:
     bool showColliders = false;
     bool showSideMenu = true;
 };
-
-#endif

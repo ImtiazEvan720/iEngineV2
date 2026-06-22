@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_BRICK_H
-#define IENGINEV2_BRICK_H
+#pragma once
 
 #include "components/CollisionComponent.h"
 #include "components/Component.h"
@@ -19,5 +18,3 @@ private:
     class AnimationComponent* destroyAnimation = nullptr;
     bool destroying = false;
 };
-
-#endif

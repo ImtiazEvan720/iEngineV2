@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_COMPONENTSERIALIZERREGISTRY_H
-#define IENGINEV2_COMPONENTSERIALIZERREGISTRY_H
+#pragma once
 
 #include "serialization/ComponentSerializer.h"
 
@@ -34,5 +33,3 @@ private:
 
     std::vector<std::unique_ptr<IComponentSerializer>> serializers;
 };
-
-#endif

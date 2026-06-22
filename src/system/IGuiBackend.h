@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_IGUIBACKEND_H
-#define IENGINEV2_IGUIBACKEND_H
+#pragma once
 
 class InputSystem;
 class IWindowBackend;
@@ -14,5 +13,3 @@ public:
     virtual void render(const InputSystem& inputSystem) = 0;
     virtual void shutdown() = 0;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_COLLIDERGIZMO_H
-#define IENGINEV2_COLLIDERGIZMO_H
+#pragma once
 
 #include "math/Vector2F.h"
 #include "system/IRenderBackend.h"
@@ -60,5 +59,3 @@ private:
     EditMode editMode = EditMode::None;
     float dragOffset[2] = {0.0f, 0.0f};
 };
-
-#endif

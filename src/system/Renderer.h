@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_RENDERER_H
-#define IENGINEV2_RENDERER_H
+#pragma once
 
 #include "misc/Camera2D.h"
 #include "system/TileLayerRenderer.h"
@@ -45,5 +44,3 @@ private:
     Camera2D camera;
     TileLayerRenderer tileLayerRenderer;
 };
-
-#endif

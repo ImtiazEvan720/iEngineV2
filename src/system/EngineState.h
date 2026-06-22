@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_ENGINESTATE_H
-#define IENGINEV2_ENGINESTATE_H
+#pragma once
 
 class EngineState {
 public:
@@ -27,5 +26,3 @@ private:
 
     RuntimeMode runtimeMode = RuntimeMode::Edit;
 };
-
-#endif

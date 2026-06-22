@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_CAMERA2D_H
-#define IENGINEV2_CAMERA2D_H
+#pragma once
 
 #include "math/Vector2F.h"
 #include "system/IRenderBackend.h"
@@ -26,5 +25,3 @@ private:
     Vector2F position = Vector2F::zero();
     float zoom = 1.0f;
 };
-
-#endif

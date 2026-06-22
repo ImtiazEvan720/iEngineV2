@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_INPUTSYSTEM_H
-#define IENGINEV2_INPUTSYSTEM_H
+#pragma once
 
 #include "system/InputListener.h"
 #include "system/InputTypes.h"
@@ -32,5 +31,3 @@ private:
     std::vector<InputListener*> listeners;
     std::string lastInputText = "No input yet";
 };
-
-#endif

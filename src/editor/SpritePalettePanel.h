@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SPRITEPALETTEPANEL_H
-#define IENGINEV2_SPRITEPALETTEPANEL_H
+#pragma once
 
 #include "editor/EditorTilesetTypes.h"
 #include "system/IRenderBackend.h"
@@ -36,5 +35,3 @@ private:
     int newAnimationFrameDurationMs = 200;
     std::vector<EditorTileset> tilesets;
 };
-
-#endif

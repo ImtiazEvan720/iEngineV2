@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_BULLET_H
-#define IENGINEV2_BULLET_H
+#pragma once
 
 #include "components/CollisionComponent.h"
 #include "components/Component.h"
@@ -22,5 +21,3 @@ public:
         CollisionComponent* collision = nullptr;
 
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_COMPONENTSERIALIZER_H
-#define IENGINEV2_COMPONENTSERIALIZER_H
+#pragma once
 
 #include "math/Vector2F.h"
 
@@ -34,5 +33,3 @@ public:
     virtual bool loadBeforeOtherComponents() const;
     virtual bool requiresTransformBeforeLoad() const;
 };
-
-#endif

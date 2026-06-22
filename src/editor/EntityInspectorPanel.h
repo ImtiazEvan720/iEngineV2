@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_ENTITYINSPECTORPANEL_H
-#define IENGINEV2_ENTITYINSPECTORPANEL_H
+#pragma once
 
 #include <string>
 
@@ -62,5 +61,3 @@ private:
     std::string prefabName;
     EntityEditState entityEditState;
 };
-
-#endif

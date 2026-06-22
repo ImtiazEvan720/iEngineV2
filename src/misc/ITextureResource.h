@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_ITEXTURERESOURCE_H
-#define IENGINEV2_ITEXTURERESOURCE_H
+#pragma once
 
 #include "system/IRenderBackend.h"
 
@@ -17,5 +16,3 @@ public:
     virtual int getWidth() const = 0;
     virtual int getHeight() const = 0;
 };
-
-#endif

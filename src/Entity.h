@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_ENTITY_H
-#define IENGINEV2_ENTITY_H
+#pragma once
 
 #include "components/Component.h"
 
@@ -135,5 +134,3 @@ private:
     bool destroyed = false;
     bool updating = false;
 };
-
-#endif

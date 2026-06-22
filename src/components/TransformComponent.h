@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_TRANSFORMCOMPONENT_H
-#define IENGINEV2_TRANSFORMCOMPONENT_H
+#pragma once
 
 #include "components/Component.h"
 #include "math/Vector2F.h"
@@ -24,5 +23,3 @@ private:
     float rotation;
     TransformComponent* parent = nullptr;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_COMPONENT_H
-#define IENGINEV2_COMPONENT_H
+#pragma once
 
 class Entity;
 
@@ -22,5 +21,3 @@ private:
 
     Entity* entity = nullptr;
 };
-
-#endif

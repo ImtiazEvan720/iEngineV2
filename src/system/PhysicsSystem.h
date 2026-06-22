@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_PHYSICSSYSTEM_H
-#define IENGINEV2_PHYSICSSYSTEM_H
+#pragma once
 
 #include <box2d/box2d.h>
 
@@ -27,5 +26,3 @@ private:
 
     b2WorldId worldId = b2_nullWorldId;
 };
-
-#endif

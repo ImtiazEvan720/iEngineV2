@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SDLWINDOWBACKEND_H
-#define IENGINEV2_SDLWINDOWBACKEND_H
+#pragma once
 
 #include "system/IWindowBackend.h"
 
@@ -33,5 +32,3 @@ private:
     int frameDelayMilliseconds = 0;
     float pendingPinchZoomFactor = 1.0f;
 };
-
-#endif

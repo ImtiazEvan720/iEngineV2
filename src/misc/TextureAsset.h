@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_TEXTUREASSET_H
-#define IENGINEV2_TEXTUREASSET_H
+#pragma once
 
 #include "misc/Asset.h"
 #include "system/IRenderBackend.h"
@@ -34,5 +33,3 @@ public:
 private:
     std::unique_ptr<ITextureResource> textureResource;
 };
-
-#endif

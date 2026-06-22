@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_TRANSFORMGIZMO_H
-#define IENGINEV2_TRANSFORMGIZMO_H
+#pragma once
 
 class EditorCamera;
 class Entity;
@@ -11,5 +10,3 @@ public:
     void draw(Level& level, const EntityInspectorPanel& entityInspector, const EditorCamera& camera) const;
     bool contains(Entity& entity, float worldX, float worldY, const EditorCamera& camera) const;
 };
-
-#endif

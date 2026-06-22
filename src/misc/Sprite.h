@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SPRITE_H
-#define IENGINEV2_SPRITE_H
+#pragma once
 
 #include "math/Vector2F.h"
 #include "system/IRenderBackend.h"
@@ -24,5 +23,3 @@ private:
     Vector2F origin;
     Vector2F size;
 };
-
-#endif

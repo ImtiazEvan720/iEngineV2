@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_VECTOR2F_H
-#define IENGINEV2_VECTOR2F_H
+#pragma once
 
 class Vector2F {
 public:
@@ -19,5 +18,3 @@ public:
     static Vector2F one();
     static Vector2F zero();
 };
-
-#endif

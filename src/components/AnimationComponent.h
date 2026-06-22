@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_ANIMATIONCOMPONENT_H
-#define IENGINEV2_ANIMATIONCOMPONENT_H
+#pragma once
 
 #include "components/Component.h"
 #include "misc/Animation.h"
@@ -31,5 +30,3 @@ private:
     bool looping = true;
     bool finished = false;
 };
-
-#endif

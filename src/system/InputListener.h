@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_INPUTLISTENER_H
-#define IENGINEV2_INPUTLISTENER_H
+#pragma once
 
 #include "system/InputTypes.h"
 
@@ -12,5 +11,3 @@ public:
     virtual void onMousePressed(InputMouseButton button, int x, int y);
     virtual void onMouseReleased(InputMouseButton button, int x, int y);
 };
-
-#endif

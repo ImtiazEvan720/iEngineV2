@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_PLAYERCONTROLLER_H
-#define IENGINEV2_PLAYERCONTROLLER_H
+#pragma once
 
 #include "components/Component.h"
 
@@ -15,5 +14,3 @@ private:
     class AnimationComponent* animator = nullptr;
     int firedBullets = 0;
 };
-
-#endif

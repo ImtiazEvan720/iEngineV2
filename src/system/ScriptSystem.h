@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_SCRIPTSYSTEM_H
-#define IENGINEV2_SCRIPTSYSTEM_H
+#pragma once
 
 #include <sol/sol.hpp>
 
@@ -36,5 +35,3 @@ private:
     std::unordered_map<ScriptComponent*, ScriptInstance> scripts;
     bool initialized = false;
 };
-
-#endif

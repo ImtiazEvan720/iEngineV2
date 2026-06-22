@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_EDITORCAMERA_H
-#define IENGINEV2_EDITORCAMERA_H
+#pragma once
 
 #include "system/IRenderBackend.h"
 
@@ -17,5 +16,3 @@ public:
 private:
     bool consumedPinchZoomThisFrame = false;
 };
-
-#endif

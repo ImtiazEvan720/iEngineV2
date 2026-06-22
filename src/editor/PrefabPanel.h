@@ -1,5 +1,4 @@
-#ifndef IENGINEV2_PREFABPANEL_H
-#define IENGINEV2_PREFABPANEL_H
+#pragma once
 
 #include "system/IRenderBackend.h"
 
@@ -43,5 +42,3 @@ private:
     int selectedPrefabIndex = -1;
     std::vector<PrefabInfo> prefabs;
 };
-
-#endif
