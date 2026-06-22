@@ -11,6 +11,11 @@
 #include <SFML/Window/Event.hpp>
 
 bool SfmlGuiBackend::initialize(IWindowBackend& backend) {
+#ifndef IENGINE_WITH_EDITOR
+    (void)backend;
+    initialized = true;
+    return true;
+#else
     windowBackend = dynamic_cast<SfmlWindowBackend*>(&backend);
     if (windowBackend == nullptr) {
         initialized = false;
@@ -23,47 +28,56 @@ bool SfmlGuiBackend::initialize(IWindowBackend& backend) {
     }
 
     return initialized;
+#endif
 }
 
 void SfmlGuiBackend::processNativeEvent(const void* event) {
+#ifndef IENGINE_WITH_EDITOR
+    (void)event;
+#else
     if (!initialized || windowBackend == nullptr || event == nullptr) {
         return;
     }
 
     const sf::Event* sfmlEvent = static_cast<const sf::Event*>(event);
     ImGui::SFML::ProcessEvent(windowBackend->getWindow(), *sfmlEvent);
+#endif
 }
 
 void SfmlGuiBackend::update(float deltaTime) {
+#ifndef IENGINE_WITH_EDITOR
+    (void)deltaTime;
+#else
     if (!initialized || windowBackend == nullptr) {
         return;
     }
 
     ImGui::SFML::Update(windowBackend->getWindow(), sf::seconds(deltaTime));
 
-#ifdef IENGINE_WITH_EDITOR
     levelEditor.updateEditorOnly(deltaTime);
 #endif
 }
 
 void SfmlGuiBackend::render(const InputSystem& inputSystem) {
+#ifndef IENGINE_WITH_EDITOR
+    (void)inputSystem;
+#else
     if (!initialized || windowBackend == nullptr) {
         return;
     }
 
-#ifdef IENGINE_WITH_EDITOR
     levelEditor.draw(inputSystem, windowBackend->getViewport().width);
-#else
-    (void)inputSystem;
-#endif
 
     ImGui::SFML::Render(windowBackend->getWindow());
+#endif
 }
 
 void SfmlGuiBackend::shutdown() {
+#ifdef IENGINE_WITH_EDITOR
     if (initialized) {
         ImGui::SFML::Shutdown();
     }
+#endif
 
     initialized = false;
     windowBackend = nullptr;

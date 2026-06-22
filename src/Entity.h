@@ -109,6 +109,8 @@ public:
     void setDisplayOrder(int order);
     bool setParent(Entity* parent, bool keepWorldTransform = true);
     void clearParent(bool keepWorldTransform = true);
+    void setPersistent(bool value);
+    bool isPersistent() const;
 
     static Entity* spawnPrefab(const std::string& prefabName, const Vector2F& position, float rotation = 0.0f);
     static Entity* spawnPrefab(const std::string& prefabName, float x, float y, float rotation = 0.0f);
@@ -133,4 +135,5 @@ private:
     bool enabled = true;
     bool destroyed = false;
     bool updating = false;
+    bool persistent = false;
 };

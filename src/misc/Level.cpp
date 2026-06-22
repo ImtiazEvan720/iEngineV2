@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <iterator>
 
 namespace {
 std::string currentLevelPath = "Assets/Levels/current.ilevel";
@@ -521,12 +522,25 @@ bool Level::loadCurrentLevel(std::string& errorMessage) {
     return true;
 }
 
-void Level::loadLevel(Level&& level) {
+void Level::loadLevel(Level&& level, bool keepPersistentEntities) {
     Level& currentLevel = getCurrentLevel();
+    std::deque<Entity> persistentEntities;
+    if (keepPersistentEntities) {
+        persistentEntities = currentLevel.extractPersistentEntities();
+    }
+
     currentLevel = std::move(level);
 
     if (!currentLevel.sourcePath.empty()) {
         currentLevelPath = currentLevel.sourcePath;
+    }
+
+    if (!persistentEntities.empty()) {
+        currentLevel.entities.insert(
+            currentLevel.entities.end(),
+            std::make_move_iterator(persistentEntities.begin()),
+            std::make_move_iterator(persistentEntities.end())
+        );
     }
 
     for (Entity& entity : currentLevel.entities) {
@@ -668,6 +682,14 @@ const std::deque<Entity>& Level::getEntities() const {
     return entities;
 }
 
+const std::string& Level::getSourcePath() const {
+    return sourcePath;
+}
+
+std::string Level::getSourceFileName() const {
+    return std::filesystem::path(sourcePath).stem().string();
+}
+
 void Level::update(float deltaTime) {
     for (Entity& entity : entities) {
         if (entity.isDestroyed() || !entity.isEnabled()) {
@@ -678,4 +700,22 @@ void Level::update(float deltaTime) {
     }
 
     cleanupDestroyedEntities();
+}
+
+std::deque<Entity> Level::extractPersistentEntities() {
+    std::deque<Entity> persistentEntities;
+    InputSystem& inputSystem = InputSystem::getInstance();
+
+    for (Entity& entity : entities) {
+        if (entity.isPersistent()) {
+            Entity* parent = entity.getParent();
+            if (parent != nullptr && !parent->isPersistent()) {
+                entity.clearParent(false);
+            }
+
+            entity.removeInputListeners(inputSystem);
+            persistentEntities.push_back(std::move(entity));
+        }
+    }
+    return persistentEntities;
 }

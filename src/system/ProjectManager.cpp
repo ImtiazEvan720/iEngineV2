@@ -160,6 +160,7 @@ bool writeDefaultInputBindings(const std::filesystem::path& inputPath, std::stri
     addBinding("MoveLeft", "key", "A");
     addBinding("MoveRight", "key", "D");
     addBinding("Fire", "key", "Space");
+    addBinding("Fire2", "key", "Escape");
     addBinding("Fire", "mouse", "Left");
     addBinding("MoveUp", "touchControl", "MoveStickUp");
     addBinding("MoveDown", "touchControl", "MoveStickDown");

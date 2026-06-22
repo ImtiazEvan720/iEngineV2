@@ -10,6 +10,11 @@
 #include <SDL3/SDL.h>
 
 bool SdlGuiBackend::initialize(IWindowBackend& backend) {
+#ifndef IENGINE_WITH_EDITOR
+    (void)backend;
+    initialized = true;
+    return true;
+#else
     windowBackend = dynamic_cast<SdlWindowBackend*>(&backend);
     if (windowBackend == nullptr
         || windowBackend->getWindow() == nullptr
@@ -29,18 +34,25 @@ bool SdlGuiBackend::initialize(IWindowBackend& backend) {
     ) && ImGui_ImplSDLRenderer3_Init(windowBackend->getRenderer());
 
     return initialized;
+#endif
 }
 
 void SdlGuiBackend::processNativeEvent(const void* event) {
+#ifndef IENGINE_WITH_EDITOR
+    (void)event;
+#else
     if (!initialized || event == nullptr) {
         return;
     }
 
     ImGui_ImplSDL3_ProcessEvent(static_cast<const SDL_Event*>(event));
+#endif
 }
 
 void SdlGuiBackend::update(float deltaTime) {
+#ifndef IENGINE_WITH_EDITOR
     (void)deltaTime;
+#else
 
     if (!initialized) {
         return;
@@ -50,35 +62,36 @@ void SdlGuiBackend::update(float deltaTime) {
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
-#ifdef IENGINE_WITH_EDITOR
     levelEditor.updateEditorOnly(deltaTime);
 #endif
 }
 
 void SdlGuiBackend::render(const InputSystem& inputSystem) {
+#ifndef IENGINE_WITH_EDITOR
+    (void)inputSystem;
+#else
     if (!initialized || windowBackend == nullptr) {
         return;
     }
 
-#ifdef IENGINE_WITH_EDITOR
     levelEditor.draw(inputSystem, windowBackend->getViewport().width);
-#else
-    (void)inputSystem;
-#endif
 
     ImGui::Render();
     ImGui_ImplSDLRenderer3_RenderDrawData(
         ImGui::GetDrawData(),
         windowBackend->getRenderer()
     );
+#endif
 }
 
 void SdlGuiBackend::shutdown() {
+#ifdef IENGINE_WITH_EDITOR
     if (initialized) {
         ImGui_ImplSDLRenderer3_Shutdown();
         ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
     }
+#endif
 
     initialized = false;
     windowBackend = nullptr;

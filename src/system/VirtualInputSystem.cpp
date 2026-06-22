@@ -56,6 +56,7 @@ void VirtualInputSystem::bindDefaultKeyboardMouse() {
     bindKey(RawKey::A, InputAction::MoveLeft);
     bindKey(RawKey::D, InputAction::MoveRight);
     bindKey(RawKey::Space, InputAction::Fire);
+    bindKey(RawKey::Escape, InputAction::Fire2);
     bindMouseButton(RawMouseButton::Left, InputAction::Fire);
     bindTouchControl(TouchControl::MoveStickUp, InputAction::MoveUp);
     bindTouchControl(TouchControl::MoveStickDown, InputAction::MoveDown);
@@ -273,6 +274,10 @@ InputAction inputActionFromString(const std::string& value) {
         return InputAction::Fire;
     }
 
+    if (normalized == "fire2") {
+        return InputAction::Fire2;
+    }
+
     if (normalized == "pause") {
         return InputAction::Pause;
     }
@@ -292,6 +297,8 @@ const char* inputActionToString(InputAction action) {
             return "MoveRight";
         case InputAction::Fire:
             return "Fire";
+        case InputAction::Fire2:
+            return "Fire2";
         case InputAction::Pause:
             return "Pause";
         case InputAction::Unknown:

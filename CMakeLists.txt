@@ -349,7 +349,7 @@ if(IENGINE_EMBED_LUA_SCRIPTS)
             "${CMAKE_CURRENT_SOURCE_DIR}/Assets"
             "${IENGINE_FILTERED_RUNTIME_ASSETS_DIR}"
             "--exclude-scripts"
-            "--overlay"
+            "--level-overlay"
             "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Levels:Levels"
             "--overlay"
             "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Prefabs:Prefabs"

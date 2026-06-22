@@ -31,6 +31,7 @@ Entity::Entity(Entity&& other) noexcept
       displayOrder(other.displayOrder),
       enabled(other.enabled),
       destroyed(other.destroyed),
+      persistent(other.persistent),
       updating(false) {
     refreshComponentOwners();
     rebindParentLinksFrom(&other);
@@ -54,6 +55,7 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     children = std::move(other.children);
     enabled = other.enabled;
     destroyed = other.destroyed;
+    persistent = other.persistent;
     updating = false;
     refreshComponentOwners();
     rebindParentLinksFrom(&other);
@@ -376,4 +378,12 @@ Entity* Entity::spawnPrefab(const std::string& prefabName, const Vector2F& posit
 
 Entity* Entity::spawnPrefab(const std::string& prefabName, float x, float y, float rotation) {
     return spawnPrefab(prefabName, Vector2F(x, y), rotation);
+}
+
+void Entity::setPersistent(bool value) {
+    persistent = value;
+}
+
+bool Entity::isPersistent() const {
+    return persistent;
 }

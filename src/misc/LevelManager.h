@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -29,10 +30,21 @@ public:
     bool updateLevelEntry(const LevelEntry& entry);
     bool setActiveLevel(const std::string& fileName, bool value);
     const std::vector<const LevelEntry*> getActiveLevelEntries() const;
+    bool resolveLevelPath(
+        const std::string& levelName,
+        std::filesystem::path& levelPath,
+        std::string& errorMessage
+    );
+
+    const std::string& getInitialLevelPath() const;
+    void setInitialLevelPath(const std::string& path);
 
 private:
+    inline static constexpr const char* DefaultInitialLevelPath = "current.ilevel";
+
     std::vector<LevelEntry> levelEntries;
     bool loaded = false;
+    std::string initialLevelPath = DefaultInitialLevelPath;
 
     LevelManager() = default;
 };

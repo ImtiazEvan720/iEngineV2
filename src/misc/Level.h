@@ -23,7 +23,7 @@ public:
     static bool saveCurrentLevel(const std::string& path, std::string& errorMessage);
     static bool loadFromFile(const std::string& path, Level& level, std::string& errorMessage);
     static bool loadCurrentLevel(std::string& errorMessage);
-    static void loadLevel(Level&& level);
+    static void loadLevel(Level&& level, bool keepPersistentEntities = false);
     static const std::string& getCurrentLevelPath();
     static void setCurrentLevelPath(const std::string& path);
 
@@ -44,10 +44,13 @@ public:
 
     std::deque<Entity>& getEntities();
     const std::deque<Entity>& getEntities() const;
+    const std::string& getSourcePath() const;
+    std::string getSourceFileName() const;
 
     void update(float deltaTime);
 
 private:
     std::deque<Entity> entities;
     std::string sourcePath;
+    std::deque<Entity> extractPersistentEntities();
 };

@@ -454,6 +454,11 @@ bool EntityInspectorPanel::draw(std::string& statusMessage) {
     auto& entities = level.getEntities();
     bool prefabSaved = false;
 
+    const std::string levelFileName = level.getSourceFileName();
+    const std::string levelLabel = levelFileName.empty()
+        ? "Current Level"
+        : "Current Level (" + levelFileName + ")";
+
     ImGui::Text("Entities: %zu", entities.size());
 
     if (selectedEntityId >= 0) {
@@ -479,8 +484,9 @@ bool EntityInspectorPanel::draw(std::string& statusMessage) {
             ImVec2(0.0f, 0.0f),
             ImGuiChildFlags_Borders,
             ImGuiWindowFlags_HorizontalScrollbar)) {
+
         const bool levelOpen = ImGui::TreeNodeEx(
-            "Current Level",
+            levelLabel.c_str(),
             ImGuiTreeNodeFlags_DefaultOpen |
             ImGuiTreeNodeFlags_OpenOnArrow |
             ImGuiTreeNodeFlags_SpanAvailWidth
@@ -565,6 +571,10 @@ void EntityInspectorPanel::drawEntityTreeNode(Entity& entity, std::string& statu
     std::string label = entity.getName();
     if (label.empty()) {
         label = "Entity";
+    }
+
+    if (entity.isPersistent()) {
+        label += " (Persistent)";
     }
 
     label += "##" + std::to_string(entity.getId());

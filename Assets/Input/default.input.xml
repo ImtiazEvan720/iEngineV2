@@ -6,6 +6,7 @@
     <binding action="MoveLeft" key="A"/>
     <binding action="MoveRight" key="D"/>
     <binding action="Fire" key="Space"/>
+    <binding action="Fire2" key="Escape"/>
     <binding action="Fire" mouse="Left"/>
     <binding action="MoveUp" touchControl="MoveStickUp"/>
     <binding action="MoveDown" touchControl="MoveStickDown"/>

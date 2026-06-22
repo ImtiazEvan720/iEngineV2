@@ -33,6 +33,30 @@ namespace
         return std::find(fileNames.begin(), fileNames.end(), fileName) != fileNames.end();
     }
 
+    bool matchesLevelName(const LevelEntry& entry, const std::string& levelName)
+    {
+        if (entry.fileName == levelName || entry.displayName == levelName)
+        {
+            return true;
+        }
+
+        const std::filesystem::path fileNamePath(entry.fileName);
+        return fileNamePath.stem().string() == levelName;
+    }
+
+    bool isSafeLevelFileName(const std::string& levelName)
+    {
+        if (levelName.empty())
+        {
+            return false;
+        }
+
+        const std::filesystem::path levelPath(levelName);
+        return !levelPath.is_absolute()
+            && !levelPath.has_parent_path()
+            && levelPath.filename().string() == levelName;
+    }
+
     LevelEntry makeDefaultEntry(const std::filesystem::path &levelPath)
     {
         LevelEntry entry;
@@ -64,6 +88,7 @@ void LevelManager::load()
     }
 
     levelEntries.clear();
+    initialLevelPath = DefaultInitialLevelPath;
 
     const std::filesystem::path configPath = getLevelConfigPath();
     if (std::filesystem::exists(configPath))
@@ -98,6 +123,16 @@ void LevelManager::load()
                 entry.isActive = levelElement->BoolAttribute("active", false);
 
                 addLevelEntry(entry);
+            }
+
+            const tinyxml2::XMLElement *initialLevelElement = levelsElement->FirstChildElement("initialLevel");
+            if (initialLevelElement != nullptr)
+            {
+                const char *initialLevelPath = initialLevelElement->Attribute("path");
+                if (initialLevelPath != nullptr)
+                {
+                    setInitialLevelPath(initialLevelPath);
+                }
             }
         }
     }
@@ -151,6 +186,13 @@ bool LevelManager::save(std::string &errorMessage)
         tinyxml2::XMLElement *descriptionElement = document.NewElement("description");
         descriptionElement->SetText(entry.description.c_str());
         levelElement->InsertEndChild(descriptionElement);
+    }
+
+    if (!initialLevelPath.empty())
+    {
+        tinyxml2::XMLElement *initialLevelElement = document.NewElement("initialLevel");
+        initialLevelElement->SetAttribute("path", initialLevelPath.c_str());
+        levelsElement->InsertEndChild(initialLevelElement);
     }
 
     const std::filesystem::path configPath = getLevelConfigPath();
@@ -284,7 +326,6 @@ bool LevelManager::setActiveLevel(const std::string &fileName, bool value)
 const std::vector<const LevelEntry *> LevelManager::getActiveLevelEntries() const
 {
     std::vector<const LevelEntry *> activeEntries;
-    activeEntries.clear();
 
     for (const LevelEntry &entry : levelEntries)
     {
@@ -295,4 +336,74 @@ const std::vector<const LevelEntry *> LevelManager::getActiveLevelEntries() cons
     }
 
     return activeEntries;
+}
+
+bool LevelManager::resolveLevelPath(
+    const std::string& levelName,
+    std::filesystem::path& levelPath,
+    std::string& errorMessage
+)
+{
+    if (levelName.empty())
+    {
+        errorMessage = "Level name is empty.";
+        return false;
+    }
+
+    load();
+
+    if (levelEntries.empty())
+    {
+        refreshFromAssetsFolder();
+    }
+
+    const std::filesystem::path levelsDirectory = getLevelsDirectory();
+    for (const LevelEntry& entry : levelEntries)
+    {
+        if (matchesLevelName(entry, levelName))
+        {
+            levelPath = levelsDirectory / entry.fileName;
+            if (!std::filesystem::exists(levelPath))
+            {
+                errorMessage = "Level file does not exist: " + levelPath.string();
+                return false;
+            }
+
+            errorMessage.clear();
+            return true;
+        }
+    }
+
+    if (!isSafeLevelFileName(levelName))
+    {
+        errorMessage = "Level name cannot contain a path: " + levelName;
+        return false;
+    }
+
+    std::filesystem::path fileName(levelName);
+    if (fileName.extension() != ".ilevel")
+    {
+        fileName += ".ilevel";
+    }
+
+    const std::filesystem::path fallbackPath = levelsDirectory / fileName;
+    if (std::filesystem::exists(fallbackPath))
+    {
+        levelPath = fallbackPath;
+        errorMessage.clear();
+        return true;
+    }
+
+    errorMessage = "Level not found: " + levelName;
+    return false;
+}
+
+const std::string& LevelManager::getInitialLevelPath() const
+{
+    return initialLevelPath;
+}
+
+void LevelManager::setInitialLevelPath(const std::string& path)
+{
+    initialLevelPath = path;
 }

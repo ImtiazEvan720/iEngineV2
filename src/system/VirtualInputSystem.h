@@ -13,6 +13,7 @@ enum class InputAction {
     MoveLeft,
     MoveRight,
     Fire,
+    Fire2,
     Pause
 };
 

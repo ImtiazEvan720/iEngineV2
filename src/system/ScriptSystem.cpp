@@ -5,6 +5,7 @@
 #include "components/ScriptComponent.h"
 #include "components/TransformComponent.h"
 #include "math/Vector2F.h"
+#include "misc/LevelManager.h"
 #include "system/VirtualInputSystem.h"
 
 #ifdef IENGINE_EMBED_LUA_SCRIPTS
@@ -14,6 +15,7 @@
 #include <filesystem>
 #include <iostream>
 #include <utility>
+#include <vector>
 
 #ifdef IENGINE_EMBED_LUA_SCRIPTS
 namespace {
@@ -132,10 +134,59 @@ void ScriptSystem::unloadScript(ScriptComponent& component) {
     scripts.erase(&component);
 }
 
+bool ScriptSystem::requestLevelLoad(const std::string& levelName) {
+    if (levelName.empty()) {
+        std::cerr << "[Lua] Cannot request level load with an empty level name." << std::endl;
+        return false;
+    }
+
+    pendingLevelLoadName = levelName;
+    std::cout << "[Lua] Requested level load: " << levelName << std::endl;
+    return true;
+}
+
+bool ScriptSystem::consumePendingLevelLoad(std::string& levelName) {
+    if (pendingLevelLoadName.empty()) {
+        levelName.clear();
+        return false;
+    }
+
+    levelName = pendingLevelLoadName;
+    pendingLevelLoadName.clear();
+    return true;
+}
+
 void ScriptSystem::bindEngineTypes() {
     lua["engineLog"] = [](const std::string& message) {
         std::cout << "[Lua] " << message << std::endl;
     };
+
+    sol::table engineTable = lua.create_table();
+    engineTable["log"] = [](const std::string& message) {
+        std::cout << "[Lua] " << message << std::endl;
+    };
+    engineTable["loadLevel"] = [](const std::string& levelName) {
+        return ScriptSystem::getInstance().requestLevelLoad(levelName);
+    };
+    engineTable["getActiveLevels"] = [this]() {
+        sol::table levels = lua.create_table();
+        LevelManager& levelManager = LevelManager::getInstance();
+        levelManager.load();
+
+        const std::vector<const LevelEntry*> activeLevels =
+            levelManager.getActiveLevelEntries();
+
+        int luaIndex = 1;
+        for (const LevelEntry* entry : activeLevels) {
+            if (entry != nullptr) {
+                levels[luaIndex] = entry->fileName;
+                ++luaIndex;
+            }
+        }
+
+        return levels;
+    };
+    lua["Engine"] = engineTable;
 
     sol::table inputTable = lua.create_table();
     inputTable["isActionDown"] = [](const std::string& actionName) {
@@ -200,6 +251,8 @@ void ScriptSystem::bindEngineTypes() {
         "setName", &Entity::setName,
         "getTag", &Entity::getTag,
         "setTag", &Entity::setTag,
+        "setPersistent", &Entity::setPersistent,
+        "isPersistent", &Entity::isPersistent,
         "getTransform", [](Entity& entity) {
             return entity.getComponent<TransformComponent>();
         },

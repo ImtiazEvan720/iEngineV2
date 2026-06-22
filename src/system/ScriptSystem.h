@@ -16,6 +16,8 @@ public:
     bool loadScript(ScriptComponent& component);
     void updateScript(ScriptComponent& component, float deltaTime);
     void unloadScript(ScriptComponent& component);
+    bool requestLevelLoad(const std::string& levelName);
+    bool consumePendingLevelLoad(std::string& levelName);
 
 private:
     struct ScriptInstance {
@@ -33,5 +35,6 @@ private:
 
     sol::state lua;
     std::unordered_map<ScriptComponent*, ScriptInstance> scripts;
+    std::string pendingLevelLoadName;
     bool initialized = false;
 };

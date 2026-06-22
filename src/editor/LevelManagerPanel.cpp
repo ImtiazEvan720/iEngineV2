@@ -52,12 +52,13 @@ bool LevelManagerPanel::draw(std::string& statusMessage) {
         ImGuiTableFlags_Resizable |
         ImGuiTableFlags_SizingStretchProp;
 
-    if (ImGui::BeginTable("##LevelManagerTable", 5, tableFlags)) {
+    if (ImGui::BeginTable("##LevelManagerTable", 6, tableFlags)) {
         ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, 64.0f);
         ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_WidthStretch, 1.2f);
         ImGui::TableSetupColumn("Display Name", ImGuiTableColumnFlags_WidthStretch, 1.4f);
         ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 2.0f);
         ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 136.0f);
+        ImGui::TableSetupColumn("Initial", ImGuiTableColumnFlags_WidthFixed, 64.0f);
         ImGui::TableHeadersRow();
 
         for (const LevelEntry& entry : levelEntries) {
@@ -117,6 +118,16 @@ bool LevelManagerPanel::drawLevelEntry(const LevelEntry& entry, std::string& sta
 
     if (ImGui::Button("Remove")) {
         pendingRemoveFileName = entry.fileName;
+    }
+
+    bool isInitial = levelManager.getInitialLevelPath() == entry.fileName;
+    ImGui::TableSetColumnIndex(5);
+    if (ImGui::Checkbox("##Initial", &isInitial)) {
+        if (isInitial) {
+            levelManager.setInitialLevelPath(entry.fileName);
+        } else {
+            levelManager.setInitialLevelPath("");
+        }
     }
 
     ImGui::PopID();

@@ -2,6 +2,7 @@
 
 #include "math/Vector2F.h"
 #include "misc/Level.h"
+#include "misc/LevelManager.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
 #include "system/EngineState.h"
@@ -13,6 +14,7 @@
 #include "system/ProjectManager.h"
 #include "system/RawInputSystem.h"
 #include "system/Renderer.h"
+#include "system/ScriptSystem.h"
 #include "system/sdl/SdlGuiBackend.h"
 #include "system/sdl/SdlRenderBackend.h"
 #include "system/sdl/SdlWindowBackend.h"
@@ -150,6 +152,24 @@ bool shouldEnableTouchControls() {
 #endif
 }
 
+std::string getStartupLevelPath(ProjectManager& projectManager, std::string& errorMessage) {
+#ifdef IENGINE_WITH_EDITOR
+    errorMessage.clear();
+    return projectManager.getStartupLevelPath().string();
+#else
+    LevelManager& levelManager = LevelManager::getInstance();
+    levelManager.load();
+
+    const std::string& initialLevelPath = levelManager.getInitialLevelPath();
+    std::filesystem::path resolvedLevelPath;
+    if (levelManager.resolveLevelPath(initialLevelPath, resolvedLevelPath, errorMessage)) {
+        return resolvedLevelPath.string();
+    }
+
+    return {};
+#endif
+}
+
 std::string getRuntimePath(const std::string& root, const std::string& relativePath) {
     if (root.empty()) {
         return relativePath;
@@ -194,6 +214,34 @@ bool loadWindowConfig(
     std::cout << "Loaded config.xml. Window: " << windowWidth << "x" << windowHeight
               << ", title: " << windowTitle << std::endl;
     return true;
+}
+
+void processPendingScriptLevelLoad() {
+    std::string levelName;
+    if (!ScriptSystem::getInstance().consumePendingLevelLoad(levelName)) {
+        return;
+    }
+
+    std::filesystem::path levelPath;
+    std::string errorMessage;
+    if (!LevelManager::getInstance().resolveLevelPath(levelName, levelPath, errorMessage)) {
+        std::cerr << "Failed to resolve Lua level load request for \"" << levelName << "\": "
+                  << (errorMessage.empty() ? "unknown error" : errorMessage)
+                  << std::endl;
+        return;
+    }
+
+    Level loadedLevel = Level::createEmpty();
+    if (!Level::loadFromFile(levelPath.string(), loadedLevel, errorMessage)) {
+        std::cerr << "Failed to load Lua requested level \"" << levelName << "\": "
+                  << (errorMessage.empty() ? "unknown error" : errorMessage)
+                  << std::endl;
+        return;
+    }
+
+    Level::loadLevel(std::move(loadedLevel), true);
+    Renderer::getInstance().clearTileLayerBatches();
+    std::cout << "Loaded Lua requested level: " << levelPath.string() << std::endl;
 }
 }
 
@@ -290,8 +338,8 @@ bool Application::initialize(int argc, char* argv[]) {
 
     std::string errorMessage;
     Level startupLevel = Level::createEmpty();
-    const std::string startupLevelPath = projectManager.getStartupLevelPath().string();
-    if (Level::loadFromFile(startupLevelPath, startupLevel, errorMessage)) {
+    const std::string startupLevelPath = getStartupLevelPath(projectManager, errorMessage);
+    if (!startupLevelPath.empty() && Level::loadFromFile(startupLevelPath, startupLevel, errorMessage)) {
         Level::loadLevel(std::move(startupLevel));
     } else {
         std::cerr << "Failed to load startup level " << startupLevelPath
@@ -339,6 +387,8 @@ void Application::tick() {
         Level::getCurrentLevel().update(deltaTime);
         Renderer::getInstance().update(deltaTime);
     }
+
+    processPendingScriptLevelLoad();
 
     guiBackend->update(deltaTime);
     Renderer::getInstance().updateEditorOnly(deltaTime);

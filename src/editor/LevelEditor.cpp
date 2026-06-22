@@ -277,12 +277,13 @@ void LevelEditor::drawLevelOutlineTab(const InputSystem& inputSystem) {
     ImGui::Separator();
     ImGui::Text("Raw Mouse: %d, %d", rawInput.getMouseX(), rawInput.getMouseY());
     ImGui::Text(
-        "Raw Keys: W=%s A=%s S=%s D=%s Space=%s",
+        "Raw Keys: W=%s A=%s S=%s D=%s Space=%s Escape=%s",
         rawInput.isKeyDown(RawKey::W) ? "down" : "up",
         rawInput.isKeyDown(RawKey::A) ? "down" : "up",
         rawInput.isKeyDown(RawKey::S) ? "down" : "up",
         rawInput.isKeyDown(RawKey::D) ? "down" : "up",
-        rawInput.isKeyDown(RawKey::Space) ? "down" : "up"
+        rawInput.isKeyDown(RawKey::Space) ? "down" : "up",
+        rawInput.isKeyDown(RawKey::Escape) ? "down" : "up"
     );
     ImGui::Text(
         "Raw Mouse Buttons: Left=%s Right=%s Middle=%s",
@@ -301,12 +302,13 @@ void LevelEditor::drawLevelOutlineTab(const InputSystem& inputSystem) {
         touchControls.isControlDown(TouchControl::FireButton) ? "down" : "up"
     );
     ImGui::Text(
-        "Actions: Up=%s Down=%s Left=%s Right=%s Fire=%s",
+        "Actions: Up=%s Down=%s Left=%s Right=%s Fire=%s Fire2=%s",
         virtualInput.isActionDown(InputAction::MoveUp) ? "down" : "up",
         virtualInput.isActionDown(InputAction::MoveDown) ? "down" : "up",
         virtualInput.isActionDown(InputAction::MoveLeft) ? "down" : "up",
         virtualInput.isActionDown(InputAction::MoveRight) ? "down" : "up",
-        virtualInput.isActionDown(InputAction::Fire) ? "down" : "up"
+        virtualInput.isActionDown(InputAction::Fire) ? "down" : "up",
+        virtualInput.isActionDown(InputAction::Fire2) ? "down" : "up"
     );
 }
 
