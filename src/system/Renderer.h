@@ -5,6 +5,7 @@
 
 class IWindowBackend;
 class LevelAsset;
+class Entity;
 
 class Renderer {
 public:
@@ -23,6 +24,7 @@ public:
     void setEditorViewportActivity(bool dragDropActive, bool gridVisible, bool cameraActive);
     void updateEditorOnly(float deltaTime);
     bool shouldRenderEditorViewport() const;
+    bool isEntityInViewport(const Entity& entity) const;
     void render();
 
     Renderer(const Renderer& other) = delete;

@@ -168,6 +168,18 @@ void saveScriptComponent(
 ) {
     tinyxml2::XMLElement* component = addComponentElement(document, entityElement, "ScriptComponent");
     component->SetAttribute("path", scriptComponent.getScriptPath().c_str());
+
+    for (const ScriptProperty& property : scriptComponent.getProperties()) {
+        if (property.name.empty()) {
+            continue;
+        }
+
+        tinyxml2::XMLElement* propertyElement = document.NewElement("property");
+        propertyElement->SetAttribute("name", property.name.c_str());
+        propertyElement->SetAttribute("type", scriptPropertyTypeToString(property.type));
+        propertyElement->SetAttribute("value", scriptPropertyValueToString(property).c_str());
+        component->InsertEndChild(propertyElement);
+    }
 }
 
 void addMarkerComponent(tinyxml2::XMLDocument& document, tinyxml2::XMLElement& entityElement, const char* type) {
@@ -242,6 +254,30 @@ bool addAnimationComponentFromElement(const tinyxml2::XMLElement& component, Ent
     return true;
 }
 
+std::vector<ScriptProperty> loadScriptPropertiesFromElement(const tinyxml2::XMLElement& component) {
+    std::vector<ScriptProperty> properties;
+
+    for (const tinyxml2::XMLElement* propertyElement = component.FirstChildElement("property");
+         propertyElement != nullptr;
+         propertyElement = propertyElement->NextSiblingElement("property")) {
+        const char* name = propertyElement->Attribute("name");
+        if (name == nullptr || name[0] == '\0') {
+            continue;
+        }
+
+        const char* type = propertyElement->Attribute("type");
+        const char* value = propertyElement->Attribute("value");
+
+        ScriptProperty property;
+        property.name = name;
+        property.type = scriptPropertyTypeFromString(type == nullptr ? "string" : type);
+        scriptPropertySetValueFromString(property, value == nullptr ? "" : value);
+        properties.push_back(std::move(property));
+    }
+
+    return properties;
+}
+
 bool addComponentFromElement(const tinyxml2::XMLElement& component, Entity& entity, std::string& errorMessage) {
     const char* type = component.Attribute("type");
     if (type == nullptr) {
@@ -279,7 +315,7 @@ bool addComponentFromElement(const tinyxml2::XMLElement& component, Entity& enti
     if (componentType == "ScriptComponent") {
         const char* path = component.Attribute("path");
         if (path != nullptr && path[0] != '\0') {
-            entity.addComponent<ScriptComponent>(path);
+            entity.addComponent<ScriptComponent>(path, loadScriptPropertiesFromElement(component));
         }
         return true;
     }

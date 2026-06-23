@@ -52,7 +52,7 @@ private:
     void drawSpriteComponentFields(SpriteComponent& spriteComponent, std::string& statusMessage);
     void drawAnimationComponentFields(AnimationComponent& animationComponent, std::string& statusMessage);
     void drawCollisionComponentFields(CollisionComponent& collisionComponent, std::string& statusMessage);
-    void drawScriptComponentFields(ScriptComponent& scriptComponent);
+    void drawScriptComponentFields(ScriptComponent& scriptComponent, std::string& statusMessage);
 
     int selectedEntityId = -1;
     int pendingDeleteEntityId = -1;

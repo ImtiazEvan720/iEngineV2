@@ -1,5 +1,6 @@
 #include "system/Renderer.h"
 
+#include "Entity.h"
 #include "components/AnimationComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
@@ -9,6 +10,29 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+
+namespace {
+bool rectanglesIntersect(const RenderRect& left, const RenderRect& right) {
+    return left.x < right.x + right.width
+        && left.x + left.width > right.x
+        && left.y < right.y + right.height
+        && left.y + left.height > right.y;
+}
+
+const Sprite* getRenderableSprite(const Entity& entity) {
+    const AnimationComponent* animationComponent = entity.getComponent<AnimationComponent>();
+    if (animationComponent != nullptr && animationComponent->getAnimation().hasFrames()) {
+        return &animationComponent->getCurrentFrame();
+    }
+
+    const SpriteComponent* spriteComponent = entity.getComponent<SpriteComponent>();
+    if (spriteComponent != nullptr) {
+        return &spriteComponent->getSprite();
+    }
+
+    return nullptr;
+}
+}
 
 Renderer& Renderer::getInstance() {
     static Renderer instance;
@@ -94,6 +118,36 @@ bool Renderer::shouldRenderEditorViewport() const {
     return editorViewportRenderRequested;
 }
 
+bool Renderer::isEntityInViewport(const Entity& entity) const {
+    if (windowBackend == nullptr || entity.isDestroyed() || !entity.isEnabled()) {
+        return false;
+    }
+
+    const TransformComponent* transformComponent = entity.getComponent<TransformComponent>();
+    const Sprite* engineSprite = getRenderableSprite(entity);
+    if (transformComponent == nullptr || engineSprite == nullptr || engineSprite->getTextureHandle() == nullptr) {
+        return false;
+    }
+
+    const RenderRect viewport = windowBackend->getViewport();
+    if (viewport.width <= 0.0f || viewport.height <= 0.0f) {
+        return false;
+    }
+
+    const float zoom = camera.getZoom();
+    const Vector2F screenPosition = camera.worldToScreen(transformComponent->getWorldPosition(), viewport);
+    const Vector2F& size = engineSprite->getSize();
+    const Vector2F& origin = engineSprite->getOrigin();
+    const RenderRect entityBounds{
+        screenPosition.x - (origin.x * zoom),
+        screenPosition.y - (origin.y * zoom),
+        size.x * zoom,
+        size.y * zoom
+    };
+
+    return rectanglesIntersect(entityBounds, viewport);
+}
+
 void Renderer::render() {
     if (renderBackend == nullptr || windowBackend == nullptr) {
         return;
@@ -127,21 +181,13 @@ void Renderer::render() {
     for (const Entity* renderableEntity : renderableEntities) {
         const Entity& entity = *renderableEntity;
 
-        const AnimationComponent* animationComponent = entity.getComponent<AnimationComponent>();
-        const SpriteComponent* spriteComponent = entity.getComponent<SpriteComponent>();
         const TransformComponent* transformComponent = entity.getComponent<TransformComponent>();
 
         if (transformComponent == nullptr) {
             continue;
         }
 
-        const Sprite* engineSprite = nullptr;
-        if (animationComponent != nullptr && animationComponent->getAnimation().hasFrames()) {
-            engineSprite = &animationComponent->getCurrentFrame();
-        } else if (spriteComponent != nullptr) {
-            engineSprite = &spriteComponent->getSprite();
-        }
-
+        const Sprite* engineSprite = getRenderableSprite(entity);
         if (engineSprite == nullptr) {
             continue;
         }

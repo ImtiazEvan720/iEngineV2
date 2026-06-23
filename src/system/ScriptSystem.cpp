@@ -6,6 +6,7 @@
 #include "components/TransformComponent.h"
 #include "math/Vector2F.h"
 #include "misc/LevelManager.h"
+#include "system/Renderer.h"
 #include "system/VirtualInputSystem.h"
 
 #ifdef IENGINE_EMBED_LUA_SCRIPTS
@@ -168,6 +169,9 @@ void ScriptSystem::bindEngineTypes() {
     engineTable["loadLevel"] = [](const std::string& levelName) {
         return ScriptSystem::getInstance().requestLevelLoad(levelName);
     };
+    engineTable["isEntityInViewport"] = [](Entity& entity) {
+        return Renderer::getInstance().isEntityInViewport(entity);
+    };
     engineTable["getActiveLevels"] = [this]() {
         sol::table levels = lua.create_table();
         LevelManager& levelManager = LevelManager::getInstance();
@@ -244,6 +248,25 @@ void ScriptSystem::bindEngineTypes() {
         "setLooping", &AnimationComponent::setLooping
     );
 
+    lua.new_usertype<ScriptComponent>(
+        "ScriptComponent",
+        "getString", [](const ScriptComponent& component, const std::string& name, const std::string& fallback) {
+            return component.getString(name, fallback);
+        },
+        "getPrefab", [](const ScriptComponent& component, const std::string& name, const std::string& fallback) {
+            return component.getString(name, fallback);
+        },
+        "getInt", [](const ScriptComponent& component, const std::string& name, int fallback) {
+            return component.getInt(name, fallback);
+        },
+        "getFloat", [](const ScriptComponent& component, const std::string& name, float fallback) {
+            return component.getFloat(name, fallback);
+        },
+        "getBool", [](const ScriptComponent& component, const std::string& name, bool fallback) {
+            return component.getBool(name, fallback);
+        }
+    );
+
     lua.new_usertype<Entity>(
         "Entity",
         "getId", &Entity::getId,
@@ -251,13 +274,34 @@ void ScriptSystem::bindEngineTypes() {
         "setName", &Entity::setName,
         "getTag", &Entity::getTag,
         "setTag", &Entity::setTag,
+        "isEnabled", &Entity::isEnabled,
+        "setEnabled", &Entity::setEnabled,
         "setPersistent", &Entity::setPersistent,
         "isPersistent", &Entity::isPersistent,
+        "setParent", sol::overload(
+            [](Entity& entity, Entity* parent) {
+                return entity.setParent(parent);
+            },
+            [](Entity& entity, Entity* parent, bool keepWorldTransform) {
+                return entity.setParent(parent, keepWorldTransform);
+            }
+        ),
+        "clearParent", sol::overload(
+            [](Entity& entity) {
+                entity.clearParent();
+            },
+            [](Entity& entity, bool keepWorldTransform) {
+                entity.clearParent(keepWorldTransform);
+            }
+        ),
         "getTransform", [](Entity& entity) {
             return entity.getComponent<TransformComponent>();
         },
         "getAnimation", [](Entity& entity) {
             return entity.getComponent<AnimationComponent>();
+        },
+        "isInViewport", [](Entity& entity) {
+            return Renderer::getInstance().isEntityInViewport(entity);
         },
         "spawnPrefab", sol::overload(
             [](const std::string& prefabName, float x, float y) {
@@ -281,7 +325,8 @@ bool ScriptSystem::callOnStart(ScriptInstance& script, Entity& entity) {
         return true;
     }
 
-    sol::protected_function_result result = script.onStart(entity);
+    ScriptComponent* scriptComponent = entity.getComponent<ScriptComponent>();
+    sol::protected_function_result result = script.onStart(entity, scriptComponent);
     if (!result.valid()) {
         return reportScriptError("onStart", result);
     }
@@ -294,7 +339,8 @@ bool ScriptSystem::callOnUpdate(ScriptInstance& script, Entity& entity, float de
         return true;
     }
 
-    sol::protected_function_result result = script.onUpdate(entity, deltaTime);
+    ScriptComponent* scriptComponent = entity.getComponent<ScriptComponent>();
+    sol::protected_function_result result = script.onUpdate(entity, deltaTime, scriptComponent);
     if (!result.valid()) {
         return reportScriptError("onUpdate", result);
     }
