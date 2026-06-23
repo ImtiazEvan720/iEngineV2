@@ -15,7 +15,7 @@ end
 function Bullet:getForwardDirection(rotation)
     local radians = math.rad(rotation)
 
-    return Vector2F(
+    return Vector2F.new(
         math.sin(radians),
         -math.cos(radians)
     )

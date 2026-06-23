@@ -12,6 +12,7 @@
 #include "misc/Sprite.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
+#include "system/EngineState.h"
 #include "system/InputSystem.h"
 
 #include "tinyxml2.h"
@@ -481,6 +482,7 @@ bool Level::loadFromFile(const std::string& path, Level& level, std::string& err
          entityElement != nullptr;
          entityElement = entityElement->NextSiblingElement("entity")) {
         Entity& entity = loadedLevel.createEntity();
+        entity.setComponentStartupDeferred(true);
         entity.setName(entityElement->Attribute("name") == nullptr ? "Entity" : entityElement->Attribute("name"));
         entity.setTag(entityElement->Attribute("tag") == nullptr ? "Default" : entityElement->Attribute("tag"));
         entity.setEnabled(entityElement->BoolAttribute("enabled", true));
@@ -579,8 +581,21 @@ void Level::loadLevel(Level&& level, bool keepPersistentEntities) {
         );
     }
 
+    if (EngineState::getInstance().isPlaying()) {
+        startPendingComponents();
+    }
+}
+
+void Level::startPendingComponents() {
+    if (!EngineState::getInstance().isPlaying()) {
+        return;
+    }
+
+    Level& currentLevel = getCurrentLevel();
+    InputSystem& inputSystem = InputSystem::getInstance();
     for (Entity& entity : currentLevel.entities) {
-        entity.addInputListeners(InputSystem::getInstance());
+        entity.startDeferredComponents();
+        entity.addInputListeners(inputSystem);
     }
 }
 

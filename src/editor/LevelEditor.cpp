@@ -559,6 +559,7 @@ void LevelEditor::startBuild(const std::string& label, const std::string& script
 
 void LevelEditor::startPlayMode() {
     EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Play);
+    Level::startPendingComponents();
     statusMessage = "Play mode started.";
 }
 
@@ -568,6 +569,8 @@ void LevelEditor::pausePlayMode() {
 }
 
 void LevelEditor::stopPlayMode() {
+    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Edit);
+
     Level loadedLevel = Level::createEmpty();
     std::string errorMessage;
     const std::string currentLevelPath = Level::getCurrentLevelPath();
@@ -583,8 +586,6 @@ void LevelEditor::stopPlayMode() {
             "Stopped play mode. Failed to reload level: "
             + (errorMessage.empty() ? currentLevelPath : errorMessage);
     }
-
-    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Edit);
 }
 
 void LevelEditor::drawBuildOutputWindow() {

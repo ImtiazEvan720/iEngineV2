@@ -5,6 +5,7 @@
 #include "components/ScriptComponent.h"
 #include "components/TransformComponent.h"
 #include "math/Vector2F.h"
+#include "misc/Level.h"
 #include "misc/LevelManager.h"
 #include "system/Renderer.h"
 #include "system/VirtualInputSystem.h"
@@ -39,6 +40,28 @@ std::string getEmbeddedScriptKey(const std::string& scriptPath) {
 }
 }
 #endif
+
+namespace {
+Entity* findEntityByName(const std::string& entityName) {
+    for (Entity& entity : Level::getCurrentLevel().getEntities()) {
+        if (!entity.isDestroyed() && entity.getName() == entityName) {
+            return &entity;
+        }
+    }
+
+    return nullptr;
+}
+
+Entity* findEntityByTag(const std::string& tag) {
+    for (Entity& entity : Level::getCurrentLevel().getEntities()) {
+        if (!entity.isDestroyed() && entity.getTag() == tag) {
+            return &entity;
+        }
+    }
+
+    return nullptr;
+}
+}
 
 ScriptSystem& ScriptSystem::getInstance() {
     static ScriptSystem instance;
@@ -131,8 +154,73 @@ void ScriptSystem::updateScript(ScriptComponent& component, float deltaTime) {
     callOnUpdate(iterator->second, *entity, deltaTime);
 }
 
+bool ScriptSystem::getEntityScriptFunction(
+    Entity& entity,
+    const std::string& functionName,
+    sol::protected_function& function
+) {
+    if (!entity.isEnabled()) {
+        std::cerr << "[Lua] Script target entity is disabled: " << entity.getName() << std::endl;
+        return false;
+    }
+
+    ScriptComponent* scriptComponent = entity.getComponent<ScriptComponent>();
+    if (scriptComponent == nullptr) {
+        std::cerr << "[Lua] Script target has no ScriptComponent: " << entity.getName() << std::endl;
+        return false;
+    }
+
+    const auto scriptIterator = scripts.find(scriptComponent);
+    if (scriptIterator == scripts.end()) {
+        std::cerr << "[Lua] Script target is not loaded: " << entity.getName() << std::endl;
+        return false;
+    }
+
+    function = scriptIterator->second.environment.get<sol::protected_function>(functionName);
+    if (!function.valid()) {
+        std::cerr << "[Lua] Script function not found: "
+                  << entity.getName() << "." << functionName << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 void ScriptSystem::unloadScript(ScriptComponent& component) {
     scripts.erase(&component);
+}
+
+bool ScriptSystem::callEntityScriptFunction(Entity& entity, const std::string& functionName) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    sol::protected_function_result result = function();
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::callEntityScriptFunction(
+    Entity& entity,
+    const std::string& functionName,
+    const Vector2F& position,
+    float rotation
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    sol::protected_function_result result = function(position, rotation);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
 }
 
 bool ScriptSystem::requestLevelLoad(const std::string& levelName) {
@@ -171,6 +259,12 @@ void ScriptSystem::bindEngineTypes() {
     };
     engineTable["isEntityInViewport"] = [](Entity& entity) {
         return Renderer::getInstance().isEntityInViewport(entity);
+    };
+    engineTable["findEntityByName"] = [](const std::string& entityName) {
+        return findEntityByName(entityName);
+    };
+    engineTable["findEntityByTag"] = [](const std::string& tag) {
+        return findEntityByTag(tag);
     };
     engineTable["getActiveLevels"] = [this]() {
         sol::table levels = lua.create_table();
@@ -303,6 +397,14 @@ void ScriptSystem::bindEngineTypes() {
         "isInViewport", [](Entity& entity) {
             return Renderer::getInstance().isEntityInViewport(entity);
         },
+        "callScript", sol::overload(
+            [](Entity& entity, const std::string& functionName) {
+                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName);
+            },
+            [](Entity& entity, const std::string& functionName, const Vector2F& position, float rotation) {
+                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, position, rotation);
+            }
+        ),
         "spawnPrefab", sol::overload(
             [](const std::string& prefabName, float x, float y) {
                 return Entity::spawnPrefab(prefabName, x, y);

@@ -24,6 +24,7 @@ public:
     static bool loadFromFile(const std::string& path, Level& level, std::string& errorMessage);
     static bool loadCurrentLevel(std::string& errorMessage);
     static void loadLevel(Level&& level, bool keepPersistentEntities = false);
+    static void startPendingComponents();
     static const std::string& getCurrentLevelPath();
     static void setCurrentLevelPath(const std::string& path);
 

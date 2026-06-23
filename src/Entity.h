@@ -31,9 +31,10 @@ public:
 
         reference.setEntity(this);
         components.push_back(std::move(component));
-        reference.onStart();
-        if (!enabled) {
-            reference.onEnable(false);
+        if (shouldStartComponentsImmediately()) {
+            startComponent(reference);
+        } else {
+            hasDeferredComponentStartup = true;
         }
         syncTransformParent();
         syncChildTransformParents();
@@ -76,7 +77,10 @@ public:
 
         for (auto it = components.begin(); it != components.end(); ++it) {
             if (dynamic_cast<TComponent*>(it->get()) != nullptr) {
-                (*it)->onDestroy();
+                if ((*it)->started) {
+                    (*it)->onDestroy();
+                    (*it)->started = false;
+                }
                 components.erase(it);
                 syncTransformParent();
                 syncChildTransformParents();
@@ -92,6 +96,8 @@ public:
     bool isDestroyed() const;
     void addInputListeners(InputSystem& inputSystem);
     void removeInputListeners(InputSystem& inputSystem);
+    void setComponentStartupDeferred(bool deferred);
+    void startDeferredComponents();
 
     int getId() const;
     const std::string& getName() const;
@@ -119,6 +125,8 @@ private:
     static int globalId;
 
     void refreshComponentOwners();
+    bool shouldStartComponentsImmediately() const;
+    void startComponent(Component& component);
     void destroyComponents();
     void removeChildReference(Entity* child);
     void syncTransformParent();
@@ -136,4 +144,6 @@ private:
     bool destroyed = false;
     bool updating = false;
     bool persistent = false;
+    bool componentStartupDeferred = false;
+    bool hasDeferredComponentStartup = false;
 };

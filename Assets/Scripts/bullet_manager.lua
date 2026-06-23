@@ -28,7 +28,7 @@ function BulletManager:resetBulletEntity(bulletEntity)
 
     local transform = bulletEntity:getTransform()
     if transform ~= nil then
-        transform:setPosition(Vector2F(0.0, 0.0))
+        transform:setPosition(Vector2F.new(0.0, 0.0))
         transform:setRotation(0.0)
     end
 end
@@ -93,6 +93,15 @@ function BulletManager:update()
 end
 
 local bulletManager = nil
+
+function fire(position, rotation)
+    if bulletManager == nil then
+        Engine.log("BulletManager fire called before initialization.")
+        return nil
+    end
+
+    return bulletManager:fire(position, rotation)
+end
 
 function onStart(entity, script)
     bulletManager = BulletManager:new(entity)

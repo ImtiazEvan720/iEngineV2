@@ -1,30 +1,58 @@
+ScriptProperties = {
+    { name = "speed", type = "float", default = 100.0 },
+    { name = "bulletManager", type = "string", default = "BulletManager" },
+}
+
 local speed = 100.0
-local firedBullets = 0
-local bulletPrefabName = "Bullet"
+local bulletManagerName = "BulletManager"
+local bulletManager = nil
+
+local function refreshScriptProperties(script)
+    if script == nil then
+        return
+    end
+
+    speed = script:getFloat("speed", speed)
+    bulletManagerName = script:getString("bulletManager", bulletManagerName)
+end
+
+local function getBulletManager()
+    if bulletManager ~= nil and bulletManager:getName() == bulletManagerName then
+        return bulletManager
+    end
+
+    bulletManager = Engine.findEntityByName(bulletManagerName)
+    return bulletManager
+end
 
 local function fire(entity, transform)
     local position = transform:getPosition()
     local rotation = transform:getRotation()
-    local bullet = spawnPrefab(bulletPrefabName, position.x, position.y, rotation)
+    local manager = getBulletManager()
 
-    if bullet == nil then
-        engineLog("PlayerControllerLua failed to spawn prefab: " .. bulletPrefabName)
+    if manager == nil then
+        engineLog("PlayerControllerLua could not find bullet manager: " .. bulletManagerName)
         return
     end
 
-    bullet:setName("Bullet" .. tostring(firedBullets))
-    bullet:setTag("Bullet")
-    firedBullets = firedBullets + 1
+    if not manager:callScript("fire", position, rotation) then
+        engineLog("PlayerControllerLua failed to call fire on manager: " .. bulletManagerName)
+    end
 end
 
-function onStart(entity)
+function onStart(entity, script)
+    refreshScriptProperties(script)
+    bulletManager = Engine.findEntityByName(bulletManagerName)
+
     engineLog("PlayerControllerLua started: "
         .. entity:getName()
         .. ", tag: "
         .. entity:getTag())
 end
 
-function onUpdate(entity, deltaTime)
+function onUpdate(entity, deltaTime, script)
+    refreshScriptProperties(script)
+
     local transform = entity:getTransform()
     if transform == nil then
         return

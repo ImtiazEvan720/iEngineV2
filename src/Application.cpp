@@ -336,6 +336,12 @@ bool Application::initialize(int argc, char* argv[]) {
     renderer.setWindowBackend(windowBackend.get());
     renderer.setRenderScale(2.0f);
 
+#ifdef IENGINE_WITH_EDITOR
+    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Edit);
+#else
+    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Play);
+#endif
+
     std::string errorMessage;
     Level startupLevel = Level::createEmpty();
     const std::string startupLevelPath = getStartupLevelPath(projectManager, errorMessage);
@@ -347,12 +353,6 @@ bool Application::initialize(int argc, char* argv[]) {
                   << std::endl;
         Level::loadLevel(Level::createEmpty());
     }
-
-#ifdef IENGINE_WITH_EDITOR
-    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Edit);
-#else
-    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Play);
-#endif
 
     previousTime = std::chrono::steady_clock::now();
     initialized = true;

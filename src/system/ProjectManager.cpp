@@ -296,6 +296,7 @@ bool ProjectManager::openProject(const std::string& projectFilePath, std::string
         return false;
     }
 
+    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Edit);
     Level::loadLevel(Level::createEmpty());
     Renderer::getInstance().clearTileLayerBatches();
     AssetManager::getInstance().clearAssets();
@@ -327,12 +328,11 @@ bool ProjectManager::openProject(const std::string& projectFilePath, std::string
             "Opened project, but failed to load startup level: " + levelError
         );
     }
-
-    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Edit);
     return true;
 }
 
 void ProjectManager::closeProject() {
+    EngineState::getInstance().setRuntimeMode(EngineState::RuntimeMode::Edit);
     Level::loadLevel(Level::createEmpty());
     Renderer::getInstance().clearTileLayerBatches();
     AssetManager::getInstance().clearAssets();

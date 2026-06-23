@@ -7,6 +7,7 @@
 
 class Entity;
 class ScriptComponent;
+class Vector2F;
 
 class ScriptSystem {
 public:
@@ -16,6 +17,8 @@ public:
     bool loadScript(ScriptComponent& component);
     void updateScript(ScriptComponent& component, float deltaTime);
     void unloadScript(ScriptComponent& component);
+    bool callEntityScriptFunction(Entity& entity, const std::string& functionName);
+    bool callEntityScriptFunction(Entity& entity, const std::string& functionName, const Vector2F& position, float rotation);
     bool requestLevelLoad(const std::string& levelName);
     bool consumePendingLevelLoad(std::string& levelName);
 
@@ -29,6 +32,7 @@ private:
     ScriptSystem() = default;
 
     void bindEngineTypes();
+    bool getEntityScriptFunction(Entity& entity, const std::string& functionName, sol::protected_function& function);
     bool callOnStart(ScriptInstance& script, Entity& entity);
     bool callOnUpdate(ScriptInstance& script, Entity& entity, float deltaTime);
     bool reportScriptError(const std::string& context, const sol::protected_function_result& result);

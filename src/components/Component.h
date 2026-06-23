@@ -20,4 +20,5 @@ private:
     void setEntity(Entity* entity);
 
     Entity* entity = nullptr;
+    bool started = false;
 };

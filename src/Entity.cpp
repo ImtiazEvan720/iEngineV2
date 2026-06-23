@@ -6,6 +6,7 @@
 #include "misc/PrefabAsset.h"
 #include "serialization/PrefabSerializer.h"
 #include "system/AssetManager.h"
+#include "system/EngineState.h"
 #include "system/InputListener.h"
 #include "system/InputSystem.h"
 
@@ -32,6 +33,8 @@ Entity::Entity(Entity&& other) noexcept
       enabled(other.enabled),
       destroyed(other.destroyed),
       persistent(other.persistent),
+      componentStartupDeferred(other.componentStartupDeferred),
+      hasDeferredComponentStartup(other.hasDeferredComponentStartup),
       updating(false) {
     refreshComponentOwners();
     rebindParentLinksFrom(&other);
@@ -56,6 +59,8 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     enabled = other.enabled;
     destroyed = other.destroyed;
     persistent = other.persistent;
+    componentStartupDeferred = other.componentStartupDeferred;
+    hasDeferredComponentStartup = other.hasDeferredComponentStartup;
     updating = false;
     refreshComponentOwners();
     rebindParentLinksFrom(&other);
@@ -71,6 +76,23 @@ void Entity::refreshComponentOwners() {
     }
 
     syncTransformParent();
+}
+
+bool Entity::shouldStartComponentsImmediately() const {
+    return !componentStartupDeferred && EngineState::getInstance().isPlaying();
+}
+
+void Entity::startComponent(Component& component) {
+    if (component.started) {
+        return;
+    }
+
+    component.started = true;
+    component.onStart();
+
+    if (!enabled) {
+        component.onEnable(false);
+    }
 }
 
 void Entity::update(float deltaTime) {
@@ -129,7 +151,10 @@ void Entity::destroyComponents() {
             InputSystem::getInstance().removeListener(listener);
         }
 
-        component->onDestroy();
+        if (component->started) {
+            component->onDestroy();
+            component->started = false;
+        }
     }
 
     components.clear();
@@ -157,6 +182,35 @@ void Entity::removeInputListeners(InputSystem& inputSystem) {
             inputSystem.removeListener(listener);
         }
     }
+}
+
+void Entity::setComponentStartupDeferred(bool deferred) {
+    componentStartupDeferred = deferred;
+}
+
+void Entity::startDeferredComponents() {
+    if (!EngineState::getInstance().isPlaying()) {
+        return;
+    }
+
+    if (!hasDeferredComponentStartup) {
+        componentStartupDeferred = false;
+        return;
+    }
+
+    componentStartupDeferred = false;
+    hasDeferredComponentStartup = false;
+
+    for (const auto& component : components) {
+        startComponent(*component);
+
+        if (destroyed) {
+            break;
+        }
+    }
+
+    syncTransformParent();
+    syncChildTransformParents();
 }
 
 int Entity::getId() const {
@@ -218,7 +272,9 @@ void Entity::setEnabled(bool enabled) {
     }
 
     for (const auto& component : components) {
-        component->onEnable(this->enabled);
+        if (component->started) {
+            component->onEnable(this->enabled);
+        }
     }
 }
 
