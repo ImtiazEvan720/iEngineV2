@@ -220,6 +220,7 @@ set(IENGINE_SOURCES
     src/misc/Asset.cpp
     src/misc/Animation.cpp
     src/misc/Camera2D.cpp
+    src/misc/Guid.cpp
     src/misc/Level.cpp
     src/misc/LevelAsset.cpp
     src/misc/LevelManager.cpp

@@ -2,6 +2,7 @@
 
 #include "components/TransformComponent.h"
 #include "math/Vector2F.h"
+#include "misc/Guid.h"
 #include "misc/Level.h"
 #include "misc/PrefabAsset.h"
 #include "serialization/PrefabSerializer.h"
@@ -16,7 +17,11 @@
 int Entity::globalId = 0;
 
 Entity::Entity()
-    : name("Entity"), tag("Default"), id(globalId++), displayOrder(id) {}
+    : name("Entity"),
+      tag("Default"),
+      guid(Guid::generate()),
+      id(globalId++),
+      displayOrder(id) {}
 
 Entity::~Entity() {
     destroy();
@@ -28,6 +33,7 @@ Entity::Entity(Entity&& other) noexcept
       children(std::move(other.children)),
       name(std::move(other.name)),
       tag(std::move(other.tag)),
+      guid(std::move(other.guid)),
       id(other.id),
       displayOrder(other.displayOrder),
       enabled(other.enabled),
@@ -52,6 +58,7 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     components = std::move(other.components);
     name = std::move(other.name);
     tag = std::move(other.tag);
+    guid = std::move(other.guid);
     id = other.id;
     displayOrder = other.displayOrder;
     parentEntity = other.parentEntity;
@@ -442,4 +449,12 @@ void Entity::setPersistent(bool value) {
 
 bool Entity::isPersistent() const {
     return persistent;
+}
+
+void Entity::restoreGuid(const std::string& guid) {
+    this->guid = guid;
+}
+
+const std::string& Entity::getGuid() const {
+    return guid;
 }

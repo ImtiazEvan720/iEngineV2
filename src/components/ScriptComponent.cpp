@@ -44,6 +44,10 @@ const char* scriptPropertyTypeToString(ScriptPropertyType type) {
             return "bool";
         case ScriptPropertyType::Prefab:
             return "prefab";
+        case ScriptPropertyType::Vector2:
+            return "vector2";
+        case ScriptPropertyType::Entity:
+            return "entity";
         case ScriptPropertyType::String:
         default:
             return "string";

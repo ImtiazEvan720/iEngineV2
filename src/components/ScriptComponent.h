@@ -11,7 +11,9 @@ enum class ScriptPropertyType {
     Int,
     Float,
     Bool,
-    Prefab
+    Prefab,
+    Vector2,
+    Entity,
 };
 
 struct ScriptProperty {

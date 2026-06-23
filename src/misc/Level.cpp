@@ -9,6 +9,7 @@
 #include "game/Brick.h"
 #include "game/Bullet.h"
 #include "misc/Animation.h"
+#include "misc/Guid.h"
 #include "misc/Sprite.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
@@ -384,6 +385,7 @@ bool Level::saveCurrentLevel(const std::string& path, std::string& errorMessage)
 
         tinyxml2::XMLElement* entityElement = document.NewElement("entity");
         entityElement->SetAttribute("id", entity.getId());
+        entityElement->SetAttribute("guid", entity.getGuid().c_str());
         entityElement->SetAttribute("name", entity.getName().c_str());
         entityElement->SetAttribute("tag", entity.getTag().c_str());
         entityElement->SetAttribute("enabled", entity.isEnabled());
@@ -483,6 +485,10 @@ bool Level::loadFromFile(const std::string& path, Level& level, std::string& err
          entityElement = entityElement->NextSiblingElement("entity")) {
         Entity& entity = loadedLevel.createEntity();
         entity.setComponentStartupDeferred(true);
+        const char* savedGuid = entityElement->Attribute("guid");
+        if (savedGuid != nullptr && Guid::isValid(savedGuid)) {
+            entity.restoreGuid(savedGuid);
+        }
         entity.setName(entityElement->Attribute("name") == nullptr ? "Entity" : entityElement->Attribute("name"));
         entity.setTag(entityElement->Attribute("tag") == nullptr ? "Default" : entityElement->Attribute("tag"));
         entity.setEnabled(entityElement->BoolAttribute("enabled", true));

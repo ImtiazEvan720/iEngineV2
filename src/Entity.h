@@ -117,13 +117,17 @@ public:
     void clearParent(bool keepWorldTransform = true);
     void setPersistent(bool value);
     bool isPersistent() const;
+    const std::string& getGuid() const;
 
     static Entity* spawnPrefab(const std::string& prefabName, const Vector2F& position, float rotation = 0.0f);
     static Entity* spawnPrefab(const std::string& prefabName, float x, float y, float rotation = 0.0f);
 
 private:
+    friend class Level;
+
     static int globalId;
 
+    void restoreGuid(const std::string& guid);
     void refreshComponentOwners();
     bool shouldStartComponentsImmediately() const;
     void startComponent(Component& component);
@@ -138,6 +142,7 @@ private:
     std::vector<Entity*> children;
     std::string name;
     std::string tag;
+    std::string guid;
     int id;
     int displayOrder;
     bool enabled = true;
