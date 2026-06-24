@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+class Entity;
+
 enum class ScriptPropertyType {
     String,
     Int,
@@ -44,6 +46,7 @@ public:
     bool removeProperty(std::size_t index);
 
     std::string getString(const std::string& name, const std::string& fallback) const;
+    Entity* getEntityReference(const std::string& name) const;
     int getInt(const std::string& name, int fallback) const;
     float getFloat(const std::string& name, float fallback) const;
     bool getBool(const std::string& name, bool fallback) const;

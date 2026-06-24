@@ -1,5 +1,6 @@
 #include "components/ScriptComponent.h"
 
+#include "misc/Level.h"
 #include "system/ScriptSystem.h"
 
 #include <sstream>
@@ -71,6 +72,14 @@ ScriptPropertyType scriptPropertyTypeFromString(const std::string& value) {
         return ScriptPropertyType::Prefab;
     }
 
+    if (value == "vector2" || value == "Vector2") {
+        return ScriptPropertyType::Vector2;
+    }
+
+    if (value == "entity" || value == "Entity") {
+        return ScriptPropertyType::Entity;
+    }
+
     return ScriptPropertyType::String;
 }
 
@@ -86,6 +95,8 @@ std::string scriptPropertyValueToString(const ScriptProperty& property) {
         case ScriptPropertyType::Bool:
             return property.boolValue ? "true" : "false";
         case ScriptPropertyType::Prefab:
+        case ScriptPropertyType::Vector2:
+        case ScriptPropertyType::Entity:
         case ScriptPropertyType::String:
         default:
             return property.stringValue;
@@ -116,6 +127,8 @@ void scriptPropertySetValueFromString(ScriptProperty& property, const std::strin
             property.boolValue = value == "true" || value == "1" || value == "True" || value == "TRUE";
             break;
         case ScriptPropertyType::Prefab:
+        case ScriptPropertyType::Vector2:
+        case ScriptPropertyType::Entity:
         case ScriptPropertyType::String:
         default:
             property.stringValue = value;
@@ -174,6 +187,15 @@ std::string ScriptComponent::getString(const std::string& name, const std::strin
     }
 
     return scriptPropertyValueToString(*property);
+}
+
+Entity* ScriptComponent::getEntityReference(const std::string& name) const {
+    const ScriptProperty* property = findProperty(name);
+    if (property == nullptr || property->type != ScriptPropertyType::Entity || property->stringValue.empty()) {
+        return nullptr;
+    }
+
+    return Level::getCurrentLevel().getEntityByGuid(property->stringValue);
 }
 
 int ScriptComponent::getInt(const std::string& name, int fallback) const {

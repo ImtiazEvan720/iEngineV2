@@ -1,35 +1,53 @@
 ScriptProperties = {
     { name = "speed", type = "float", default = 100.0 },
-    { name = "bulletManager", type = "string", default = "BulletManager" },
+    { name = "bulletManager", type = "entity", default = "" },
+    { name = "turret", type = "entity", default = "" },
 }
 
 local speed = 100.0
 local bulletManagerName = "BulletManager"
 local bulletManager = nil
+local turret = nil
 
 local function refreshScriptProperties(script)
+    if Props ~= nil and Props.speed ~= nil then
+        speed = Props.speed
+    end
+
+    if Refs ~= nil and Refs.bulletManager ~= nil then
+        bulletManager = Refs.bulletManager
+    end
+
+    if Refs ~= nil and Refs.turret ~= nil then
+        turret = Refs.turret
+    end
+
     if script == nil then
         return
     end
 
-    speed = script:getFloat("speed", speed)
-    bulletManagerName = script:getString("bulletManager", bulletManagerName)
-end
-
-local function getBulletManager()
-    if bulletManager ~= nil and bulletManager:getName() == bulletManagerName then
-        return bulletManager
+    if Props == nil or Props.speed == nil then
+        speed = script:getFloat("speed", speed)
     end
 
-    bulletManager = Engine.findEntityByName(bulletManagerName)
-    return bulletManager
+    if bulletManager == nil then
+        bulletManager = script:getEntity("bulletManager")
+    end
+
+    if turret == nil then
+        turret = script:getEntity("turret")
+    end
 end
 
 local function fire(entity, transform)
-    local position = transform:getPosition()
-    local rotation = transform:getRotation()
-    local manager = getBulletManager()
+    local fireTransform = transform
+    if turret ~= nil and turret:getTransform() ~= nil then
+        fireTransform = turret:getTransform()
+    end
 
+    local position = fireTransform:getWorldPosition()
+    local rotation = fireTransform:getWorldRotation()
+    local manager = bulletManager
     if manager == nil then
         engineLog("PlayerControllerLua could not find bullet manager: " .. bulletManagerName)
         return
@@ -42,7 +60,10 @@ end
 
 function onStart(entity, script)
     refreshScriptProperties(script)
-    bulletManager = Engine.findEntityByName(bulletManagerName)
+
+    if bulletManager == nil then
+        bulletManager = Engine.findEntityByName(bulletManagerName)
+    end
 
     engineLog("PlayerControllerLua started: "
         .. entity:getName()

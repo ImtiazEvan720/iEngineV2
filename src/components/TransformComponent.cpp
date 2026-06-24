@@ -1,5 +1,7 @@
 #include "components/TransformComponent.h"
 
+#include <cmath>
+
 TransformComponent::TransformComponent()
     : position(Vector2F::zero()), rotation(0.0f) {}
 
@@ -19,10 +21,23 @@ Vector2F TransformComponent::getWorldPosition() const {
         return position;
     }
 
-    Vector2F parentPosition = parent->getWorldPosition();
-    parentPosition.x += position.x;
-    parentPosition.y += position.y;
-    return parentPosition;
+    constexpr float degreesToRadians = 3.14159265358979323846f / 180.0f;
+
+    const Vector2F parentWorldPosition = parent->getWorldPosition();
+    const float parentWorldRotation = parent->getWorldRotation();
+    const float radians = parentWorldRotation * degreesToRadians;
+    const float cosAngle = std::cos(radians);
+    const float sinAngle = std::sin(radians);
+
+    const Vector2F rotatedLocalPosition(
+        position.x * cosAngle - position.y * sinAngle,
+        position.x * sinAngle + position.y * cosAngle
+    );
+
+    return Vector2F(
+        parentWorldPosition.x + rotatedLocalPosition.x,
+        parentWorldPosition.y + rotatedLocalPosition.y
+    );
 }
 
 float TransformComponent::getWorldRotation() const {

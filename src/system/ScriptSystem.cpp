@@ -61,6 +61,10 @@ Entity* findEntityByTag(const std::string& tag) {
 
     return nullptr;
 }
+
+Entity* findEntityByGuid(const std::string& guid) {
+    return Level::getCurrentLevel().getEntityByGuid(guid);
+}
 }
 
 ScriptSystem& ScriptSystem::getInstance() {
@@ -97,6 +101,7 @@ bool ScriptSystem::loadScript(ScriptComponent& component) {
 
     ScriptInstance script;
     script.environment = sol::environment(lua, sol::create, lua.globals());
+    refreshScriptPropertyTables(script, component);
 
 #ifdef IENGINE_EMBED_LUA_SCRIPTS
     const std::string scriptKey = getEmbeddedScriptKey(component.getScriptPath());
@@ -176,6 +181,8 @@ bool ScriptSystem::getEntityScriptFunction(
         return false;
     }
 
+    refreshScriptPropertyTables(scriptIterator->second, *scriptComponent);
+
     function = scriptIterator->second.environment.get<sol::protected_function>(functionName);
     if (!function.valid()) {
         std::cerr << "[Lua] Script function not found: "
@@ -188,6 +195,45 @@ bool ScriptSystem::getEntityScriptFunction(
 
 void ScriptSystem::unloadScript(ScriptComponent& component) {
     scripts.erase(&component);
+}
+
+void ScriptSystem::refreshScriptPropertyTables(ScriptInstance& script, const ScriptComponent& component) {
+    sol::table refs = lua.create_table();
+    sol::table props = lua.create_table();
+
+    for (const ScriptProperty& property : component.getProperties()) {
+        if (property.name.empty()) {
+            continue;
+        }
+
+        switch (property.type) {
+            case ScriptPropertyType::Entity: {
+                Entity* referencedEntity = component.getEntityReference(property.name);
+                refs[property.name] = referencedEntity == nullptr
+                    ? sol::make_object(lua, sol::nil)
+                    : sol::make_object(lua, referencedEntity);
+                break;
+            }
+            case ScriptPropertyType::Int:
+                props[property.name] = property.intValue;
+                break;
+            case ScriptPropertyType::Float:
+                props[property.name] = property.floatValue;
+                break;
+            case ScriptPropertyType::Bool:
+                props[property.name] = property.boolValue;
+                break;
+            case ScriptPropertyType::Prefab:
+            case ScriptPropertyType::Vector2:
+            case ScriptPropertyType::String:
+            default:
+                props[property.name] = property.stringValue;
+                break;
+        }
+    }
+
+    script.environment["Refs"] = refs;
+    script.environment["Props"] = props;
 }
 
 bool ScriptSystem::callEntityScriptFunction(Entity& entity, const std::string& functionName) {
@@ -266,6 +312,9 @@ void ScriptSystem::bindEngineTypes() {
     engineTable["findEntityByTag"] = [](const std::string& tag) {
         return findEntityByTag(tag);
     };
+    engineTable["findEntityByGuid"] = [](const std::string& guid) {
+        return findEntityByGuid(guid);
+    };
     engineTable["getActiveLevels"] = [this]() {
         sol::table levels = lua.create_table();
         LevelManager& levelManager = LevelManager::getInstance();
@@ -325,10 +374,14 @@ void ScriptSystem::bindEngineTypes() {
         "getPosition", [](const TransformComponent& transform) {
             return transform.getPosition();
         },
+        "getWorldPosition", [](const TransformComponent& transform) {
+            return transform.getWorldPosition();
+        },
         "setPosition", [](TransformComponent& transform, const Vector2F& position) {
             transform.setPosition(position);
         },
         "getRotation", &TransformComponent::getRotation,
+        "getWorldRotation", &TransformComponent::getWorldRotation,
         "setRotation", &TransformComponent::setRotation
     );
 
@@ -350,6 +403,9 @@ void ScriptSystem::bindEngineTypes() {
         "getPrefab", [](const ScriptComponent& component, const std::string& name, const std::string& fallback) {
             return component.getString(name, fallback);
         },
+        "getEntity", [](const ScriptComponent& component, const std::string& name) {
+            return component.getEntityReference(name);
+        },
         "getInt", [](const ScriptComponent& component, const std::string& name, int fallback) {
             return component.getInt(name, fallback);
         },
@@ -364,6 +420,7 @@ void ScriptSystem::bindEngineTypes() {
     lua.new_usertype<Entity>(
         "Entity",
         "getId", &Entity::getId,
+        "getGuid", &Entity::getGuid,
         "getName", &Entity::getName,
         "setName", &Entity::setName,
         "getTag", &Entity::getTag,
@@ -428,6 +485,10 @@ bool ScriptSystem::callOnStart(ScriptInstance& script, Entity& entity) {
     }
 
     ScriptComponent* scriptComponent = entity.getComponent<ScriptComponent>();
+    if (scriptComponent != nullptr) {
+        refreshScriptPropertyTables(script, *scriptComponent);
+    }
+
     sol::protected_function_result result = script.onStart(entity, scriptComponent);
     if (!result.valid()) {
         return reportScriptError("onStart", result);
@@ -442,6 +503,10 @@ bool ScriptSystem::callOnUpdate(ScriptInstance& script, Entity& entity, float de
     }
 
     ScriptComponent* scriptComponent = entity.getComponent<ScriptComponent>();
+    if (scriptComponent != nullptr) {
+        refreshScriptPropertyTables(script, *scriptComponent);
+    }
+
     sol::protected_function_result result = script.onUpdate(entity, deltaTime, scriptComponent);
     if (!result.valid()) {
         return reportScriptError("onUpdate", result);

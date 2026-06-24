@@ -408,6 +408,19 @@ target_link_libraries(iEngineV2 PRIVATE
     tinyxml2::tinyxml2
 )
 
+if(NOT EMSCRIPTEN AND NOT IENGINE_TARGET_IOS AND NOT IENGINE_TARGET_ANDROID AND NOT IENGINE_EMBED_LUA_SCRIPTS)
+    add_custom_target(iEngineCopyRuntimeScripts ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:iEngineV2>/Assets/Scripts"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/Assets/Scripts"
+            "$<TARGET_FILE_DIR:iEngineV2>/Assets/Scripts"
+        COMMENT "Copying Lua scripts to runtime Assets/Scripts"
+        VERBATIM
+    )
+    add_dependencies(iEngineCopyRuntimeScripts iEngineV2)
+endif()
+
 if(EMSCRIPTEN)
     target_compile_definitions(iEngineV2 PRIVATE IENGINE_WEB IENGINE_SDL_ONLY)
     target_compile_options(iEngineV2 PRIVATE "-sUSE_SDL=3")

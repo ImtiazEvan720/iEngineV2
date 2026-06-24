@@ -32,6 +32,7 @@ private:
     ScriptSystem() = default;
 
     void bindEngineTypes();
+    void refreshScriptPropertyTables(ScriptInstance& script, const ScriptComponent& component);
     bool getEntityScriptFunction(Entity& entity, const std::string& functionName, sol::protected_function& function);
     bool callOnStart(ScriptInstance& script, Entity& entity);
     bool callOnUpdate(ScriptInstance& script, Entity& entity, float deltaTime);

@@ -47,6 +47,24 @@ Entity* findEntityById(Level& level, int entityId) {
     return nullptr;
 }
 
+Entity* findEntityByNameOrTag(Level& level, const std::string& value) {
+    if (value.empty()) {
+        return nullptr;
+    }
+
+    if (Entity* entity = level.getEntityByGuid(value)) {
+        return entity;
+    }
+
+    for (Entity& entity : level.getEntities()) {
+        if (!entity.isDestroyed() && (entity.getName() == value || entity.getTag() == value)) {
+            return &entity;
+        }
+    }
+
+    return nullptr;
+}
+
 bool compareEntityDisplayOrder(const Entity* left, const Entity* right) {
     if (left == nullptr || right == nullptr) {
         return left != nullptr;
@@ -191,6 +209,58 @@ std::vector<std::string> getPrefabAssetNames() {
 
     std::sort(prefabNames.begin(), prefabNames.end());
     return prefabNames;
+}
+
+std::string makeEntityReferenceLabel(const Entity& entity) {
+    std::string label = entity.getName();
+    if (!entity.getTag().empty()) {
+        label += " [" + entity.getTag() + "]";
+    }
+
+    const std::string& guid = entity.getGuid();
+    if (!guid.empty()) {
+        label += " (" + guid.substr(0, std::min<std::size_t>(8, guid.size())) + ")";
+    }
+
+    return label;
+}
+
+std::string getEntityReferencePreview(const std::string& guid) {
+    if (guid.empty()) {
+        return "None";
+    }
+
+    const Entity* entity = Level::getCurrentLevel().getEntityByGuid(guid);
+    if (entity == nullptr) {
+        return "Missing entity";
+    }
+
+    return makeEntityReferenceLabel(*entity);
+}
+
+bool acceptEntityReferenceDrop(ScriptProperty& property, std::string& statusMessage) {
+    if (!ImGui::BeginDragDropTarget()) {
+        return false;
+    }
+
+    const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
+    if (payload == nullptr) {
+        payload = ImGui::AcceptDragDropPayload(EntityReorderDragPayloadType);
+    }
+
+    bool accepted = false;
+    if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(int)) {
+        const int draggedEntityId = *static_cast<const int*>(payload->Data);
+        Entity* draggedEntity = findEntityById(Level::getCurrentLevel(), draggedEntityId);
+        if (draggedEntity != nullptr) {
+            property.stringValue = draggedEntity->getGuid();
+            statusMessage = "Updated script entity property: " + draggedEntity->getName() + ".";
+            accepted = true;
+        }
+    }
+
+    ImGui::EndDragDropTarget();
+    return accepted;
 }
 
 bool fileExists(const std::filesystem::path& path) {
@@ -366,6 +436,57 @@ std::vector<ScriptProperty> makeDefaultScriptProperties(const std::string& scrip
     }
 
     return parseScriptProperties(readTextFile(resolvedScriptPath));
+}
+
+ScriptProperty* findScriptProperty(std::vector<ScriptProperty>& properties, const std::string& name) {
+    for (ScriptProperty& property : properties) {
+        if (property.name == name) {
+            return &property;
+        }
+    }
+
+    return nullptr;
+}
+
+void applyScriptPropertyType(
+    ScriptProperty& property,
+    ScriptPropertyType type,
+    const std::string& fallbackValue
+) {
+    if (property.type == type) {
+        return;
+    }
+
+    const std::string currentValue = scriptPropertyValueToString(property);
+    const std::string nextValue = currentValue.empty() ? fallbackValue : currentValue;
+    property.type = type;
+
+    if (type == ScriptPropertyType::Entity) {
+        Entity* referencedEntity = findEntityByNameOrTag(Level::getCurrentLevel(), nextValue);
+        property.stringValue = referencedEntity == nullptr ? nextValue : referencedEntity->getGuid();
+        return;
+    }
+
+    scriptPropertySetValueFromString(property, nextValue);
+}
+
+void syncScriptPropertiesWithDefinitions(ScriptComponent& scriptComponent) {
+    std::vector<ScriptProperty>& properties = scriptComponent.getProperties();
+    const std::vector<ScriptProperty> definitions = makeDefaultScriptProperties(scriptComponent.getScriptPath());
+
+    for (const ScriptProperty& definition : definitions) {
+        ScriptProperty* property = findScriptProperty(properties, definition.name);
+        if (property == nullptr) {
+            properties.push_back(definition);
+            continue;
+        }
+
+        applyScriptPropertyType(
+            *property,
+            definition.type,
+            scriptPropertyValueToString(definition)
+        );
+    }
 }
 
 bool addScriptComponentWithDefaults(Entity& entity, const std::string& scriptPath) {
@@ -1416,6 +1537,8 @@ void EntityInspectorPanel::drawScriptComponentFields(
     ScriptComponent& scriptComponent,
     std::string& statusMessage
 ) {
+    syncScriptPropertiesWithDefinitions(scriptComponent);
+
     ImGui::TextWrapped("Path: %s", scriptComponent.getScriptPath().c_str());
     ImGui::Text("Loaded: %s", scriptComponent.isLoaded() ? "true" : "false");
 
@@ -1479,6 +1602,49 @@ void EntityInspectorPanel::drawScriptComponentFields(
 
                 if (prefabNames.empty()) {
                     ImGui::TextDisabled("No prefab assets loaded.");
+                }
+                break;
+            }
+            case ScriptPropertyType::Entity: {
+                const std::string preview = getEntityReferencePreview(property.stringValue);
+
+                ImGui::SetNextItemWidth(280.0f);
+                if (ImGui::BeginCombo("Value", preview.c_str())) {
+                    const bool noneSelected = property.stringValue.empty();
+                    if (ImGui::Selectable("None", noneSelected)) {
+                        property.stringValue.clear();
+                        statusMessage = "Cleared script entity property.";
+                    }
+
+                    if (noneSelected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+
+                    for (Entity& levelEntity : Level::getCurrentLevel().getEntities()) {
+                        if (levelEntity.isDestroyed()) {
+                            continue;
+                        }
+
+                        const std::string label = makeEntityReferenceLabel(levelEntity);
+                        const bool selected = property.stringValue == levelEntity.getGuid();
+                        if (ImGui::Selectable(label.c_str(), selected)) {
+                            property.stringValue = levelEntity.getGuid();
+                            statusMessage = "Updated script entity property.";
+                        }
+
+                        if (selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                acceptEntityReferenceDrop(property, statusMessage);
+
+                if (!property.stringValue.empty()
+                    && Level::getCurrentLevel().getEntityByGuid(property.stringValue) == nullptr) {
+                    ImGui::TextDisabled("Stored GUID does not match a loaded entity.");
                 }
                 break;
             }
