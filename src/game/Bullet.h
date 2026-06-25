@@ -14,10 +14,6 @@ public:
     void onDestroy() override;
     void onCollisionEnter(CollisionComponent& self, CollisionComponent& other) override;
 
-    float speed = 300.0f;
-
-    private:
-        class TransformComponent* transform = nullptr;
-        CollisionComponent* collision = nullptr;
-
+private:
+    CollisionComponent* collision = nullptr;
 };

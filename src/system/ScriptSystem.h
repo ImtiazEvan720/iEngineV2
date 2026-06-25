@@ -8,6 +8,7 @@
 class Entity;
 class ScriptComponent;
 class Vector2F;
+class CollisionComponent;
 
 class ScriptSystem {
 public:
@@ -18,7 +19,21 @@ public:
     void updateScript(ScriptComponent& component, float deltaTime);
     void unloadScript(ScriptComponent& component);
     bool callEntityScriptFunction(Entity& entity, const std::string& functionName);
+    bool callEntityScriptFunction(Entity& entity, const std::string& functionName, Entity& argument);
     bool callEntityScriptFunction(Entity& entity, const std::string& functionName, const Vector2F& position, float rotation);
+    bool callEntityScriptFunction(
+        Entity& entity,
+        const std::string& functionName,
+        const Vector2F& position,
+        float rotation,
+        Entity& argument
+    );
+    bool callEntityCollisionFunction(
+        Entity& entity,
+        const std::string& functionName,
+        CollisionComponent& self,
+        CollisionComponent& other
+    );
     bool requestLevelLoad(const std::string& levelName);
     bool consumePendingLevelLoad(std::string& levelName);
 

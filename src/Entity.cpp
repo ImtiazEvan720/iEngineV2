@@ -30,6 +30,7 @@ Entity::~Entity() {
 Entity::Entity(Entity&& other) noexcept
     : components(std::move(other.components)),
       parentEntity(other.parentEntity),
+      parentGuid(std::move(other.parentGuid)),
       children(std::move(other.children)),
       name(std::move(other.name)),
       tag(std::move(other.tag)),
@@ -45,6 +46,7 @@ Entity::Entity(Entity&& other) noexcept
     refreshComponentOwners();
     rebindParentLinksFrom(&other);
     other.parentEntity = nullptr;
+    other.parentGuid.clear();
     other.children.clear();
 }
 
@@ -62,6 +64,7 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     id = other.id;
     displayOrder = other.displayOrder;
     parentEntity = other.parentEntity;
+    parentGuid = std::move(other.parentGuid);
     children = std::move(other.children);
     enabled = other.enabled;
     destroyed = other.destroyed;
@@ -72,6 +75,7 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     refreshComponentOwners();
     rebindParentLinksFrom(&other);
     other.parentEntity = nullptr;
+    other.parentGuid.clear();
     other.children.clear();
 
     return *this;
@@ -315,6 +319,7 @@ bool Entity::setParent(Entity* parent, bool keepWorldTransform) {
     }
 
     parentEntity = parent;
+    parentGuid = parentEntity == nullptr ? "" : parentEntity->getGuid();
 
     if (parentEntity != nullptr
         && std::find(

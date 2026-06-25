@@ -7,6 +7,7 @@
 #include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
+#include "editor/ScriptPropertyParser.h"
 #include "game/Brick.h"
 #include "game/Bullet.h"
 #include "math/Vector2F.h"
@@ -26,11 +27,8 @@
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
-#include <fstream>
 #include <functional>
 #include <optional>
-#include <regex>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,24 +40,6 @@ constexpr const char* EntityReorderDragPayloadType = "IENGINE_ENTITY_REORDER";
 Entity* findEntityById(Level& level, int entityId) {
     for (Entity& entity : level.getEntities()) {
         if (entity.getId() == entityId && !entity.isDestroyed()) {
-            return &entity;
-        }
-    }
-
-    return nullptr;
-}
-
-Entity* findEntityByNameOrTag(Level& level, const std::string& value) {
-    if (value.empty()) {
-        return nullptr;
-    }
-
-    if (Entity* entity = level.getEntityByGuid(value)) {
-        return entity;
-    }
-
-    for (Entity& entity : level.getEntities()) {
-        if (!entity.isDestroyed() && (entity.getName() == value || entity.getTag() == value)) {
             return &entity;
         }
     }
@@ -199,304 +179,12 @@ CollisionComponent::BodyType bodyTypeFromIndex(int index) {
     }
 }
 
-std::vector<std::string> getPrefabAssetNames() {
-    std::vector<std::string> prefabNames;
-    const std::vector<PrefabAsset*> prefabAssets = AssetManager::getInstance().getPrefabAssets();
-
-    for (const PrefabAsset* prefabAsset : prefabAssets) {
-        if (prefabAsset != nullptr && prefabAsset->isLoaded()) {
-            prefabNames.push_back(prefabAsset->getName());
-        }
-    }
-
-    std::sort(prefabNames.begin(), prefabNames.end());
-    return prefabNames;
-}
-
-std::string makeEntityReferenceLabel(const Entity& entity) {
-    std::string label = entity.getName();
-    if (!entity.getTag().empty()) {
-        label += " [" + entity.getTag() + "]";
-    }
-
-    const std::string& guid = entity.getGuid();
-    if (!guid.empty()) {
-        label += " (" + guid.substr(0, std::min<std::size_t>(8, guid.size())) + ")";
-    }
-
-    return label;
-}
-
-std::string getEntityReferencePreview(const std::string& guid) {
-    if (guid.empty()) {
-        return "None";
-    }
-
-    const Entity* entity = Level::getCurrentLevel().getEntityByGuid(guid);
-    if (entity == nullptr) {
-        return "Missing entity";
-    }
-
-    return makeEntityReferenceLabel(*entity);
-}
-
-bool acceptEntityReferenceDrop(ScriptProperty& property, std::string& statusMessage) {
-    if (!ImGui::BeginDragDropTarget()) {
-        return false;
-    }
-
-    const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
-    if (payload == nullptr) {
-        payload = ImGui::AcceptDragDropPayload(EntityReorderDragPayloadType);
-    }
-
-    bool accepted = false;
-    if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(int)) {
-        const int draggedEntityId = *static_cast<const int*>(payload->Data);
-        Entity* draggedEntity = findEntityById(Level::getCurrentLevel(), draggedEntityId);
-        if (draggedEntity != nullptr) {
-            property.stringValue = draggedEntity->getGuid();
-            statusMessage = "Updated script entity property: " + draggedEntity->getName() + ".";
-            accepted = true;
-        }
-    }
-
-    ImGui::EndDragDropTarget();
-    return accepted;
-}
-
-bool fileExists(const std::filesystem::path& path) {
-    std::error_code errorCode;
-    return std::filesystem::exists(path, errorCode) && std::filesystem::is_regular_file(path, errorCode);
-}
-
-std::filesystem::path resolveLuaScriptPath(const std::string& scriptPath) {
-    const std::filesystem::path directPath(scriptPath);
-    if (fileExists(directPath)) {
-        return directPath;
-    }
-
-    const std::string genericPath = directPath.generic_string();
-    const std::string assetScriptPrefix = "Assets/Scripts/";
-    const std::size_t assetScriptPosition = genericPath.find(assetScriptPrefix);
-    if (assetScriptPosition != std::string::npos) {
-        const std::string relativeScriptPath =
-            genericPath.substr(assetScriptPosition + assetScriptPrefix.size());
-        const std::filesystem::path projectScriptPath =
-            ProjectManager::getInstance().getAssetsPath() / "Scripts" / relativeScriptPath;
-
-        if (fileExists(projectScriptPath)) {
-            return projectScriptPath;
-        }
-    }
-
-    if (directPath.is_relative()) {
-        const std::filesystem::path projectRelativePath =
-            ProjectManager::getInstance().getProjectRoot() / directPath;
-        if (fileExists(projectRelativePath)) {
-            return projectRelativePath;
-        }
-
-        const std::filesystem::path assetsRelativePath =
-            ProjectManager::getInstance().getAssetsPath() / directPath;
-        if (fileExists(assetsRelativePath)) {
-            return assetsRelativePath;
-        }
-    }
-
-    return {};
-}
-
-std::string readTextFile(const std::filesystem::path& path) {
-    std::ifstream file(path);
-    if (!file) {
-        return "";
-    }
-
-    std::ostringstream stream;
-    stream << file.rdbuf();
-    return stream.str();
-}
-
-std::string trimString(const std::string& value) {
-    const auto begin = std::find_if_not(
-        value.begin(),
-        value.end(),
-        [](unsigned char character) {
-            return std::isspace(character) != 0;
-        }
-    );
-
-    const auto end = std::find_if_not(
-        value.rbegin(),
-        value.rend(),
-        [](unsigned char character) {
-            return std::isspace(character) != 0;
-        }
-    ).base();
-
-    if (begin >= end) {
-        return "";
-    }
-
-    return std::string(begin, end);
-}
-
-std::string unquoteLuaValue(const std::string& value) {
-    const std::string trimmed = trimString(value);
-    if (trimmed.size() >= 2 && trimmed.front() == '"' && trimmed.back() == '"') {
-        return trimmed.substr(1, trimmed.size() - 2);
-    }
-
-    return trimmed;
-}
-
-std::string extractLuaTableValue(const std::string& tableText, const std::string& key) {
-    const std::regex fieldRegex(
-        key + R"(\s*=\s*("[^"]*"|[^,\s}]+))",
-        std::regex::ECMAScript
-    );
-
-    std::smatch match;
-    if (!std::regex_search(tableText, match, fieldRegex) || match.size() < 2) {
-        return "";
-    }
-
-    return unquoteLuaValue(match[1].str());
-}
-
-std::string extractScriptPropertiesBlock(const std::string& scriptText) {
-    const std::size_t propertiesPosition = scriptText.find("ScriptProperties");
-    if (propertiesPosition == std::string::npos) {
-        return "";
-    }
-
-    const std::size_t blockStart = scriptText.find('{', propertiesPosition);
-    if (blockStart == std::string::npos) {
-        return "";
-    }
-
-    int depth = 0;
-    bool inString = false;
-    for (std::size_t index = blockStart; index < scriptText.size(); ++index) {
-        const char character = scriptText[index];
-        const bool escaped = index > 0 && scriptText[index - 1] == '\\';
-
-        if (character == '"' && !escaped) {
-            inString = !inString;
-            continue;
-        }
-
-        if (inString) {
-            continue;
-        }
-
-        if (character == '{') {
-            ++depth;
-        } else if (character == '}') {
-            --depth;
-            if (depth == 0) {
-                return scriptText.substr(blockStart + 1, index - blockStart - 1);
-            }
-        }
-    }
-
-    return "";
-}
-
-std::vector<ScriptProperty> parseScriptProperties(const std::string& scriptText) {
-    std::vector<ScriptProperty> properties;
-    const std::string blockText = extractScriptPropertiesBlock(scriptText);
-    if (blockText.empty()) {
-        return properties;
-    }
-
-    const std::regex tableEntryRegex(R"(\{([^{}]*)\})");
-    for (std::sregex_iterator iterator(blockText.begin(), blockText.end(), tableEntryRegex);
-         iterator != std::sregex_iterator();
-         ++iterator) {
-        const std::string tableText = (*iterator)[1].str();
-        const std::string name = extractLuaTableValue(tableText, "name");
-        if (name.empty()) {
-            continue;
-        }
-
-        ScriptProperty property;
-        property.name = name;
-        property.type = scriptPropertyTypeFromString(extractLuaTableValue(tableText, "type"));
-        scriptPropertySetValueFromString(property, extractLuaTableValue(tableText, "default"));
-        properties.push_back(std::move(property));
-    }
-
-    return properties;
-}
-
-std::vector<ScriptProperty> makeDefaultScriptProperties(const std::string& scriptPath) {
-    const std::filesystem::path resolvedScriptPath = resolveLuaScriptPath(scriptPath);
-    if (resolvedScriptPath.empty()) {
-        return {};
-    }
-
-    return parseScriptProperties(readTextFile(resolvedScriptPath));
-}
-
-ScriptProperty* findScriptProperty(std::vector<ScriptProperty>& properties, const std::string& name) {
-    for (ScriptProperty& property : properties) {
-        if (property.name == name) {
-            return &property;
-        }
-    }
-
-    return nullptr;
-}
-
-void applyScriptPropertyType(
-    ScriptProperty& property,
-    ScriptPropertyType type,
-    const std::string& fallbackValue
-) {
-    if (property.type == type) {
-        return;
-    }
-
-    const std::string currentValue = scriptPropertyValueToString(property);
-    const std::string nextValue = currentValue.empty() ? fallbackValue : currentValue;
-    property.type = type;
-
-    if (type == ScriptPropertyType::Entity) {
-        Entity* referencedEntity = findEntityByNameOrTag(Level::getCurrentLevel(), nextValue);
-        property.stringValue = referencedEntity == nullptr ? nextValue : referencedEntity->getGuid();
-        return;
-    }
-
-    scriptPropertySetValueFromString(property, nextValue);
-}
-
-void syncScriptPropertiesWithDefinitions(ScriptComponent& scriptComponent) {
-    std::vector<ScriptProperty>& properties = scriptComponent.getProperties();
-    const std::vector<ScriptProperty> definitions = makeDefaultScriptProperties(scriptComponent.getScriptPath());
-
-    for (const ScriptProperty& definition : definitions) {
-        ScriptProperty* property = findScriptProperty(properties, definition.name);
-        if (property == nullptr) {
-            properties.push_back(definition);
-            continue;
-        }
-
-        applyScriptPropertyType(
-            *property,
-            definition.type,
-            scriptPropertyValueToString(definition)
-        );
-    }
-}
-
 bool addScriptComponentWithDefaults(Entity& entity, const std::string& scriptPath) {
     if (entity.getComponent<ScriptComponent>() != nullptr || scriptPath.empty()) {
         return false;
     }
 
-    entity.addComponent<ScriptComponent>(scriptPath, makeDefaultScriptProperties(scriptPath));
+    entity.addComponent<ScriptComponent>(scriptPath, ScriptPropertyParser::makeDefaultScriptProperties(scriptPath));
     return true;
 }
 
@@ -1189,7 +877,7 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
                 return;
             }
 
-            ImGui::Text("Speed: %.2f", entity.getComponent<Bullet>()->speed);
+            ImGui::TextUnformatted("Collision bridge. Movement settings are on ScriptComponent.");
             ImGui::TreePop();
         }
     }
@@ -1638,128 +1326,7 @@ void EntityInspectorPanel::drawScriptComponentFields(
     ScriptComponent& scriptComponent,
     std::string& statusMessage
 ) {
-    syncScriptPropertiesWithDefinitions(scriptComponent);
-
-    ImGui::TextWrapped("Path: %s", scriptComponent.getScriptPath().c_str());
-    ImGui::Text("Loaded: %s", scriptComponent.isLoaded() ? "true" : "false");
-
-    ImGui::Spacing();
-    ImGui::TextUnformatted("Properties");
-
-    std::vector<ScriptProperty>& properties = scriptComponent.getProperties();
-
-    if (properties.empty()) {
-        ImGui::TextDisabled("No script properties.");
-    }
-
-    for (std::size_t index = 0; index < properties.size(); ++index) {
-        ScriptProperty& property = properties[index];
-        ImGui::PushID(static_cast<int>(index));
-        ImGui::Separator();
-
-        ImGui::Text("Name: %s", property.name.c_str());
-        ImGui::Text("Type: %s", scriptPropertyTypeToString(property.type));
-
-        switch (property.type) {
-            case ScriptPropertyType::Int:
-                ImGui::SetNextItemWidth(160.0f);
-                if (ImGui::InputInt("Value", &property.intValue)) {
-                    statusMessage = "Updated script integer property.";
-                }
-                break;
-            case ScriptPropertyType::Float:
-                ImGui::SetNextItemWidth(160.0f);
-                if (ImGui::InputFloat("Value", &property.floatValue, 0.0f, 0.0f, "%.3f")) {
-                    statusMessage = "Updated script float property.";
-                }
-                break;
-            case ScriptPropertyType::Bool:
-                if (ImGui::Checkbox("Value", &property.boolValue)) {
-                    statusMessage = "Updated script bool property.";
-                }
-                break;
-            case ScriptPropertyType::Prefab: {
-                const std::vector<std::string> prefabNames = getPrefabAssetNames();
-                const char* preview = property.stringValue.empty()
-                    ? "Select prefab"
-                    : property.stringValue.c_str();
-
-                ImGui::SetNextItemWidth(240.0f);
-                if (ImGui::BeginCombo("Value", preview)) {
-                    for (const std::string& prefabName : prefabNames) {
-                        const bool selected = property.stringValue == prefabName;
-                        if (ImGui::Selectable(prefabName.c_str(), selected)) {
-                            property.stringValue = prefabName;
-                            statusMessage = "Updated script prefab property.";
-                        }
-
-                        if (selected) {
-                            ImGui::SetItemDefaultFocus();
-                        }
-                    }
-
-                    ImGui::EndCombo();
-                }
-
-                if (prefabNames.empty()) {
-                    ImGui::TextDisabled("No prefab assets loaded.");
-                }
-                break;
-            }
-            case ScriptPropertyType::Entity: {
-                const std::string preview = getEntityReferencePreview(property.stringValue);
-
-                ImGui::SetNextItemWidth(280.0f);
-                if (ImGui::BeginCombo("Value", preview.c_str())) {
-                    const bool noneSelected = property.stringValue.empty();
-                    if (ImGui::Selectable("None", noneSelected)) {
-                        property.stringValue.clear();
-                        statusMessage = "Cleared script entity property.";
-                    }
-
-                    if (noneSelected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-
-                    for (Entity& levelEntity : Level::getCurrentLevel().getEntities()) {
-                        if (levelEntity.isDestroyed()) {
-                            continue;
-                        }
-
-                        const std::string label = makeEntityReferenceLabel(levelEntity);
-                        const bool selected = property.stringValue == levelEntity.getGuid();
-                        if (ImGui::Selectable(label.c_str(), selected)) {
-                            property.stringValue = levelEntity.getGuid();
-                            statusMessage = "Updated script entity property.";
-                        }
-
-                        if (selected) {
-                            ImGui::SetItemDefaultFocus();
-                        }
-                    }
-
-                    ImGui::EndCombo();
-                }
-
-                acceptEntityReferenceDrop(property, statusMessage);
-
-                if (!property.stringValue.empty()
-                    && Level::getCurrentLevel().getEntityByGuid(property.stringValue) == nullptr) {
-                    ImGui::TextDisabled("Stored GUID does not match a loaded entity.");
-                }
-                break;
-            }
-            case ScriptPropertyType::String:
-            default:
-                ImGui::SetNextItemWidth(240.0f);
-                if (ImGui::InputText("Value", &property.stringValue)) {
-                    statusMessage = "Updated script string property.";
-                }
-                break;
-        }
-
-        ImGui::PopID();
-    }
+    scriptPropertyInspector.draw(scriptComponent, statusMessage);
 }
 
 void EntityInspectorPanel::syncEditStateFromEntity(Entity& entity, bool force) {

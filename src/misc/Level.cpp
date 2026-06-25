@@ -178,6 +178,59 @@ namespace
         component->SetAttribute("isSensor", boolText(collisionComponent.isSensor()));
     }
 
+    void saveScriptValueAttributes(tinyxml2::XMLElement &element, const ScriptValue &value)
+    {
+        if (value.type == ScriptValueType::Entity
+            && value.entityReferenceScope != ScriptEntityReferenceScope::Level)
+        {
+            element.SetAttribute("scope", scriptEntityReferenceScopeToString(value.entityReferenceScope));
+        }
+
+        element.SetAttribute("value", scriptValueToString(value).c_str());
+    }
+
+    void saveScriptPropertyAttributes(
+        tinyxml2::XMLDocument &document,
+        tinyxml2::XMLElement &propertyElement,
+        const ScriptProperty &property)
+    {
+        propertyElement.SetAttribute("name", property.name.c_str());
+        propertyElement.SetAttribute("type", scriptPropertyTypeToString(property.type));
+
+        if (property.type == ScriptPropertyType::Array)
+        {
+            propertyElement.SetAttribute("elementType", scriptValueTypeToString(property.elementType));
+            for (const ScriptValue &value : property.arrayValue)
+            {
+                tinyxml2::XMLElement *itemElement = document.NewElement("item");
+                saveScriptValueAttributes(*itemElement, value);
+                propertyElement.InsertEndChild(itemElement);
+            }
+            return;
+        }
+
+        if (property.type == ScriptPropertyType::Map)
+        {
+            propertyElement.SetAttribute("valueType", scriptValueTypeToString(property.mapValueType));
+            for (const ScriptMapEntry &entry : property.mapValue)
+            {
+                tinyxml2::XMLElement *entryElement = document.NewElement("entry");
+                entryElement->SetAttribute("key", entry.key.c_str());
+                saveScriptValueAttributes(*entryElement, entry.value);
+                propertyElement.InsertEndChild(entryElement);
+            }
+            return;
+        }
+
+        if (property.type == ScriptPropertyType::Entity
+            && property.entityReferenceScope != ScriptEntityReferenceScope::Level)
+        {
+            propertyElement.SetAttribute("scope", scriptEntityReferenceScopeToString(property.entityReferenceScope));
+        }
+
+        propertyElement.SetAttribute("value", scriptPropertyValueToString(property).c_str());
+    }
+
     void saveScriptComponent(
         tinyxml2::XMLDocument &document,
         tinyxml2::XMLElement &entityElement,
@@ -194,9 +247,7 @@ namespace
             }
 
             tinyxml2::XMLElement *propertyElement = document.NewElement("property");
-            propertyElement->SetAttribute("name", property.name.c_str());
-            propertyElement->SetAttribute("type", scriptPropertyTypeToString(property.type));
-            propertyElement->SetAttribute("value", scriptPropertyValueToString(property).c_str());
+            saveScriptPropertyAttributes(document, *propertyElement, property);
             component->InsertEndChild(propertyElement);
         }
     }
@@ -282,6 +333,66 @@ namespace
         return true;
     }
 
+    ScriptValue loadScriptValueFromElement(const tinyxml2::XMLElement &element, ScriptValueType type)
+    {
+        ScriptValue value;
+        value.type = type;
+        if (type == ScriptValueType::Entity)
+        {
+            value.entityReferenceScope = scriptEntityReferenceScopeFromString(
+                element.Attribute("scope") == nullptr ? "Level" : element.Attribute("scope"));
+        }
+        scriptValueSetValueFromString(value, element.Attribute("value") == nullptr ? "" : element.Attribute("value"));
+        return value;
+    }
+
+    ScriptProperty loadScriptPropertyFromElement(const tinyxml2::XMLElement &propertyElement)
+    {
+        ScriptProperty property;
+        property.name = propertyElement.Attribute("name") == nullptr ? "" : propertyElement.Attribute("name");
+        property.type = scriptPropertyTypeFromString(
+            propertyElement.Attribute("type") == nullptr ? "string" : propertyElement.Attribute("type"));
+        if (property.type == ScriptPropertyType::Entity)
+        {
+            property.entityReferenceScope = scriptEntityReferenceScopeFromString(
+                propertyElement.Attribute("scope") == nullptr ? "Level" : propertyElement.Attribute("scope"));
+        }
+
+        if (property.type == ScriptPropertyType::Array)
+        {
+            property.elementType = scriptValueTypeFromString(
+                propertyElement.Attribute("elementType") == nullptr ? "string" : propertyElement.Attribute("elementType"));
+            for (const tinyxml2::XMLElement *itemElement = propertyElement.FirstChildElement("item");
+                 itemElement != nullptr;
+                 itemElement = itemElement->NextSiblingElement("item"))
+            {
+                property.arrayValue.push_back(loadScriptValueFromElement(*itemElement, property.elementType));
+            }
+            return property;
+        }
+
+        if (property.type == ScriptPropertyType::Map)
+        {
+            property.mapValueType = scriptValueTypeFromString(
+                propertyElement.Attribute("valueType") == nullptr ? "string" : propertyElement.Attribute("valueType"));
+            for (const tinyxml2::XMLElement *entryElement = propertyElement.FirstChildElement("entry");
+                 entryElement != nullptr;
+                 entryElement = entryElement->NextSiblingElement("entry"))
+            {
+                ScriptMapEntry entry;
+                entry.key = entryElement->Attribute("key") == nullptr ? "" : entryElement->Attribute("key");
+                entry.value = loadScriptValueFromElement(*entryElement, property.mapValueType);
+                property.mapValue.push_back(std::move(entry));
+            }
+            return property;
+        }
+
+        scriptPropertySetValueFromString(
+            property,
+            propertyElement.Attribute("value") == nullptr ? "" : propertyElement.Attribute("value"));
+        return property;
+    }
+
     std::vector<ScriptProperty> loadScriptPropertiesFromElement(const tinyxml2::XMLElement &component)
     {
         std::vector<ScriptProperty> properties;
@@ -296,14 +407,7 @@ namespace
                 continue;
             }
 
-            const char *type = propertyElement->Attribute("type");
-            const char *value = propertyElement->Attribute("value");
-
-            ScriptProperty property;
-            property.name = name;
-            property.type = scriptPropertyTypeFromString(type == nullptr ? "string" : type);
-            scriptPropertySetValueFromString(property, value == nullptr ? "" : value);
-            properties.push_back(std::move(property));
+            properties.push_back(loadScriptPropertyFromElement(*propertyElement));
         }
 
         return properties;
@@ -668,6 +772,7 @@ void Level::loadLevel(Level &&level, bool keepPersistentEntities)
             std::make_move_iterator(persistentEntities.end()));
     }
 
+    currentLevel.repairParentChildLinks();
     currentLevel.rebuildGuidMap();
 
     if (EngineState::getInstance().isPlaying())
@@ -823,6 +928,7 @@ void Level::cleanupDestroyedEntities()
             }),
         entities.end());
 
+    repairParentChildLinks();
     rebuildGuidMap();
 }
 
@@ -924,6 +1030,70 @@ void Level::rebuildGuidMap()
         {
             entityGuidMap[entity.getGuid()] = &entity;
         }
+    }
+}
+
+void Level::repairParentChildLinks()
+{
+    std::unordered_map<std::string, Entity *> entitiesByGuid;
+    for (Entity &entity : entities)
+    {
+        if (!entity.isDestroyed() && !entity.getGuid().empty())
+        {
+            entitiesByGuid[entity.getGuid()] = &entity;
+        }
+    }
+
+    for (Entity &entity : entities)
+    {
+        entity.children.clear();
+    }
+
+    for (Entity &entity : entities)
+    {
+        if (entity.isDestroyed())
+        {
+            entity.parentEntity = nullptr;
+            entity.parentGuid.clear();
+            continue;
+        }
+
+        Entity *parent = nullptr;
+        if (!entity.parentGuid.empty())
+        {
+            const auto parentIterator = entitiesByGuid.find(entity.parentGuid);
+            if (parentIterator != entitiesByGuid.end())
+            {
+                parent = parentIterator->second;
+            }
+        }
+        else if (entity.parentEntity != nullptr && !entity.parentEntity->getGuid().empty())
+        {
+            const auto parentIterator = entitiesByGuid.find(entity.parentEntity->getGuid());
+            if (parentIterator != entitiesByGuid.end())
+            {
+                parent = parentIterator->second;
+                entity.parentGuid = parent->getGuid();
+            }
+        }
+
+        if (parent == nullptr || parent == &entity || parent->isChildOf(entity))
+        {
+            entity.parentEntity = nullptr;
+            entity.parentGuid.clear();
+            entity.syncTransformParent();
+            continue;
+        }
+
+        entity.parentEntity = parent;
+        entity.parentGuid = parent->getGuid();
+
+        if (std::find(parent->children.begin(), parent->children.end(), &entity) == parent->children.end())
+        {
+            parent->children.push_back(&entity);
+        }
+
+        entity.syncTransformParent();
     }
 }
 

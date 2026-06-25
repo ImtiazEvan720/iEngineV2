@@ -59,5 +59,6 @@ private:
     std::string sourcePath;
     std::deque<Entity> extractPersistentEntities();
     void rebuildGuidMap();
+    void repairParentChildLinks();
     std::unordered_map<std::string, Entity *> entityGuidMap;
 };

@@ -65,7 +65,7 @@ function BulletManager:getAvailableBullet()
     return nil
 end
 
-function BulletManager:fire(position, rotation)
+function BulletManager:fire(position, rotation, ownerEntity)
     local bulletEntity = self:getAvailableBullet()
     if bulletEntity == nil then
         Engine.log("BulletManager has no available bullet.")
@@ -81,26 +81,48 @@ function BulletManager:fire(position, rotation)
     end
 
     bulletEntity:setEnabled(true)
+
+    if ownerEntity ~= nil then
+        bulletEntity:callScript("setOwner", ownerEntity)
+    else
+        bulletEntity:callScript("clearOwner")
+    end
+
     return bulletEntity
 end
 
 function BulletManager:update()
     for _, bulletEntity in ipairs(self.bullets) do
-        if bulletEntity ~= nil and bulletEntity:isEnabled() and not bulletEntity:isInViewport() then
-            self:resetBulletEntity(bulletEntity)
+        if bulletEntity ~= nil then
+            if bulletEntity:isEnabled() and not bulletEntity:isInViewport() then
+                self:resetBulletEntity(bulletEntity)
+            elseif not bulletEntity:isEnabled() then
+                self:resetBulletEntity(bulletEntity)
+            end
         end
     end
 end
 
 local bulletManager = nil
 
-function fire(position, rotation)
+function fire(position, rotation, ownerEntity)
     if bulletManager == nil then
         Engine.log("BulletManager fire called before initialization.")
         return nil
     end
 
-    return bulletManager:fire(position, rotation)
+    return bulletManager:fire(position, rotation, ownerEntity)
+end
+
+function resetBullet(bulletEntity)
+    if bulletManager == nil then
+        Engine.log("BulletManager reset called before initialization.")
+        return false
+    end
+
+    bulletEntity:callScript("clearOwner")
+    bulletManager:resetBulletEntity(bulletEntity)
+    return true
 end
 
 function onStart(entity, script)

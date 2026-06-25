@@ -267,6 +267,8 @@ if(IENGINE_WITH_EDITOR)
         src/editor/LevelEditorViewport.cpp
         src/editor/LevelManagerPanel.cpp
         src/editor/PrefabPanel.cpp
+        src/editor/ScriptPropertyInspector.cpp
+        src/editor/ScriptPropertyParser.cpp
         src/editor/SpritePalettePanel.cpp
         src/editor/SpritePickerWidget.cpp
         src/editor/TilesetCreator.cpp

@@ -1,17 +1,43 @@
 #include "serialization/PrefabSerializer.h"
 
 #include "Entity.h"
+#include "components/ScriptComponent.h"
 #include "misc/Level.h"
 #include "serialization/ComponentSerializerRegistry.h"
+#include "serialization/components/ScriptComponentSerializer.h"
 #include "system/InputSystem.h"
 
 #include "tinyxml2.h"
 
 #include <algorithm>
 #include <filesystem>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace {
+using EntityPrefabIdMap = std::unordered_map<const Entity*, std::string>;
+using PrefabIdEntityMap = std::unordered_map<std::string, Entity*>;
+
+void collectPrefabEntityIdsRecursive(
+    const Entity& entity,
+    EntityPrefabIdMap& entityToPrefabId,
+    ScriptComponentSerializer::PrefabLocalGuidMap& guidToPrefabId,
+    int& nextPrefabId
+) {
+    const std::string prefabId = "entity_" + std::to_string(nextPrefabId);
+    ++nextPrefabId;
+
+    entityToPrefabId[&entity] = prefabId;
+    guidToPrefabId[entity.getGuid()] = prefabId;
+
+    for (const Entity* child : entity.getChildren()) {
+        if (child != nullptr && !child->isDestroyed()) {
+            collectPrefabEntityIdsRecursive(*child, entityToPrefabId, guidToPrefabId, nextPrefabId);
+        }
+    }
+}
+
 std::vector<const Entity*> getSortedPrefabChildren(const Entity& entity) {
     std::vector<const Entity*> children;
     for (const Entity* child : entity.getChildren()) {
@@ -38,9 +64,14 @@ std::vector<const Entity*> getSortedPrefabChildren(const Entity& entity) {
 void saveEntityRecursive(
     tinyxml2::XMLDocument& document,
     tinyxml2::XMLElement& parentElement,
-    const Entity& entity
+    const Entity& entity,
+    const EntityPrefabIdMap& entityToPrefabId
 ) {
     tinyxml2::XMLElement* entityElement = document.NewElement("entity");
+    const auto prefabIdIterator = entityToPrefabId.find(&entity);
+    if (prefabIdIterator != entityToPrefabId.end()) {
+        entityElement->SetAttribute("prefabId", prefabIdIterator->second.c_str());
+    }
     entityElement->SetAttribute("name", entity.getName().c_str());
     entityElement->SetAttribute("tag", entity.getTag().c_str());
     entityElement->SetAttribute("enabled", entity.isEnabled());
@@ -58,7 +89,71 @@ void saveEntityRecursive(
     entityElement->InsertEndChild(childrenElement);
 
     for (const Entity* child : children) {
-        saveEntityRecursive(document, *childrenElement, *child);
+        saveEntityRecursive(document, *childrenElement, *child, entityToPrefabId);
+    }
+}
+
+void resolvePrefabLocalScriptValue(ScriptValue& value, const PrefabIdEntityMap& prefabIdToEntity) {
+    if (value.type != ScriptValueType::Entity
+        || value.entityReferenceScope != ScriptEntityReferenceScope::PrefabLocal) {
+        return;
+    }
+
+    const auto iterator = prefabIdToEntity.find(value.stringValue);
+    if (iterator == prefabIdToEntity.end() || iterator->second == nullptr) {
+        value.stringValue.clear();
+    } else {
+        value.stringValue = iterator->second->getGuid();
+    }
+
+    value.entityReferenceScope = ScriptEntityReferenceScope::Level;
+}
+
+void resolvePrefabLocalScriptProperty(ScriptProperty& property, const PrefabIdEntityMap& prefabIdToEntity) {
+    if (property.type == ScriptPropertyType::Entity
+        && property.entityReferenceScope == ScriptEntityReferenceScope::PrefabLocal) {
+        const auto iterator = prefabIdToEntity.find(property.stringValue);
+        if (iterator == prefabIdToEntity.end() || iterator->second == nullptr) {
+            property.stringValue.clear();
+        } else {
+            property.stringValue = iterator->second->getGuid();
+        }
+
+        property.entityReferenceScope = ScriptEntityReferenceScope::Level;
+        return;
+    }
+
+    if (property.type == ScriptPropertyType::Array && property.elementType == ScriptValueType::Entity) {
+        for (ScriptValue& value : property.arrayValue) {
+            resolvePrefabLocalScriptValue(value, prefabIdToEntity);
+        }
+        return;
+    }
+
+    if (property.type == ScriptPropertyType::Map && property.mapValueType == ScriptValueType::Entity) {
+        for (ScriptMapEntry& entry : property.mapValue) {
+            resolvePrefabLocalScriptValue(entry.value, prefabIdToEntity);
+        }
+    }
+}
+
+void resolvePrefabLocalScriptReferences(
+    const std::vector<Entity*>& createdEntities,
+    const PrefabIdEntityMap& prefabIdToEntity
+) {
+    for (Entity* entity : createdEntities) {
+        if (entity == nullptr) {
+            continue;
+        }
+
+        ScriptComponent* scriptComponent = entity->getComponent<ScriptComponent>();
+        if (scriptComponent == nullptr) {
+            continue;
+        }
+
+        for (ScriptProperty& property : scriptComponent->getProperties()) {
+            resolvePrefabLocalScriptProperty(property, prefabIdToEntity);
+        }
     }
 }
 
@@ -69,15 +164,22 @@ Entity* instantiateEntityRecursive(
     const Vector2F& rootPosition,
     bool isRootEntity,
     std::vector<Entity*>& createdEntities,
+    PrefabIdEntityMap& prefabIdToEntity,
     std::string& errorMessage
 ) {
     Entity& entity = level.createEntity();
+    entity.setComponentStartupDeferred(true);
     createdEntities.push_back(&entity);
 
     entity.setName(entityElement.Attribute("name") == nullptr ? "PrefabEntity" : entityElement.Attribute("name"));
     entity.setTag(entityElement.Attribute("tag") == nullptr ? "Prefab" : entityElement.Attribute("tag"));
     entity.setEnabled(entityElement.BoolAttribute("enabled", true));
     entity.setDisplayOrder(entityElement.IntAttribute("displayOrder", entity.getDisplayOrder()));
+
+    const char* prefabId = entityElement.Attribute("prefabId");
+    if (prefabId != nullptr && prefabId[0] != '\0') {
+        prefabIdToEntity[prefabId] = &entity;
+    }
 
     if (parent != nullptr && !entity.setParent(parent, false)) {
         errorMessage = "Failed to attach prefab child to parent entity.";
@@ -92,8 +194,6 @@ Entity* instantiateEntityRecursive(
         return nullptr;
     }
 
-    entity.addInputListeners(InputSystem::getInstance());
-
     const tinyxml2::XMLElement* childrenElement = entityElement.FirstChildElement("children");
     for (const tinyxml2::XMLElement* childElement =
              childrenElement == nullptr ? nullptr : childrenElement->FirstChildElement("entity");
@@ -106,6 +206,7 @@ Entity* instantiateEntityRecursive(
             rootPosition,
             false,
             createdEntities,
+            prefabIdToEntity,
             errorMessage
         );
         if (child == nullptr) {
@@ -114,6 +215,18 @@ Entity* instantiateEntityRecursive(
     }
 
     return &entity;
+}
+
+void startCreatedPrefabEntities(const std::vector<Entity*>& createdEntities) {
+    InputSystem& inputSystem = InputSystem::getInstance();
+    for (Entity* entity : createdEntities) {
+        if (entity == nullptr) {
+            continue;
+        }
+
+        entity->startDeferredComponents();
+        entity->addInputListeners(inputSystem);
+    }
 }
 }
 
@@ -128,7 +241,14 @@ bool PrefabSerializer::saveEntity(const Entity& entity, const std::string& path,
     prefab->SetAttribute("name", entity.getName().c_str());
     document.InsertEndChild(prefab);
 
-    saveEntityRecursive(document, *prefab, entity);
+    EntityPrefabIdMap entityToPrefabId;
+    ScriptComponentSerializer::PrefabLocalGuidMap guidToPrefabId;
+    int nextPrefabId = 0;
+    collectPrefabEntityIdsRecursive(entity, entityToPrefabId, guidToPrefabId, nextPrefabId);
+
+    ScriptComponentSerializer::setPrefabLocalGuidMap(&guidToPrefabId);
+    saveEntityRecursive(document, *prefab, entity, entityToPrefabId);
+    ScriptComponentSerializer::setPrefabLocalGuidMap(nullptr);
 
     const fs::path outputPath(path);
     std::error_code directoryError;
@@ -170,6 +290,7 @@ Entity* PrefabSerializer::instantiate(
     }
 
     std::vector<Entity*> createdEntities;
+    PrefabIdEntityMap prefabIdToEntity;
     Entity* entity = instantiateEntityRecursive(
         *entityElement,
         level,
@@ -177,6 +298,7 @@ Entity* PrefabSerializer::instantiate(
         position,
         true,
         createdEntities,
+        prefabIdToEntity,
         errorMessage
     );
     if (entity == nullptr) {
@@ -186,6 +308,9 @@ Entity* PrefabSerializer::instantiate(
         level.cleanupDestroyedEntities();
         return nullptr;
     }
+
+    resolvePrefabLocalScriptReferences(createdEntities, prefabIdToEntity);
+    startCreatedPrefabEntities(createdEntities);
 
     errorMessage.clear();
     return entity;

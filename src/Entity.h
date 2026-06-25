@@ -139,6 +139,7 @@ private:
 
     std::vector<std::unique_ptr<Component>> components;
     Entity* parentEntity = nullptr;
+    std::string parentGuid;
     std::vector<Entity*> children;
     std::string name;
     std::string tag;

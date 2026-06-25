@@ -69,6 +69,29 @@ Entity* findEntityByGuid(const std::string& guid) {
     return Level::getCurrentLevel().getEntityByGuid(guid);
 }
 
+sol::object makeScriptValueObject(sol::state& lua, const ScriptValue& value) {
+    switch (value.type) {
+        case ScriptValueType::Int:
+            return sol::make_object(lua, value.intValue);
+        case ScriptValueType::Float:
+            return sol::make_object(lua, value.floatValue);
+        case ScriptValueType::Bool:
+            return sol::make_object(lua, value.boolValue);
+        case ScriptValueType::Vector2:
+            return sol::make_object(lua, value.vector2Value);
+        case ScriptValueType::Entity: {
+            Entity* entity = findEntityByGuid(value.stringValue);
+            return entity == nullptr
+                ? sol::make_object(lua, sol::nil)
+                : sol::make_object(lua, entity);
+        }
+        case ScriptValueType::Prefab:
+        case ScriptValueType::String:
+        default:
+            return sol::make_object(lua, value.stringValue);
+    }
+}
+
 sol::table makeRaycastResultTable(sol::state& lua, const PhysicsRaycastHit& hit) {
     sol::table result = lua.create_table();
     result["hit"] = hit.hit;
@@ -253,8 +276,32 @@ void ScriptSystem::refreshScriptPropertyTables(ScriptInstance& script, const Scr
             case ScriptPropertyType::Bool:
                 props[property.name] = property.boolValue;
                 break;
-            case ScriptPropertyType::Prefab:
             case ScriptPropertyType::Vector2:
+                props[property.name] = property.vector2Value;
+                break;
+            case ScriptPropertyType::Array: {
+                sol::table values = lua.create_table();
+                int luaIndex = 1;
+                for (const ScriptValue& value : property.arrayValue) {
+                    values[luaIndex] = makeScriptValueObject(lua, value);
+                    ++luaIndex;
+                }
+
+                props[property.name] = values;
+                break;
+            }
+            case ScriptPropertyType::Map: {
+                sol::table values = lua.create_table();
+                for (const ScriptMapEntry& entry : property.mapValue) {
+                    if (!entry.key.empty()) {
+                        values[entry.key] = makeScriptValueObject(lua, entry.value);
+                    }
+                }
+
+                props[property.name] = values;
+                break;
+            }
+            case ScriptPropertyType::Prefab:
             case ScriptPropertyType::String:
             default:
                 props[property.name] = property.stringValue;
@@ -283,6 +330,24 @@ bool ScriptSystem::callEntityScriptFunction(Entity& entity, const std::string& f
 bool ScriptSystem::callEntityScriptFunction(
     Entity& entity,
     const std::string& functionName,
+    Entity& argument
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    sol::protected_function_result result = function(argument);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::callEntityScriptFunction(
+    Entity& entity,
+    const std::string& functionName,
     const Vector2F& position,
     float rotation
 ) {
@@ -292,6 +357,51 @@ bool ScriptSystem::callEntityScriptFunction(
     }
 
     sol::protected_function_result result = function(position, rotation);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::callEntityScriptFunction(
+    Entity& entity,
+    const std::string& functionName,
+    const Vector2F& position,
+    float rotation,
+    Entity& argument
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    sol::protected_function_result result = function(position, rotation, argument);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::callEntityCollisionFunction(
+    Entity& entity,
+    const std::string& functionName,
+    CollisionComponent& self,
+    CollisionComponent& other
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    Entity* otherEntity = other.getEntity();
+    sol::protected_function_result result = function(
+        entity,
+        otherEntity == nullptr ? sol::make_object(lua, sol::nil) : sol::make_object(lua, otherEntity),
+        &self,
+        &other
+    );
     if (!result.valid()) {
         return reportScriptError(entity.getName() + "." + functionName, result);
     }
@@ -521,8 +631,20 @@ void ScriptSystem::bindEngineTypes() {
             [](Entity& entity, const std::string& functionName) {
                 return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName);
             },
+            [](Entity& entity, const std::string& functionName, Entity& argument) {
+                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, argument);
+            },
             [](Entity& entity, const std::string& functionName, const Vector2F& position, float rotation) {
                 return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, position, rotation);
+            },
+            [](Entity& entity, const std::string& functionName, const Vector2F& position, float rotation, Entity& argument) {
+                return ScriptSystem::getInstance().callEntityScriptFunction(
+                    entity,
+                    functionName,
+                    position,
+                    rotation,
+                    argument
+                );
             }
         ),
         "spawnPrefab", sol::overload(

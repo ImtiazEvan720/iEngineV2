@@ -1,5 +1,6 @@
 #pragma once
 
+#include "editor/ScriptPropertyInspector.h"
 #include "editor/SpritePickerWidget.h"
 
 #include <string>
@@ -63,5 +64,6 @@ private:
     std::string prefabName;
     SpritePickerWidget spritePicker;
     SpritePickerWidget animationPicker;
+    ScriptPropertyInspector scriptPropertyInspector;
     EntityEditState entityEditState;
 };

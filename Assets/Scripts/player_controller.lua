@@ -80,7 +80,7 @@ local function fire(entity, transform)
         return
     end
 
-    if not manager:callScript("fire", position, rotation) then
+    if not manager:callScript("fire", position, rotation, entity) then
         engineLog("PlayerControllerLua failed to call fire on manager: " .. bulletManagerName)
     end
 end

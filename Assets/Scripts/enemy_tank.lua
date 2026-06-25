@@ -202,7 +202,7 @@ function EnemyTank:fire(transform)
     local position = fireTransform:getWorldPosition()
     local rotation = fireTransform:getWorldRotation()
 
-    if self.bulletManager:callScript("fire", position, rotation) then
+    if self.bulletManager:callScript("fire", position, rotation, self.entity) then
         self.fireTimer = self.fireCooldown
     end
 end
@@ -277,8 +277,8 @@ end
 function onUpdate(entity, deltaTime, script)
     if enemyTank == nil then
         enemyTank = EnemyTank:new(entity)
-        enemyTank:refreshProperties()
     end
 
+    enemyTank:refreshProperties()
     enemyTank:update(deltaTime)
 end

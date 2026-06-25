@@ -1,9 +1,11 @@
 #pragma once
 
 #include "components/Component.h"
+#include "math/Vector2F.h"
 
 #include <cstddef>
 #include <string>
+#include <utility>
 #include <vector>
 
 class Entity;
@@ -16,6 +18,38 @@ enum class ScriptPropertyType {
     Prefab,
     Vector2,
     Entity,
+    Array,
+    Map,
+};
+
+enum class ScriptValueType {
+    String,
+    Int,
+    Float,
+    Bool,
+    Prefab,
+    Vector2,
+    Entity,
+};
+
+enum class ScriptEntityReferenceScope {
+    Level,
+    PrefabLocal,
+};
+
+struct ScriptValue {
+    ScriptValueType type = ScriptValueType::String;
+    std::string stringValue;
+    int intValue = 0;
+    float floatValue = 0.0f;
+    bool boolValue = false;
+    Vector2F vector2Value = Vector2F::zero();
+    ScriptEntityReferenceScope entityReferenceScope = ScriptEntityReferenceScope::Level;
+};
+
+struct ScriptMapEntry {
+    std::string key;
+    ScriptValue value;
 };
 
 struct ScriptProperty {
@@ -25,10 +59,22 @@ struct ScriptProperty {
     int intValue = 0;
     float floatValue = 0.0f;
     bool boolValue = false;
+    Vector2F vector2Value = Vector2F::zero();
+    ScriptValueType elementType = ScriptValueType::String;
+    std::vector<ScriptValue> arrayValue;
+    ScriptValueType mapValueType = ScriptValueType::String;
+    std::vector<ScriptMapEntry> mapValue;
+    ScriptEntityReferenceScope entityReferenceScope = ScriptEntityReferenceScope::Level;
 };
 
 const char* scriptPropertyTypeToString(ScriptPropertyType type);
 ScriptPropertyType scriptPropertyTypeFromString(const std::string& value);
+const char* scriptValueTypeToString(ScriptValueType type);
+ScriptValueType scriptValueTypeFromString(const std::string& value);
+const char* scriptEntityReferenceScopeToString(ScriptEntityReferenceScope scope);
+ScriptEntityReferenceScope scriptEntityReferenceScopeFromString(const std::string& value);
+std::string scriptValueToString(const ScriptValue& value);
+void scriptValueSetValueFromString(ScriptValue& scriptValue, const std::string& value);
 std::string scriptPropertyValueToString(const ScriptProperty& property);
 void scriptPropertySetValueFromString(ScriptProperty& property, const std::string& value);
 
