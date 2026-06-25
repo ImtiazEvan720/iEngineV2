@@ -27,6 +27,13 @@ local function randomRange(minValue, maxValue)
     return minValue + (maxValue - minValue) * math.random()
 end
 
+local blockingTags = {
+    obstacle = true,
+    tank = true,
+    player = true,
+    enemy = true,
+}
+
 function EnemyTank:new(entity)
     local enemyTank = setmetatable({
         entity = entity,
@@ -123,6 +130,21 @@ function EnemyTank:resetAimWaitTimer()
     self.aiWaitTimer = self.aiWaitTime
 end
 
+function EnemyTank:isBlockingHit(hit)
+    if hit == nil or not hit.hit then
+        return false
+    end
+
+    if hit.entity ~= nil and hit.entity:getId() == self.entity:getId() then
+        return false
+    end
+
+    local hitTag = string.lower(hit.tag or "")
+    local obstacleTag = string.lower(self.obstacleTag or "Obstacle")
+
+    return hitTag == obstacleTag or blockingTags[hitTag] == true
+end
+
 function EnemyTank:isObstacleAhead(transform)
     local worldPosition = transform:getWorldPosition()
     local rayEnd = Vector2F.new(
@@ -131,13 +153,7 @@ function EnemyTank:isObstacleAhead(transform)
     )
 
     local hit = Engine.raycast(worldPosition, rayEnd)
-    if hit == nil or not hit.hit then
-        return false
-    end
-
-    local hitTag = string.lower(hit.tag or "")
-    local obstacleTag = string.lower(self.obstacleTag or "Obstacle")
-    return hitTag == obstacleTag
+    return self:isBlockingHit(hit)
 end
 
 function EnemyTank:getFireTransform(transform)

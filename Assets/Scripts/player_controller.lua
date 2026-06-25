@@ -13,6 +13,13 @@ local bulletManagerName = "BulletManager"
 local bulletManager = nil
 local turret = nil
 
+local blockingTags = {
+    obstacle = true,
+    tank = true,
+    player = true,
+    enemy = true,
+}
+
 local function refreshScriptProperties(script)
     if Props ~= nil and Props.speed ~= nil then
         speed = Props.speed
@@ -78,7 +85,22 @@ local function fire(entity, transform)
     end
 end
 
-local function isBlocked(transform, moveX, moveY, moveDistance)
+local function isBlockingHit(entity, hit)
+    if hit == nil or not hit.hit then
+        return false
+    end
+
+    if hit.entity ~= nil and hit.entity:getId() == entity:getId() then
+        return false
+    end
+
+    local tag = string.lower(hit.tag or "")
+    local configuredObstacleTag = string.lower(obstacleTag or "Obstacle")
+
+    return tag == configuredObstacleTag or blockingTags[tag] == true
+end
+
+local function isBlocked(entity, transform, moveX, moveY, moveDistance)
     local worldPosition = transform:getWorldPosition()
     local rayDistance = moveDistance + obstacleRayDistance
     local rayEnd = Vector2F.new(
@@ -87,11 +109,7 @@ local function isBlocked(transform, moveX, moveY, moveDistance)
     )
 
     local hit = Engine.raycast(worldPosition, rayEnd)
-    if hit == nil or not hit.hit then
-        return false
-    end
-
-    return string.lower(hit.tag or "") == string.lower(obstacleTag or "Obstacle")
+    return isBlockingHit(entity, hit)
 end
 
 function onStart(entity, script)
@@ -146,7 +164,7 @@ function onUpdate(entity, deltaTime, script)
     local animation = entity:getAnimation()
     if moving then
         local moveDistance = speed * deltaTime
-        if isBlocked(transform, moveX, moveY, moveDistance) then
+        if isBlocked(entity, transform, moveX, moveY, moveDistance) then
             transform:setRotation(rotation)
 
             if animation ~= nil then
