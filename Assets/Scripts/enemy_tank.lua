@@ -1,5 +1,6 @@
 ScriptProperties = {
     { name = "speed", type = "float", default = 70.0 },
+    { name = "life", type = "float", default = 3.0 },
     { name = "fireCooldown", type = "float", default = 10 },
     { name = "aiWaitTime", type = "float", default = 4.0 },
     { name = "alignmentTolerance", type = "float", default = 12.0 },
@@ -38,6 +39,9 @@ function EnemyTank:new(entity)
     local enemyTank = setmetatable({
         entity = entity,
         speed = 70.0,
+        life = 3.0,
+        lifeInitialized = false,
+        destroyed = false,
         fireCooldown = 1.5,
         fireTimer = 0.0,
         aiWaitTime = 4.0,
@@ -63,6 +67,11 @@ function EnemyTank:refreshProperties()
     if Props ~= nil then
         if Props.speed ~= nil then
             self.speed = Props.speed
+        end
+
+        if not self.lifeInitialized and Props.life ~= nil then
+            self.life = Props.life
+            self.lifeInitialized = true
         end
 
         if Props.fireCooldown ~= nil then
@@ -119,6 +128,35 @@ function EnemyTank:refreshProperties()
     if self.bulletManager == nil then
         self.bulletManager = Engine.findEntityByName("BulletManager")
     end
+end
+
+function EnemyTank:takeDamage(damage)
+    if self.destroyed then
+        return
+    end
+
+    local damageAmount = tonumber(damage) or 0.0
+    if damageAmount <= 0.0 then
+        return
+    end
+
+    self.life = self.life - damageAmount
+    Engine.log(
+        "EnemyTank damaged: "
+        .. self.entity:getName()
+        .. " damage="
+        .. tostring(damageAmount)
+        .. " life="
+        .. tostring(self.life)
+    )
+
+    if self.life > 0.0 then
+        return
+    end
+
+    self.destroyed = true
+    Engine.log("EnemyTank destroyed: " .. self.entity:getName())
+    self.entity:destroy(true)
 end
 
 function EnemyTank:chooseNewDirection()
@@ -236,6 +274,10 @@ function EnemyTank:moveForward(transform, deltaTime)
 end
 
 function EnemyTank:update(deltaTime)
+    if self.destroyed then
+        return
+    end
+
     local transform = self.entity:getTransform()
     if transform == nil then
         return
@@ -281,4 +323,13 @@ function onUpdate(entity, deltaTime, script)
 
     enemyTank:refreshProperties()
     enemyTank:update(deltaTime)
+end
+
+function takeDamage(damage)
+    if enemyTank == nil then
+        return false
+    end
+
+    enemyTank:takeDamage(damage)
+    return true
 end

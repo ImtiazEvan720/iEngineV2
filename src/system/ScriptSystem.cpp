@@ -330,6 +330,24 @@ bool ScriptSystem::callEntityScriptFunction(Entity& entity, const std::string& f
 bool ScriptSystem::callEntityScriptFunction(
     Entity& entity,
     const std::string& functionName,
+    float argument
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    sol::protected_function_result result = function(argument);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::callEntityScriptFunction(
+    Entity& entity,
+    const std::string& functionName,
     Entity& argument
 ) {
     sol::protected_function function;
@@ -602,6 +620,14 @@ void ScriptSystem::bindEngineTypes() {
         "setEnabled", &Entity::setEnabled,
         "setPersistent", &Entity::setPersistent,
         "isPersistent", &Entity::isPersistent,
+        "destroy", sol::overload(
+            [](Entity& entity) {
+                entity.destroy(true);
+            },
+            [](Entity& entity, bool destroyChildren) {
+                entity.destroy(destroyChildren);
+            }
+        ),
         "setParent", sol::overload(
             [](Entity& entity, Entity* parent) {
                 return entity.setParent(parent);
@@ -630,6 +656,9 @@ void ScriptSystem::bindEngineTypes() {
         "callScript", sol::overload(
             [](Entity& entity, const std::string& functionName) {
                 return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName);
+            },
+            [](Entity& entity, const std::string& functionName, float argument) {
+                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, argument);
             },
             [](Entity& entity, const std::string& functionName, Entity& argument) {
                 return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, argument);

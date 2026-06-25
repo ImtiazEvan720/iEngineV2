@@ -19,6 +19,7 @@ public:
     void updateScript(ScriptComponent& component, float deltaTime);
     void unloadScript(ScriptComponent& component);
     bool callEntityScriptFunction(Entity& entity, const std::string& functionName);
+    bool callEntityScriptFunction(Entity& entity, const std::string& functionName, float argument);
     bool callEntityScriptFunction(Entity& entity, const std::string& functionName, Entity& argument);
     bool callEntityScriptFunction(Entity& entity, const std::string& functionName, const Vector2F& position, float rotation);
     bool callEntityScriptFunction(

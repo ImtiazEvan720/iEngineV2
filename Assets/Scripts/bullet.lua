@@ -1,5 +1,6 @@
 ScriptProperties = {
     { name = "speed", type = "float", default = 300.0 },
+    { name = "damage", type = "float", default = 1.0 },
 }
 
 local Bullet = {}
@@ -9,6 +10,7 @@ function Bullet:new(entity)
     return setmetatable({
         entity = entity,
         speed = 300.0,
+        damage = 1.0,
         owner = nil,
     }, Bullet)
 end
@@ -58,6 +60,7 @@ function onStart(entity, script)
 
     if script ~= nil then
         bullet.speed = script:getFloat("speed", bullet.speed)
+        bullet.damage = script:getFloat("damage", bullet.damage)
     end
 
     entity:setTag("Bullet")
@@ -68,6 +71,7 @@ function onUpdate(entity, deltaTime, script)
 
     if script ~= nil then
         bullet.speed = script:getFloat("speed", bullet.speed)
+        bullet.damage = script:getFloat("damage", bullet.damage)
     end
 
     bullet:update(deltaTime)
@@ -108,6 +112,10 @@ function onCollisionEnter(entity, otherEntity, selfCollider, otherCollider)
     local normalizedTag = string.lower(otherTag or "")
     if normalizedTag ~= "player" and normalizedTag ~= "obstacle" and normalizedTag ~= "enemy" then
         return
+    end
+
+    if normalizedTag == "enemy" and otherEntity ~= nil then
+        otherEntity:callScript("takeDamage", bullet.damage)
     end
 
     local manager = Engine.findEntityByName("BulletManager")
