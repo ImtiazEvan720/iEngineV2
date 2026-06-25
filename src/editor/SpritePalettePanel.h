@@ -1,10 +1,9 @@
 #pragma once
 
-#include "editor/EditorTilesetTypes.h"
+#include "editor/SpritePickerWidget.h"
 #include "system/IRenderBackend.h"
 
 #include <string>
-#include <vector>
 
 class ViewportGrid;
 
@@ -20,18 +19,13 @@ public:
     );
 
 private:
-    void drawTilesetSelector();
     void drawSelectedTilesetGrid(std::string& statusMessage);
     void drawSelectedTileAnimationEditor(EditorTileset& tileset, std::string& statusMessage);
     void createSpriteEntityFromTile(int tilesetIndex, int tileId, float x, float y, std::string& statusMessage);
     bool saveTilesetAnimations(EditorTileset& tileset, std::string& statusMessage);
 
-    bool tilesetsScanned = false;
-    float tilePreviewScale = 3.0f;
-    int selectedTilesetIndex = -1;
-    int selectedTileId = -1;
+    SpritePickerWidget spritePicker;
     int createdSpriteCount = 0;
     int animationOwnerTileId = -1;
     int newAnimationFrameDurationMs = 200;
-    std::vector<EditorTileset> tilesets;
 };

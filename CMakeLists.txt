@@ -268,6 +268,7 @@ if(IENGINE_WITH_EDITOR)
         src/editor/LevelManagerPanel.cpp
         src/editor/PrefabPanel.cpp
         src/editor/SpritePalettePanel.cpp
+        src/editor/SpritePickerWidget.cpp
         src/editor/TilesetCreator.cpp
         src/editor/TransformGizmo.cpp
         src/editor/ViewportGrid.cpp

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "editor/SpritePickerWidget.h"
+
 #include <string>
 
 class AnimationComponent;
@@ -59,5 +61,7 @@ private:
     int selectedAddComponentIndex = 0;
     int selectedScriptIndex = 0;
     std::string prefabName;
+    SpritePickerWidget spritePicker;
+    SpritePickerWidget animationPicker;
     EntityEditState entityEditState;
 };

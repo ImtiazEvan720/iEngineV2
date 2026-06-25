@@ -2,11 +2,13 @@
 
 #include "Entity.h"
 #include "components/AnimationComponent.h"
+#include "components/CollisionComponent.h"
 #include "components/ScriptComponent.h"
 #include "components/TransformComponent.h"
 #include "math/Vector2F.h"
 #include "misc/Level.h"
 #include "misc/LevelManager.h"
+#include "system/PhysicsSystem.h"
 #include "system/Renderer.h"
 #include "system/VirtualInputSystem.h"
 
@@ -14,6 +16,7 @@
 #include "EmbeddedScripts.h"
 #endif
 
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <utility>
@@ -64,6 +67,33 @@ Entity* findEntityByTag(const std::string& tag) {
 
 Entity* findEntityByGuid(const std::string& guid) {
     return Level::getCurrentLevel().getEntityByGuid(guid);
+}
+
+sol::table makeRaycastResultTable(sol::state& lua, const PhysicsRaycastHit& hit) {
+    sol::table result = lua.create_table();
+    result["hit"] = hit.hit;
+    result["point"] = hit.point;
+    result["normal"] = hit.normal;
+    result["fraction"] = hit.fraction;
+    result["nodeVisits"] = hit.nodeVisits;
+    result["leafVisits"] = hit.leafVisits;
+
+    if (hit.collider != nullptr) {
+        Entity* hitEntity = hit.collider->getEntity();
+        result["colliderName"] = hit.collider->getName();
+        result["collider"] = hit.collider;
+        result["entity"] = hitEntity;
+        result["entityName"] = hitEntity == nullptr ? "" : hitEntity->getName();
+        result["tag"] = hitEntity == nullptr ? "" : hitEntity->getTag();
+    } else {
+        result["colliderName"] = "";
+        result["collider"] = sol::nil;
+        result["entity"] = sol::nil;
+        result["entityName"] = "";
+        result["tag"] = "";
+    }
+
+    return result;
 }
 }
 
@@ -306,6 +336,31 @@ void ScriptSystem::bindEngineTypes() {
     engineTable["isEntityInViewport"] = [](Entity& entity) {
         return Renderer::getInstance().isEntityInViewport(entity);
     };
+    engineTable["isWorldPointInViewport"] = [](const Vector2F& worldPoint, float margin) {
+        if (!std::isfinite(worldPoint.x) || !std::isfinite(worldPoint.y)) {
+            return false;
+        }
+
+        if (!std::isfinite(margin) || margin < 0.0f) {
+            margin = 0.0f;
+        }
+
+        const Renderer& renderer = Renderer::getInstance();
+        const RenderRect viewport = renderer.getViewport();
+        const RenderRect worldViewport = renderer.getCamera().getWorldViewport(viewport);
+        if (worldViewport.width <= 0.0f || worldViewport.height <= 0.0f) {
+            return false;
+        }
+
+        return worldPoint.x >= worldViewport.x + margin
+            && worldPoint.x <= worldViewport.x + worldViewport.width - margin
+            && worldPoint.y >= worldViewport.y + margin
+            && worldPoint.y <= worldViewport.y + worldViewport.height - margin;
+    };
+    engineTable["raycast"] = [this](const Vector2F& start, const Vector2F& end) {
+        const PhysicsRaycastHit hit = PhysicsSystem::getInstance().raycast(start, end);
+        return makeRaycastResultTable(lua, hit);
+    };
     engineTable["findEntityByName"] = [](const std::string& entityName) {
         return findEntityByName(entityName);
     };
@@ -393,6 +448,14 @@ void ScriptSystem::bindEngineTypes() {
         "isPlaying", &AnimationComponent::isPlaying,
         "isFinished", &AnimationComponent::isFinished,
         "setLooping", &AnimationComponent::setLooping
+    );
+
+    lua.new_usertype<CollisionComponent>(
+        "CollisionComponent",
+        "getName", &CollisionComponent::getName,
+        "getWidth", &CollisionComponent::getWidth,
+        "getHeight", &CollisionComponent::getHeight,
+        "isSensor", &CollisionComponent::isSensor
     );
 
     lua.new_usertype<ScriptComponent>(

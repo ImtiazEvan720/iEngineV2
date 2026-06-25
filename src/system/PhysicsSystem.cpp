@@ -1,6 +1,7 @@
 #include "system/PhysicsSystem.h"
 #include "components/CollisionComponent.h"
 
+#include <cmath>
 #include <iostream>
 
 namespace {
@@ -79,4 +80,48 @@ b2WorldId PhysicsSystem::getWorldId() const {
 
 bool PhysicsSystem::isInitialized() const {
     return b2World_IsValid(worldId);
+}
+
+PhysicsRaycastHit PhysicsSystem::raycast(const Vector2F& start, const Vector2F& end) const {
+    PhysicsRaycastHit hit;
+    if (!isInitialized()) {
+        return hit;
+    }
+
+    if (!std::isfinite(start.x)
+        || !std::isfinite(start.y)
+        || !std::isfinite(end.x)
+        || !std::isfinite(end.y)) {
+        return hit;
+    }
+
+    const b2Vec2 origin{start.x, start.y};
+    const b2Vec2 translation{
+        end.x - start.x,
+        end.y - start.y
+    };
+
+    if (std::fabs(translation.x) <= 0.0001f && std::fabs(translation.y) <= 0.0001f) {
+        return hit;
+    }
+
+    const b2RayResult result = b2World_CastRayClosest(
+        worldId,
+        origin,
+        translation,
+        b2DefaultQueryFilter()
+    );
+
+    hit.hit = result.hit;
+    hit.point = Vector2F(result.point.x, result.point.y);
+    hit.normal = Vector2F(result.normal.x, result.normal.y);
+    hit.fraction = result.fraction;
+    hit.nodeVisits = result.nodeVisits;
+    hit.leafVisits = result.leafVisits;
+
+    if (result.hit && b2Shape_IsValid(result.shapeId)) {
+        hit.collider = static_cast<CollisionComponent*>(b2Shape_GetUserData(result.shapeId));
+    }
+
+    return hit;
 }

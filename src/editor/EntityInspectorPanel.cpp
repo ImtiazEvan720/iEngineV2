@@ -18,6 +18,7 @@
 #include "system/IRenderBackend.h"
 #include "system/InputSystem.h"
 #include "system/ProjectManager.h"
+#include "system/Renderer.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -27,6 +28,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <optional>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -1444,6 +1446,61 @@ void EntityInspectorPanel::drawSpriteComponentFields(
 ) {
     Sprite& sprite = spriteComponent.getSprite();
 
+    if (!spritePicker.hasScannedTilesets()) {
+        spritePicker.refreshTilesets();
+    }
+
+    if (ImGui::TreeNodeEx(
+            "Sprite Picker",
+            ImGuiTreeNodeFlags_DefaultOpen |
+            ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_SpanAvailWidth)) {
+        if (ImGui::Button("Refresh Sprites")) {
+            spritePicker.refreshTilesets();
+        }
+
+        spritePicker.drawTilesetSelector();
+        if (spritePicker.drawSelectedTilesetDetails(statusMessage)) {
+            const bool selectionChanged =
+                spritePicker.drawTileGrid("##InspectorSpritePickerGrid", false, -1, 220.0f);
+            const bool applyClicked = ImGui::Button("Apply Selected Tile");
+
+            if (selectionChanged || applyClicked) {
+                std::optional<Sprite> selectedSprite = spritePicker.createSpriteFromSelectedTile(
+                    Renderer::getInstance().getRenderScale(),
+                    statusMessage
+                );
+
+                if (selectedSprite.has_value()) {
+                    const Sprite& replacement = *selectedSprite;
+                    const RenderRect& source = replacement.getSourceRect();
+                    const Vector2F& size = replacement.getSize();
+                    const Vector2F& origin = replacement.getOrigin();
+
+                    sprite.setTextureHandle(replacement.getTextureHandle());
+                    sprite.setSourceRect(source);
+                    sprite.setSize(size);
+                    sprite.setOrigin(origin);
+
+                    entityEditState.spriteSource[0] = source.x;
+                    entityEditState.spriteSource[1] = source.y;
+                    entityEditState.spriteSource[2] = source.width;
+                    entityEditState.spriteSource[3] = source.height;
+                    entityEditState.spriteSize[0] = size.x;
+                    entityEditState.spriteSize[1] = size.y;
+                    entityEditState.spriteOrigin[0] = origin.x;
+                    entityEditState.spriteOrigin[1] = origin.y;
+
+                    statusMessage =
+                        "Updated SpriteComponent from tile id "
+                        + std::to_string(spritePicker.getSelectedTileId()) + ".";
+                }
+            }
+        }
+
+        ImGui::TreePop();
+    }
+
     ImGui::InputFloat4("Source Rect", entityEditState.spriteSource, "%.2f");
     if (ImGui::IsItemDeactivatedAfterEdit()) {
         sprite.setSourceRect(RenderRect{
@@ -1473,6 +1530,50 @@ void EntityInspectorPanel::drawAnimationComponentFields(
     std::string& statusMessage
 ) {
     Animation& animation = animationComponent.getAnimation();
+
+    if (!animationPicker.hasScannedTilesets()) {
+        animationPicker.refreshTilesets();
+    }
+
+    if (ImGui::TreeNodeEx(
+            "Animation Picker",
+            ImGuiTreeNodeFlags_DefaultOpen |
+            ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_SpanAvailWidth)) {
+        if (ImGui::Button("Refresh Animations")) {
+            animationPicker.refreshTilesets();
+        }
+
+        animationPicker.drawTilesetSelector();
+        if (animationPicker.drawSelectedTilesetDetails(statusMessage)) {
+            const bool selectionChanged =
+                animationPicker.drawTileGrid("##InspectorAnimationPickerGrid", false, -1, 220.0f, true);
+            const bool applyClicked = ImGui::Button("Apply Selected Animation");
+
+            if (selectionChanged || applyClicked) {
+                std::optional<Animation> selectedAnimation = animationPicker.createAnimationFromSelectedTile(
+                    Renderer::getInstance().getRenderScale(),
+                    statusMessage
+                );
+
+                if (selectedAnimation.has_value()) {
+                    animationComponent.setAnimation(*selectedAnimation);
+                    entityEditState.animationFrameDuration =
+                        animationComponent.getAnimation().getFrameDuration();
+                    entityEditState.animationPlaying = animationComponent.isPlaying();
+
+                    statusMessage =
+                        "Updated AnimationComponent from animated tile id "
+                        + std::to_string(animationPicker.getSelectedTileId())
+                        + " with "
+                        + std::to_string(animationComponent.getAnimation().getFrameCount())
+                        + " frame(s).";
+                }
+            }
+        }
+
+        ImGui::TreePop();
+    }
 
     ImGui::Text("Frames: %zu", animation.getFrameCount());
     ImGui::Text("Finished: %s", animationComponent.isFinished() ? "true" : "false");
