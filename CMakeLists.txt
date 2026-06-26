@@ -260,7 +260,11 @@ if(IENGINE_WITH_EDITOR)
         src/editor/BuildSystem.cpp
         src/editor/ColliderGizmo.cpp
         src/editor/EditorCamera.cpp
+        src/editor/EditorCollectionViews.cpp
+        src/editor/EntityInspectorComponentActions.cpp
+        src/editor/EntityInspectorComponentEditors.cpp
         src/editor/EntityInspectorPanel.cpp
+        src/editor/EntityInspectorPrefabActions.cpp
         src/editor/LevelEditor.cpp
         src/editor/LevelEditorFileExplorer.cpp
         src/editor/LevelEditorProject.cpp

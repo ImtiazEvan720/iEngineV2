@@ -2,6 +2,7 @@
 
 #include "Entity.h"
 #include "components/ScriptComponent.h"
+#include "editor/EditorCollectionViews.h"
 #include "editor/ScriptPropertyParser.h"
 #include "math/Vector2F.h"
 #include "misc/Level.h"
@@ -102,33 +103,48 @@ bool drawEntityReferenceValue(std::string& value, std::string& statusMessage) {
 
     ImGui::SetNextItemWidth(280.0f);
     if (ImGui::BeginCombo("Value", preview.c_str())) {
-        const bool noneSelected = value.empty();
-        if (ImGui::Selectable("None", noneSelected)) {
-            value.clear();
-            statusMessage = "Cleared script entity property.";
-            changed = true;
-        }
+        std::vector<ListViewItem> items;
+        std::vector<std::string> guids;
 
-        if (noneSelected) {
-            ImGui::SetItemDefaultFocus();
-        }
+        items.push_back(ListViewItem{"none", "None"});
+        guids.emplace_back();
+        int selectedIndex = value.empty() ? 0 : -1;
 
         for (Entity& levelEntity : Level::getCurrentLevel().getEntities()) {
             if (levelEntity.isDestroyed()) {
                 continue;
             }
 
-            const std::string label = makeEntityReferenceLabel(levelEntity);
-            const bool selected = value == levelEntity.getGuid();
-            if (ImGui::Selectable(label.c_str(), selected)) {
-                value = levelEntity.getGuid();
-                statusMessage = "Updated script entity property.";
-                changed = true;
+            const int itemIndex = static_cast<int>(items.size());
+            if (value == levelEntity.getGuid()) {
+                selectedIndex = itemIndex;
             }
 
-            if (selected) {
-                ImGui::SetItemDefaultFocus();
-            }
+            items.push_back(ListViewItem{
+                levelEntity.getGuid(),
+                makeEntityReferenceLabel(levelEntity)
+            });
+            guids.push_back(levelEntity.getGuid());
+        }
+
+        ListViewOptions options;
+        options.height = 240.0f;
+        options.border = false;
+        options.emptyText = "No entities.";
+        const ListViewResult result = EditorCollectionViews::drawListView(
+            "##EntityReferenceList",
+            items,
+            selectedIndex,
+            options
+        );
+        if (result.selectionChanged
+            && result.clickedIndex >= 0
+            && result.clickedIndex < static_cast<int>(guids.size())) {
+            value = guids[static_cast<std::size_t>(result.clickedIndex)];
+            statusMessage = value.empty()
+                ? "Cleared script entity property."
+                : "Updated script entity property.";
+            changed = true;
         }
 
         ImGui::EndCombo();
@@ -138,6 +154,61 @@ bool drawEntityReferenceValue(std::string& value, std::string& statusMessage) {
 
     if (!value.empty() && Level::getCurrentLevel().getEntityByGuid(value) == nullptr) {
         ImGui::TextDisabled("Stored GUID does not match a loaded entity.");
+    }
+
+    return changed;
+}
+
+bool drawPrefabNameValue(
+    const char* label,
+    std::string& value,
+    const char* updatedMessage,
+    std::string& statusMessage
+) {
+    bool changed = false;
+    const std::vector<std::string> prefabNames = getPrefabAssetNames();
+    const char* preview = value.empty()
+        ? "Select prefab"
+        : value.c_str();
+
+    ImGui::SetNextItemWidth(240.0f);
+    if (ImGui::BeginCombo(label, preview)) {
+        std::vector<ListViewItem> items;
+        items.reserve(prefabNames.size());
+        int selectedIndex = -1;
+
+        for (std::size_t index = 0; index < prefabNames.size(); ++index) {
+            const std::string& prefabName = prefabNames[index];
+            if (value == prefabName) {
+                selectedIndex = static_cast<int>(index);
+            }
+
+            items.push_back(ListViewItem{prefabName, prefabName});
+        }
+
+        ListViewOptions options;
+        options.height = 220.0f;
+        options.border = false;
+        options.emptyText = "No prefab assets loaded.";
+        const ListViewResult result = EditorCollectionViews::drawListView(
+            "##PrefabNameList",
+            items,
+            selectedIndex,
+            options
+        );
+        if (result.selectionChanged
+            && result.clickedIndex >= 0
+            && result.clickedIndex < static_cast<int>(prefabNames.size())) {
+            value = prefabNames[static_cast<std::size_t>(result.clickedIndex)];
+            statusMessage = updatedMessage;
+            changed = true;
+        }
+
+        ImGui::EndCombo();
+    }
+
+    if (prefabNames.empty()) {
+        ImGui::TextDisabled("No prefab assets loaded.");
     }
 
     return changed;
@@ -184,36 +255,13 @@ bool drawScriptValueEditor(
         }
         case ScriptValueType::Entity:
             return drawEntityReferenceValue(value.stringValue, statusMessage);
-        case ScriptValueType::Prefab: {
-            const std::vector<std::string> prefabNames = getPrefabAssetNames();
-            const char* preview = value.stringValue.empty()
-                ? "Select prefab"
-                : value.stringValue.c_str();
-
-            ImGui::SetNextItemWidth(240.0f);
-            if (ImGui::BeginCombo(label, preview)) {
-                for (const std::string& prefabName : prefabNames) {
-                    const bool selected = value.stringValue == prefabName;
-                    if (ImGui::Selectable(prefabName.c_str(), selected)) {
-                        value.stringValue = prefabName;
-                        statusMessage = "Updated script array/map prefab value.";
-                        ImGui::EndCombo();
-                        return true;
-                    }
-
-                    if (selected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-
-                ImGui::EndCombo();
-            }
-
-            if (prefabNames.empty()) {
-                ImGui::TextDisabled("No prefab assets loaded.");
-            }
-            break;
-        }
+        case ScriptValueType::Prefab:
+            return drawPrefabNameValue(
+                label,
+                value.stringValue,
+                "Updated script array/map prefab value.",
+                statusMessage
+            );
         case ScriptValueType::String:
         default:
             ImGui::SetNextItemWidth(240.0f);
@@ -285,31 +333,12 @@ void ScriptPropertyInspector::draw(ScriptComponent& scriptComponent, std::string
                 break;
             }
             case ScriptPropertyType::Prefab: {
-                const std::vector<std::string> prefabNames = getPrefabAssetNames();
-                const char* preview = property.stringValue.empty()
-                    ? "Select prefab"
-                    : property.stringValue.c_str();
-
-                ImGui::SetNextItemWidth(240.0f);
-                if (ImGui::BeginCombo("Value", preview)) {
-                    for (const std::string& prefabName : prefabNames) {
-                        const bool selected = property.stringValue == prefabName;
-                        if (ImGui::Selectable(prefabName.c_str(), selected)) {
-                            property.stringValue = prefabName;
-                            statusMessage = "Updated script prefab property.";
-                        }
-
-                        if (selected) {
-                            ImGui::SetItemDefaultFocus();
-                        }
-                    }
-
-                    ImGui::EndCombo();
-                }
-
-                if (prefabNames.empty()) {
-                    ImGui::TextDisabled("No prefab assets loaded.");
-                }
+                drawPrefabNameValue(
+                    "Value",
+                    property.stringValue,
+                    "Updated script prefab property.",
+                    statusMessage
+                );
                 break;
             }
             case ScriptPropertyType::Entity:

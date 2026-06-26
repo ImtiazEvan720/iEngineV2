@@ -1,5 +1,6 @@
 #include "editor/SpritePickerWidget.h"
 
+#include "editor/EditorCollectionViews.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
 #include "system/ProjectManager.h"
@@ -12,6 +13,7 @@
 #include <cctype>
 #include <filesystem>
 #include <iostream>
+#include <vector>
 
 namespace {
 std::string toLower(std::string value) {
@@ -60,6 +62,11 @@ std::filesystem::path findAssetsRoot() {
     }
 
     return ProjectManager::getInstance().getAssetsPath();
+}
+
+std::vector<unsigned char> makeTileDragPayloadBytes(const TileDragPayload& payload) {
+    const auto* begin = reinterpret_cast<const unsigned char*>(&payload);
+    return std::vector<unsigned char>(begin, begin + sizeof(TileDragPayload));
 }
 }
 
@@ -271,132 +278,102 @@ bool SpritePickerWidget::drawTileGrid(
         static_cast<float>(tileset->tileHeight) * tilePreviewScale
     );
 
-    if (ImGui::BeginChild(
-            childId,
-            ImVec2(0.0f, height),
-            ImGuiChildFlags_Borders,
-            ImGuiWindowFlags_HorizontalScrollbar)) {
-        int visibleTileCount = 0;
+    std::vector<GridViewItem> items;
+    std::vector<int> tileIds;
+    items.reserve(static_cast<std::size_t>(tileset->tileCount));
+    tileIds.reserve(static_cast<std::size_t>(tileset->tileCount));
+    int selectedGridIndex = -1;
 
-        for (int tileId = 0; tileId < tileset->tileCount; ++tileId) {
-            const auto animationIterator = tileset->animations.find(tileId);
-            const bool animatedOwner =
-                animationIterator != tileset->animations.end()
-                && !animationIterator->second.frames.empty();
+    for (int tileId = 0; tileId < tileset->tileCount; ++tileId) {
+        const auto animationIterator = tileset->animations.find(tileId);
+        const bool animatedOwner =
+            animationIterator != tileset->animations.end()
+            && !animationIterator->second.frames.empty();
 
-            if (animatedTilesOnly && !animatedOwner) {
-                continue;
-            }
-
-            const int column = tileId % tileset->columns;
-            const int row = tileId / tileset->columns;
-            const float sourceX = static_cast<float>(column * tileset->tileWidth);
-            const float sourceY = static_cast<float>(row * tileset->tileHeight);
-
-            const ImVec2 uv0(
-                sourceX / static_cast<float>(tileset->imageWidth),
-                sourceY / static_cast<float>(tileset->imageHeight)
-            );
-            const ImVec2 uv1(
-                (sourceX + static_cast<float>(tileset->tileWidth)) / static_cast<float>(tileset->imageWidth),
-                (sourceY + static_cast<float>(tileset->tileHeight)) / static_cast<float>(tileset->imageHeight)
-            );
-
-            ImGui::PushID(tileId);
-
-            const bool selected = selectedTileId == tileId;
-            if (selected) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-            }
-
-            if (ImGui::ImageButton("tile", textureId, previewSize, uv0, uv1)) {
-                selectedTileId = tileId;
-                changed = true;
-            }
-
-            const ImVec2 tileMin = ImGui::GetItemRectMin();
-            const ImVec2 tileMax = ImGui::GetItemRectMax();
-            const bool activeOwner = animationOwnerTileId == tileId;
-
-            if (animatedOwner || activeOwner) {
-                const char* label = animatedOwner ? "OWNER" : "OWNER*";
-                const ImVec2 textSize = ImGui::CalcTextSize(label);
-                const float labelHeight = textSize.y + 4.0f;
-                const ImU32 backgroundColor = animatedOwner
-                    ? IM_COL32(33, 120, 64, 220)
-                    : IM_COL32(120, 90, 28, 210);
-                ImDrawList* drawList = ImGui::GetWindowDrawList();
-                drawList->AddRectFilled(
-                    ImVec2(tileMin.x, tileMax.y - labelHeight),
-                    tileMax,
-                    backgroundColor
-                );
-                drawList->AddText(
-                    ImVec2(tileMin.x + std::max(2.0f, (previewSize.x - textSize.x) * 0.5f), tileMax.y - labelHeight + 2.0f),
-                    IM_COL32(255, 255, 255, 245),
-                    label
-                );
-            }
-
-            if (allowDragDrop && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                const TileDragPayload payload{
-                    selectedTilesetIndex,
-                    tileId
-                };
-
-                ImGui::SetDragDropPayload(EditorTileDrag::PayloadType, &payload, sizeof(payload));
-                ImGui::Text("Tile id: %d", tileId);
-
-                const ImVec2 mousePosition = ImGui::GetMousePos();
-                Renderer& renderer = Renderer::getInstance();
-                const float renderScale = renderer.getRenderScale();
-                const float cameraZoom = renderer.getCamera().getZoom();
-
-                const ImVec2 halfSize(
-                    tileset->tileWidth * renderScale * cameraZoom * 0.5f,
-                    tileset->tileHeight * renderScale * cameraZoom * 0.5f
-                );
-                ImGui::GetForegroundDrawList()->AddImage(
-                    textureId,
-                    ImVec2(mousePosition.x - halfSize.x, mousePosition.y - halfSize.y),
-                    ImVec2(mousePosition.x + halfSize.x, mousePosition.y + halfSize.y),
-                    uv0,
-                    uv1
-                );
-
-                ImGui::EndDragDropSource();
-            }
-
-            if (selected) {
-                ImGui::PopStyleColor();
-            }
-
-            if (ImGui::IsItemHovered()) {
-                if (animatedOwner) {
-                    ImGui::SetTooltip(
-                        "tile id: %d\nanimation owner\nframes: %zu",
-                        tileId,
-                        animationIterator->second.frames.size()
-                    );
-                } else {
-                    ImGui::SetTooltip("tile id: %d", tileId);
-                }
-            }
-
-            ImGui::PopID();
-            ++visibleTileCount;
-
-            if (visibleTileCount % tileset->columns != 0) {
-                ImGui::SameLine();
-            }
+        if (animatedTilesOnly && !animatedOwner) {
+            continue;
         }
 
-        if (visibleTileCount == 0) {
-            ImGui::TextUnformatted("No animated tiles found in this tileset.");
+        const int column = tileId % tileset->columns;
+        const int row = tileId / tileset->columns;
+        const float sourceX = static_cast<float>(column * tileset->tileWidth);
+        const float sourceY = static_cast<float>(row * tileset->tileHeight);
+
+        GridViewItem item;
+        item.id = "tile_" + std::to_string(tileId);
+        item.label = std::to_string(tileId);
+        item.image = textureId;
+        item.imageSize = previewSize;
+        item.uv0 = ImVec2(
+            sourceX / static_cast<float>(tileset->imageWidth),
+            sourceY / static_cast<float>(tileset->imageHeight)
+        );
+        item.uv1 = ImVec2(
+            (sourceX + static_cast<float>(tileset->tileWidth)) / static_cast<float>(tileset->imageWidth),
+            (sourceY + static_cast<float>(tileset->tileHeight)) / static_cast<float>(tileset->imageHeight)
+        );
+
+        const bool activeOwner = animationOwnerTileId == tileId;
+        if (animatedOwner || activeOwner) {
+            item.badge = animatedOwner ? "OWNER" : "OWNER*";
+            item.badgeColor = animatedOwner
+                ? IM_COL32(33, 120, 64, 220)
+                : IM_COL32(120, 90, 28, 210);
         }
+
+        if (animatedOwner) {
+            item.tooltip =
+                "tile id: " + std::to_string(tileId)
+                + "\nanimation owner\nframes: "
+                + std::to_string(animationIterator->second.frames.size());
+        } else {
+            item.tooltip = "tile id: " + std::to_string(tileId);
+        }
+
+        if (allowDragDrop) {
+            const TileDragPayload payload{selectedTilesetIndex, tileId};
+            item.dragPayloadType = EditorTileDrag::PayloadType;
+            item.dragPayload = makeTileDragPayloadBytes(payload);
+            item.dragLabel = "Tile id: " + std::to_string(tileId);
+
+            Renderer& renderer = Renderer::getInstance();
+            const float renderScale = renderer.getRenderScale();
+            const float cameraZoom = renderer.getCamera().getZoom();
+            item.dragPreviewSize = ImVec2(
+                tileset->tileWidth * renderScale * cameraZoom,
+                tileset->tileHeight * renderScale * cameraZoom
+            );
+        }
+
+        if (selectedTileId == tileId) {
+            selectedGridIndex = static_cast<int>(items.size());
+        }
+
+        tileIds.push_back(tileId);
+        items.push_back(std::move(item));
     }
 
-    ImGui::EndChild();
+    GridViewOptions options;
+    options.height = height;
+    options.cellWidth = std::max(48.0f, previewSize.x + 16.0f);
+    options.cellHeight = previewSize.y + ImGui::GetTextLineHeightWithSpacing() + 12.0f;
+    options.columns = tileset->columns;
+    options.horizontalScrollbar = true;
+    options.emptyText = "No animated tiles found in this tileset.";
+
+    const GridViewResult result = EditorCollectionViews::drawGridView(
+        childId,
+        items,
+        selectedGridIndex,
+        options
+    );
+    if (result.selectionChanged
+        && result.clickedIndex >= 0
+        && result.clickedIndex < static_cast<int>(tileIds.size())) {
+        selectedTileId = tileIds[static_cast<std::size_t>(result.clickedIndex)];
+        changed = true;
+    }
+
     return changed;
 }
 

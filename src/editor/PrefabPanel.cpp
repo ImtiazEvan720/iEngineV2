@@ -1,6 +1,7 @@
 #include "editor/PrefabPanel.h"
 
 #include "Entity.h"
+#include "editor/EditorCollectionViews.h"
 #include "editor/EditorPrefabTypes.h"
 #include "editor/ViewportGrid.h"
 #include "math/Vector2F.h"
@@ -18,6 +19,7 @@
 #include <cstring>
 #include <filesystem>
 #include <iostream>
+#include <vector>
 
 namespace {
 const tinyxml2::XMLElement* findPreviewElement(const tinyxml2::XMLElement& entityElement) {
@@ -104,6 +106,10 @@ PrefabPanel::PrefabPreview loadPrefabPreview(const std::string& prefabPath) {
     return preview;
 }
 
+std::vector<unsigned char> makePrefabDragPayloadBytes(const PrefabDragPayload& payload) {
+    const auto* begin = reinterpret_cast<const unsigned char*>(&payload);
+    return std::vector<unsigned char>(begin, begin + sizeof(PrefabDragPayload));
+}
 }
 
 
@@ -128,92 +134,55 @@ void PrefabPanel::draw(std::string& statusMessage) {
         return;
     }
 
-    if (ImGui::BeginChild(
-            "##PrefabList",
-            ImVec2(0.0f, 0.0f),
-            ImGuiChildFlags_Borders,
-            ImGuiWindowFlags_HorizontalScrollbar)) {
-        for (std::size_t index = 0; index < prefabs.size(); ++index) {
-            const PrefabInfo& prefab = prefabs[index];
-            const bool selected = selectedPrefabIndex == static_cast<int>(index);
+    std::vector<GridViewItem> items;
+    items.reserve(prefabs.size());
+    for (const PrefabInfo& prefab : prefabs) {
+        GridViewItem item;
+        item.id = prefab.path;
+        item.label = prefab.name;
+        item.tooltip = prefab.path;
 
-            ImGui::PushID(static_cast<int>(index));
-            ImGui::BeginGroup();
+        if (prefab.preview.valid) {
+            item.image = prefab.preview.textureId;
+            item.imageSize = ImVec2(48.0f, 48.0f);
+            item.uv0 = prefab.preview.uv0;
+            item.uv1 = prefab.preview.uv1;
 
-            if (prefab.preview.valid) {
-                if (selected) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-                }
+            Renderer& renderer = Renderer::getInstance();
+            const float renderScale = renderer.getRenderScale();
+            const float cameraZoom = renderer.getCamera().getZoom();
+            const float previewWidth = prefab.preview.width > 0.0f
+                ? prefab.preview.width
+                : prefab.preview.sourceWidth * renderScale;
+            const float previewHeight = prefab.preview.height > 0.0f
+                ? prefab.preview.height
+                : prefab.preview.sourceHeight * renderScale;
 
-                if (ImGui::ImageButton(
-                        "##prefabPreview",
-                        prefab.preview.textureId,
-                        ImVec2(48.0f, 48.0f),
-                        prefab.preview.uv0,
-                        prefab.preview.uv1)) {
-                    selectedPrefabIndex = static_cast<int>(index);
-                }
-
-                if (selected) {
-                    ImGui::PopStyleColor();
-                }
-
-                ImGui::SameLine();
-                ImGui::TextUnformatted(prefab.name.c_str());
-            } else if (ImGui::Selectable(prefab.name.c_str(), selected)) {
-                selectedPrefabIndex = static_cast<int>(index);
-            }
-
-            ImGui::EndGroup();
-
-            if (ImGui::IsItemClicked()) {
-                selectedPrefabIndex = static_cast<int>(index);
-            }
-
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", prefab.path.c_str());
-            }
-
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                PrefabDragPayload payload{};
-                std::strncpy(payload.path, prefab.path.c_str(), EditorPrefabDrag::MaxPathLength - 1);
-                ImGui::SetDragDropPayload(EditorPrefabDrag::PayloadType, &payload, sizeof(payload));
-                ImGui::Text("Prefab: %s", prefab.name.c_str());
-
-                if (prefab.preview.valid) {
-                    const ImVec2 mousePosition = ImGui::GetMousePos();
-                    Renderer& renderer = Renderer::getInstance();
-                    const float renderScale = renderer.getRenderScale();
-                    const float cameraZoom = renderer.getCamera().getZoom();
-                    const float previewWidth = prefab.preview.width > 0.0f
-                        ? prefab.preview.width
-                        : prefab.preview.sourceWidth * renderScale;
-                    const float previewHeight = prefab.preview.height > 0.0f
-                        ? prefab.preview.height
-                        : prefab.preview.sourceHeight * renderScale;
-
-                    const ImVec2 halfSize(
-                        previewWidth * cameraZoom * 0.5f,
-                        previewHeight * cameraZoom * 0.5f
-                    );
-
-                    ImGui::GetForegroundDrawList()->AddImage(
-                        prefab.preview.textureId,
-                        ImVec2(mousePosition.x - halfSize.x, mousePosition.y - halfSize.y),
-                        ImVec2(mousePosition.x + halfSize.x, mousePosition.y + halfSize.y),
-                        prefab.preview.uv0,
-                        prefab.preview.uv1
-                    );
-                }
-
-                ImGui::EndDragDropSource();
-            }
-
-            ImGui::PopID();
+            item.dragPreviewSize = ImVec2(
+                previewWidth * cameraZoom,
+                previewHeight * cameraZoom
+            );
         }
+
+        PrefabDragPayload payload{};
+        std::strncpy(payload.path, prefab.path.c_str(), EditorPrefabDrag::MaxPathLength - 1);
+        item.dragPayloadType = EditorPrefabDrag::PayloadType;
+        item.dragPayload = makePrefabDragPayloadBytes(payload);
+        item.dragLabel = "Prefab: " + prefab.name;
+        items.push_back(std::move(item));
     }
 
-    ImGui::EndChild();
+    GridViewOptions options;
+    options.cellWidth = 88.0f;
+    options.cellHeight = 84.0f;
+    options.emptyText = "No prefab assets loaded.";
+
+    EditorCollectionViews::drawGridView(
+        "##PrefabGrid",
+        items,
+        selectedPrefabIndex,
+        options
+    );
 }
 
 void PrefabPanel::refreshPrefabs() {

@@ -54,7 +54,7 @@ private:
     bool isSelectedTilesetUsable() const;
 
     bool tilesetsScanned = false;
-    float tilePreviewScale = 3.0f;
+    float tilePreviewScale = 2.0f;
     int selectedTilesetIndex = -1;
     int selectedTileId = -1;
     std::vector<EditorTileset> tilesets;
