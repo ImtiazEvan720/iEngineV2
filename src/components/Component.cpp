@@ -23,3 +23,7 @@ void Component::onEnable(bool value) {
 }
 
 void Component::onDestroy() {}
+
+std::unique_ptr<Component> Component::clone() const {
+    return nullptr;
+}

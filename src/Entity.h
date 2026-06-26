@@ -42,6 +42,8 @@ public:
         return reference;
     }
 
+    Component& addComponent(std::unique_ptr<Component> component);
+
     template <typename TComponent>
     TComponent* getComponent() {
         static_assert(std::is_base_of<Component, TComponent>::value,
@@ -107,6 +109,7 @@ public:
     Entity* getParent();
     const Entity* getParent() const;
     const std::vector<Entity*>& getChildren() const;
+    const std::vector<std::unique_ptr<Component>>& getComponents() const;
     bool isChildOf(const Entity& possibleParent) const;
 
     void setName(const std::string& name);
@@ -132,6 +135,8 @@ private:
     bool shouldStartComponentsImmediately() const;
     void startComponent(Component& component);
     void destroyComponents();
+    void notifyComponentsEnabled();
+    void applyDeferredComponentEnableChange();
     void removeChildReference(Entity* child);
     void syncTransformParent();
     void syncChildTransformParents();
@@ -152,4 +157,5 @@ private:
     bool persistent = false;
     bool componentStartupDeferred = false;
     bool hasDeferredComponentStartup = false;
+    bool deferredComponentEnableChange = false;
 };

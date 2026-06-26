@@ -21,6 +21,7 @@ struct ListViewResult {
 struct ListViewOptions {
     float height = 0.0f;
     bool border = true;
+    bool closePopupOnSelection = false;
     const char* emptyText = "No items.";
 };
 

@@ -10,7 +10,6 @@
 #include "editor/EditorCollectionViews.h"
 #include "editor/ScriptPropertyParser.h"
 #include "game/Brick.h"
-#include "game/Bullet.h"
 #include "math/Vector2F.h"
 #include "system/InputSystem.h"
 #include "system/ProjectManager.h"
@@ -81,7 +80,16 @@ std::vector<std::string> findLuaScripts() {
     try {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(scriptsPath)) {
             if (entry.is_regular_file() && entry.path().extension() == ".lua") {
-                scripts.push_back(entry.path().generic_string());
+                std::error_code errorCode;
+                const std::filesystem::path relativePath =
+                    std::filesystem::relative(entry.path(), scriptsPath, errorCode);
+                if (errorCode || relativePath.empty()) {
+                    scripts.push_back(entry.path().generic_string());
+                } else {
+                    scripts.push_back(
+                        (std::filesystem::path("Assets") / "Scripts" / relativePath).generic_string()
+                    );
+                }
             }
         }
     } catch (const std::filesystem::filesystem_error&) {
@@ -94,6 +102,12 @@ std::vector<std::string> findLuaScripts() {
 
 std::string makeScriptListLabel(const std::string& scriptPath) {
     const std::filesystem::path path(scriptPath);
+    const std::string genericPath = path.generic_string();
+    const std::string assetScriptsPrefix = "Assets/Scripts/";
+    if (genericPath.rfind(assetScriptsPrefix, 0) == 0) {
+        return genericPath.substr(assetScriptsPrefix.size());
+    }
+
     const std::filesystem::path scriptsPath =
         ProjectManager::getInstance().getAssetsPath() / "Scripts";
 
@@ -172,23 +186,6 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
                 );
                 return addComponentIfMissing<Brick>(entity);
             }
-        },
-        {
-            "Bullet",
-            false,
-            [](Entity& entity, const std::string& scriptPath) {
-                (void)scriptPath;
-                ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
-                ensureComponent<CollisionComponent>(
-                    entity,
-                    16.0f,
-                    32.0f,
-                    CollisionComponent::BodyType::Dynamic,
-                    true,
-                    "Bullet"
-                );
-                return addComponentIfMissing<Bullet>(entity);
-            }
         }
     };
 
@@ -203,7 +200,6 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
             "TransformComponent",
             [](Entity& target) {
                 removeDependencyIfPresent<PlayerController>(target);
-                removeDependencyIfPresent<Bullet>(target);
                 return target.removeComponent<TransformComponent>();
             }
         });
@@ -233,7 +229,6 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
             "CollisionComponent",
             [](Entity& target) {
                 removeDependencyIfPresent<Brick>(target);
-                removeDependencyIfPresent<Bullet>(target);
                 return target.removeComponent<CollisionComponent>();
             }
         });
@@ -262,15 +257,6 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
             "Brick",
             [](Entity& target) {
                 return target.removeComponent<Brick>();
-            }
-        });
-    }
-
-    if (entity.getComponent<Bullet>() != nullptr) {
-        entries.push_back({
-            "Bullet",
-            [](Entity& target) {
-                return target.removeComponent<Bullet>();
             }
         });
     }
@@ -321,6 +307,7 @@ void EntityInspectorPanel::drawAddComponentCombo(Entity& entity, std::string& st
         ListViewOptions options;
         options.height = 180.0f;
         options.border = false;
+        options.closePopupOnSelection = true;
         options.emptyText = "No components.";
         EditorCollectionViews::drawListView(
             "##AddComponentList",
@@ -362,6 +349,7 @@ void EntityInspectorPanel::drawAddComponentCombo(Entity& entity, std::string& st
             ListViewOptions options;
             options.height = 220.0f;
             options.border = false;
+            options.closePopupOnSelection = true;
             options.emptyText = "No Lua scripts.";
             EditorCollectionViews::drawListView(
                 "##LuaScriptList",

@@ -21,6 +21,9 @@ public:
     bool callEntityScriptFunction(Entity& entity, const std::string& functionName);
     bool callEntityScriptFunction(Entity& entity, const std::string& functionName, float argument);
     bool callEntityScriptFunction(Entity& entity, const std::string& functionName, Entity& argument);
+    bool callEntityScriptFunctionWithSelf(Entity& entity, const std::string& functionName);
+    bool callEntityScriptFunctionWithSelf(Entity& entity, const std::string& functionName, Entity& argument);
+    bool callEntityScriptFunction(Entity& entity, const std::string& functionName, Entity& entityArgument, float floatArgument);
     bool callEntityScriptFunction(Entity& entity, const std::string& functionName, const Vector2F& position, float rotation);
     bool callEntityScriptFunction(
         Entity& entity,
@@ -30,6 +33,12 @@ public:
         Entity& argument
     );
     bool callEntityCollisionFunction(
+        Entity& entity,
+        const std::string& functionName,
+        CollisionComponent& self,
+        CollisionComponent& other
+    );
+    bool tryCallEntityCollisionFunction(
         Entity& entity,
         const std::string& functionName,
         CollisionComponent& self,

@@ -6,6 +6,7 @@ class PlayerController : public Component {
 public:
     void onStart() override;
     void onUpdate(float deltaTime) override;
+    std::unique_ptr<Component> clone() const override;
 
 private:
     void fire();

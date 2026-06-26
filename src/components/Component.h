@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 class Entity;
 
 class Component {
@@ -13,6 +15,7 @@ public:
     virtual void onUpdate(float deltaTime);
     virtual void onEnable(bool value);
     virtual void onDestroy();
+    virtual std::unique_ptr<Component> clone() const;
 
 private:
     friend class Entity;

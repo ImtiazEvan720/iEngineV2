@@ -191,6 +191,9 @@ ListViewResult EditorCollectionViews::drawListView(
                 selectedIndex = index;
                 result.clickedIndex = index;
                 result.selectionChanged = true;
+                if (options.closePopupOnSelection) {
+                    ImGui::CloseCurrentPopup();
+                }
             }
 
             if (!item.tooltip.empty() && ImGui::IsItemHovered()) {

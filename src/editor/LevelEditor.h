@@ -60,6 +60,7 @@ private:
     void openLevelSaveWindow();
     void saveLevelToPromptPath();
     void loadSelectedLevel(const std::string& path);
+    void duplicateSelectedEntity();
 
     bool enabled = true;
     bool showLevelLoadWindow = false;

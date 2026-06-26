@@ -7,7 +7,6 @@
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "game/Brick.h"
-#include "game/Bullet.h"
 #include "misc/Animation.h"
 #include "misc/Guid.h"
 #include "misc/Sprite.h"
@@ -21,6 +20,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -30,6 +30,7 @@
 namespace
 {
     std::string currentLevelPath = "Assets/Levels/current.ilevel";
+    using GuidRemap = std::unordered_map<std::string, std::string>;
 
     bool parseBool(const char *value, bool fallback)
     {
@@ -93,6 +94,157 @@ namespace
         }
 
         return "";
+    }
+
+    void remapScriptValueEntityReference(ScriptValue &value, const GuidRemap &guidRemap)
+    {
+        if (value.type != ScriptValueType::Entity)
+        {
+            return;
+        }
+
+        const auto iterator = guidRemap.find(value.stringValue);
+        if (iterator != guidRemap.end())
+        {
+            value.stringValue = iterator->second;
+        }
+    }
+
+    void remapScriptPropertyEntityReferences(ScriptProperty &property, const GuidRemap &guidRemap)
+    {
+        if (property.type == ScriptPropertyType::Entity)
+        {
+            const auto iterator = guidRemap.find(property.stringValue);
+            if (iterator != guidRemap.end())
+            {
+                property.stringValue = iterator->second;
+            }
+
+            return;
+        }
+
+        if (property.type == ScriptPropertyType::Array && property.elementType == ScriptValueType::Entity)
+        {
+            for (ScriptValue &value : property.arrayValue)
+            {
+                remapScriptValueEntityReference(value, guidRemap);
+            }
+
+            return;
+        }
+
+        if (property.type == ScriptPropertyType::Map && property.mapValueType == ScriptValueType::Entity)
+        {
+            for (ScriptMapEntry &entry : property.mapValue)
+            {
+                remapScriptValueEntityReference(entry.value, guidRemap);
+            }
+        }
+    }
+
+    void remapDuplicatedScriptReferences(
+        const std::vector<Entity *> &createdEntities,
+        const GuidRemap &guidRemap)
+    {
+        for (Entity *entity : createdEntities)
+        {
+            if (entity == nullptr)
+            {
+                continue;
+            }
+
+            ScriptComponent *scriptComponent = entity->getComponent<ScriptComponent>();
+            if (scriptComponent == nullptr)
+            {
+                continue;
+            }
+
+            for (ScriptProperty &property : scriptComponent->getProperties())
+            {
+                remapScriptPropertyEntityReferences(property, guidRemap);
+            }
+        }
+    }
+
+    Entity *duplicateEntityRecursive(
+        Level &level,
+        const Entity &source,
+        Entity *parent,
+        bool isRoot,
+        bool duplicateChildren,
+        GuidRemap &guidRemap,
+        std::vector<Entity *> &createdEntities)
+    {
+        if (source.isDestroyed())
+        {
+            return nullptr;
+        }
+
+        Entity &copy = level.createEntity();
+        copy.setComponentStartupDeferred(true);
+        createdEntities.push_back(&copy);
+        guidRemap[source.getGuid()] = copy.getGuid();
+
+        copy.setName(isRoot ? source.getName() + "_Copy" : source.getName());
+        copy.setTag(source.getTag());
+        copy.setEnabled(source.isEnabled());
+        copy.setDisplayOrder(source.getDisplayOrder() + (isRoot ? 1 : 0));
+        copy.setPersistent(source.isPersistent());
+
+        for (const std::unique_ptr<Component> &component : source.getComponents())
+        {
+            if (component == nullptr)
+            {
+                continue;
+            }
+
+            std::unique_ptr<Component> clonedComponent = component->clone();
+            if (clonedComponent != nullptr)
+            {
+                copy.addComponent(std::move(clonedComponent));
+            }
+        }
+
+        if (parent != nullptr)
+        {
+            copy.setParent(parent, false);
+        }
+
+        if (isRoot)
+        {
+            const TransformComponent *sourceTransform = source.getComponent<TransformComponent>();
+            TransformComponent *copyTransform = copy.getComponent<TransformComponent>();
+            if (sourceTransform != nullptr && copyTransform != nullptr)
+            {
+                const Vector2F sourceWorldPosition = sourceTransform->getWorldPosition();
+                copyTransform->setPosition(Vector2F(
+                    sourceWorldPosition.x + 32.0f,
+                    sourceWorldPosition.y + 32.0f));
+                copyTransform->setRotation(sourceTransform->getWorldRotation());
+            }
+        }
+
+        if (!duplicateChildren)
+        {
+            return &copy;
+        }
+
+        for (const Entity *child : source.getChildren())
+        {
+            if (child != nullptr && !child->isDestroyed())
+            {
+                duplicateEntityRecursive(
+                    level,
+                    *child,
+                    &copy,
+                    false,
+                    true,
+                    guidRemap,
+                    createdEntities);
+            }
+        }
+
+        return &copy;
     }
 
     tinyxml2::XMLElement *addComponentElement(
@@ -475,7 +627,6 @@ namespace
 
         if (componentType == "Bullet")
         {
-            entity.addComponent<Bullet>();
             return true;
         }
 
@@ -578,11 +729,6 @@ bool Level::saveCurrentLevel(const std::string &path, std::string &errorMessage)
         if (entity.getComponent<Brick>() != nullptr)
         {
             addMarkerComponent(document, *entityElement, "Brick");
-        }
-
-        if (entity.getComponent<Bullet>() != nullptr)
-        {
-            addMarkerComponent(document, *entityElement, "Bullet");
         }
 
         ++savedEntityCount;
@@ -827,6 +973,46 @@ Entity &Level::addEntity(Entity entity)
     return addedEntity;
 }
 
+Entity *Level::duplicateEntity(const Entity &source, bool duplicateChildren)
+{
+    GuidRemap guidRemap;
+    std::vector<Entity *> createdEntities;
+
+    Entity *copy = duplicateEntityRecursive(
+        *this,
+        source,
+        nullptr,
+        true,
+        duplicateChildren,
+        guidRemap,
+        createdEntities);
+    if (copy == nullptr)
+    {
+        return nullptr;
+    }
+
+    remapDuplicatedScriptReferences(createdEntities, guidRemap);
+
+    if (EngineState::getInstance().isPlaying())
+    {
+        InputSystem &inputSystem = InputSystem::getInstance();
+        for (Entity *entity : createdEntities)
+        {
+            if (entity == nullptr || entity->isDestroyed())
+            {
+                continue;
+            }
+
+            entity->startDeferredComponents();
+            entity->addInputListeners(inputSystem);
+        }
+    }
+
+    rebuildGuidMap();
+    repairParentChildLinks();
+    return copy;
+}
+
 bool Level::removeEntity(std::size_t index)
 {
     if (index >= entities.size())
@@ -987,12 +1173,34 @@ void Level::update(float deltaTime)
 {
     for (Entity &entity : entities)
     {
+        if (!entity.isDestroyed())
+        {
+            entity.applyDeferredComponentEnableChange();
+        }
+    }
+
+    for (Entity &entity : entities)
+    {
         if (entity.isDestroyed() || !entity.isEnabled())
         {
             continue;
         }
 
         entity.update(deltaTime);
+    }
+
+    for (Entity &entity : entities)
+    {
+        if (entity.isDestroyed() || !entity.isEnabled())
+        {
+            continue;
+        }
+
+        CollisionComponent *collisionComponent = entity.getComponent<CollisionComponent>();
+        if (collisionComponent != nullptr)
+        {
+            collisionComponent->syncBodyToTransform();
+        }
     }
 
     cleanupDestroyedEntities();

@@ -114,6 +114,7 @@ end
 
 function onStart(entity, script)
     refreshScriptProperties(script)
+    entity:setTag("Player")
 
     if bulletManager == nil then
         bulletManager = Engine.findEntityByName(bulletManagerName)
@@ -123,6 +124,13 @@ function onStart(entity, script)
         .. entity:getName()
         .. ", tag: "
         .. entity:getTag())
+
+    local animation = entity:getAnimation()
+    if animation ~= nil then
+       engineLog("PlayerControllerLua found animation: ")
+    else
+        engineLog("PlayerControllerLua found no animation.")
+    end
 end
 
 function onUpdate(entity, deltaTime, script)

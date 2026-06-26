@@ -5,6 +5,5 @@
         <component type="SpriteComponent" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="320" sourceY="96" sourceWidth="8" sourceHeight="16" sizeX="16" sizeY="32" originX="4" originY="8"/>
         <component type="CollisionComponent" name="Bullet" width="16" height="32" offsetX="0" offsetY="0" bodyType="Dynamic" isSensor="true"/>
         <component type="ScriptComponent" path="Assets/Scripts/bullet.lua"/>
-        <component type="Bullet"/>
     </entity>
 </prefab>

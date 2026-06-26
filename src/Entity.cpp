@@ -10,6 +10,7 @@
 #include "system/EngineState.h"
 #include "system/InputListener.h"
 #include "system/InputSystem.h"
+#include "system/PhysicsSystem.h"
 
 #include <algorithm>
 #include <iostream>
@@ -25,6 +26,7 @@ Entity::Entity()
 
 Entity::~Entity() {
     destroy();
+    destroyComponents();
 }
 
 Entity::Entity(Entity&& other) noexcept
@@ -42,12 +44,14 @@ Entity::Entity(Entity&& other) noexcept
       persistent(other.persistent),
       componentStartupDeferred(other.componentStartupDeferred),
       hasDeferredComponentStartup(other.hasDeferredComponentStartup),
+      deferredComponentEnableChange(other.deferredComponentEnableChange),
       updating(false) {
     refreshComponentOwners();
     rebindParentLinksFrom(&other);
     other.parentEntity = nullptr;
     other.parentGuid.clear();
     other.children.clear();
+    other.deferredComponentEnableChange = false;
 }
 
 Entity& Entity::operator=(Entity&& other) noexcept {
@@ -56,6 +60,7 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     }
 
     destroy();
+    destroyComponents();
 
     components = std::move(other.components);
     name = std::move(other.name);
@@ -71,14 +76,33 @@ Entity& Entity::operator=(Entity&& other) noexcept {
     persistent = other.persistent;
     componentStartupDeferred = other.componentStartupDeferred;
     hasDeferredComponentStartup = other.hasDeferredComponentStartup;
+    deferredComponentEnableChange = other.deferredComponentEnableChange;
     updating = false;
     refreshComponentOwners();
     rebindParentLinksFrom(&other);
     other.parentEntity = nullptr;
     other.parentGuid.clear();
     other.children.clear();
+    other.deferredComponentEnableChange = false;
 
     return *this;
+}
+
+Component& Entity::addComponent(std::unique_ptr<Component> component) {
+    Component& reference = *component;
+    reference.setEntity(this);
+    components.push_back(std::move(component));
+
+    if (shouldStartComponentsImmediately()) {
+        startComponent(reference);
+    } else {
+        hasDeferredComponentStartup = true;
+    }
+
+    syncTransformParent();
+    syncChildTransformParents();
+
+    return reference;
 }
 
 void Entity::refreshComponentOwners() {
@@ -149,7 +173,7 @@ void Entity::destroy(bool destroyChildren) {
 
     destroyed = true;
 
-    if (updating) {
+    if (updating || PhysicsSystem::getInstance().isProcessingEvents()) {
         return;
     }
 
@@ -256,6 +280,10 @@ const std::vector<Entity*>& Entity::getChildren() const {
     return children;
 }
 
+const std::vector<std::unique_ptr<Component>>& Entity::getComponents() const {
+    return components;
+}
+
 bool Entity::isChildOf(const Entity& possibleParent) const {
     const Entity* current = parentEntity;
     while (current != nullptr) {
@@ -282,11 +310,29 @@ void Entity::setEnabled(bool enabled) {
         addInputListeners(InputSystem::getInstance());
     }
 
+    if (PhysicsSystem::getInstance().isProcessingEvents()) {
+        deferredComponentEnableChange = true;
+        return;
+    }
+
+    notifyComponentsEnabled();
+}
+
+void Entity::notifyComponentsEnabled() {
     for (const auto& component : components) {
         if (component->started) {
             component->onEnable(this->enabled);
         }
     }
+}
+
+void Entity::applyDeferredComponentEnableChange() {
+    if (!deferredComponentEnableChange) {
+        return;
+    }
+
+    deferredComponentEnableChange = false;
+    notifyComponentsEnabled();
 }
 
 void Entity::setDisplayOrder(int order) {

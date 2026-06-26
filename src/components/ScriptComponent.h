@@ -100,6 +100,7 @@ public:
     void onStart() override;
     void onUpdate(float deltaTime) override;
     void onDestroy() override;
+    std::unique_ptr<Component> clone() const override;
 
 private:
     const ScriptProperty* findProperty(const std::string& name) const;

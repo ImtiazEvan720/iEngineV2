@@ -49,6 +49,16 @@ std::string getBuildScriptCommand(const std::string& scriptName) {
 
     return "./" + scriptName;
 }
+
+Entity* findEntityById(Level& level, int entityId) {
+    for (Entity& entity : level.getEntities()) {
+        if (entity.getId() == entityId && !entity.isDestroyed()) {
+            return &entity;
+        }
+    }
+
+    return nullptr;
+}
 }
 
 void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
@@ -106,6 +116,10 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
             }
 
             const bool hasSelectedEntity = entityInspector.getSelectedEntityId() >= 0;
+            if (ImGui::MenuItem("Duplicate Selected", nullptr, false, hasSelectedEntity)) {
+                duplicateSelectedEntity();
+            }
+
             if (ImGui::MenuItem("Delete Selected", nullptr, false, hasSelectedEntity)) {
                 entityInspector.requestDeleteSelected(statusMessage);
             }
@@ -228,6 +242,25 @@ void LevelEditor::updateEditorOnly(float deltaTime) {
         gridVisible,
         cameraActive
     );
+}
+
+void LevelEditor::duplicateSelectedEntity() {
+    Level& level = Level::getCurrentLevel();
+    Entity* selectedEntity = findEntityById(level, entityInspector.getSelectedEntityId());
+    if (selectedEntity == nullptr) {
+        statusMessage = "No entity selected.";
+        return;
+    }
+
+    Entity* duplicate = level.duplicateEntity(*selectedEntity, true);
+    if (duplicate == nullptr) {
+        statusMessage = "Failed to duplicate entity.";
+        return;
+    }
+
+    entityInspector.selectEntity(*duplicate, true);
+    statusMessage = "Duplicated entity " + std::to_string(selectedEntity->getId())
+        + " as " + std::to_string(duplicate->getId()) + ".";
 }
 
 void LevelEditor::setEnabled(bool value) {

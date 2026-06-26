@@ -63,3 +63,7 @@ void TransformComponent::setParent(TransformComponent* parent) {
 TransformComponent* TransformComponent::getParent() const {
     return parent;
 }
+
+std::unique_ptr<Component> TransformComponent::clone() const {
+    return std::make_unique<TransformComponent>(position, rotation);
+}

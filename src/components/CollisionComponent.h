@@ -48,6 +48,7 @@ public:
     void setListener(CollisionListener* listener);
     void notifyCollisionEnter(CollisionComponent& other);
     void syncBodyToTransform();
+    std::unique_ptr<Component> clone() const override;
 
 private:
     static b2BodyType toBox2DBodyType(BodyType bodyType);

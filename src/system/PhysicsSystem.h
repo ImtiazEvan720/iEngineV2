@@ -34,10 +34,12 @@ public:
 
     b2WorldId getWorldId() const;
     bool isInitialized() const;
+    bool isProcessingEvents() const;
     PhysicsRaycastHit raycast(const Vector2F& start, const Vector2F& end) const;
 
 private:
     PhysicsSystem() = default;
 
     b2WorldId worldId = b2_nullWorldId;
+    bool processingEvents = false;
 };

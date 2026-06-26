@@ -10,7 +10,6 @@
 #include "editor/EditorCollectionViews.h"
 #include "editor/ScriptPropertyParser.h"
 #include "game/Brick.h"
-#include "game/Bullet.h"
 #include "math/Vector2F.h"
 #include "misc/Animation.h"
 #include "misc/Level.h"
@@ -529,6 +528,7 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
                 const Animation& animation = animationComponent->getAnimation();
 
                 ImGui::Text("Frames: %zu", animation.getFrameCount());
+                ImGui::Text("Current Frame: %zu", animationComponent->getCurrentFrameIndex());
                 ImGui::Text("Frame Duration: %.3f", animation.getFrameDuration());
                 ImGui::Text("Playing: %s", animationComponent->isPlaying() ? "true" : "false");
                 ImGui::Text("Finished: %s", animationComponent->isFinished() ? "true" : "false");
@@ -597,20 +597,6 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
             }
 
             ImGui::TextUnformatted("No editable fields.");
-            ImGui::TreePop();
-        }
-    }
-
-    if (entity.getComponent<Bullet>() != nullptr) {
-        hasComponents = true;
-        if (ImGui::TreeNodeEx("Bullet", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-            if (drawRemoveComponentButton(entity, "Bullet", statusMessage)) {
-                ImGui::TreePop();
-                ImGui::TreePop();
-                return;
-            }
-
-            ImGui::TextUnformatted("Collision bridge. Movement settings are on ScriptComponent.");
             ImGui::TreePop();
         }
     }

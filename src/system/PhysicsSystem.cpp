@@ -52,6 +52,8 @@ void PhysicsSystem::update(float deltaTime) {
 
     b2World_Step(worldId, deltaTime, 4);
 
+    processingEvents = true;
+
     const b2ContactEvents contactEvents = b2World_GetContactEvents(worldId);
     for (int i = 0; i < contactEvents.beginCount; ++i) {
         const b2ContactBeginTouchEvent& event = contactEvents.beginEvents[i];
@@ -63,6 +65,8 @@ void PhysicsSystem::update(float deltaTime) {
         const b2SensorBeginTouchEvent& event = sensorEvents.beginEvents[i];
         dispatchCollision(event.sensorShapeId, event.visitorShapeId);
     }
+
+    processingEvents = false;
 }
 
 void PhysicsSystem::shutdown() {
@@ -80,6 +84,10 @@ b2WorldId PhysicsSystem::getWorldId() const {
 
 bool PhysicsSystem::isInitialized() const {
     return b2World_IsValid(worldId);
+}
+
+bool PhysicsSystem::isProcessingEvents() const {
+    return processingEvents;
 }
 
 PhysicsRaycastHit PhysicsSystem::raycast(const Vector2F& start, const Vector2F& end) const {

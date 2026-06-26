@@ -2,9 +2,9 @@
 #include "components/TransformComponent.h"
 #include "components/AnimationComponent.h"
 #include "components/CollisionComponent.h"
+#include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "Entity.h"
-#include "game/Bullet.h"
 #include "misc/Asset.h"
 #include "misc/Level.h"
 #include "misc/Sprite.h"
@@ -69,7 +69,7 @@ void PlayerController::fire() {
         true,
         "Bullet"
     );
-    bulletEntity.addComponent<Bullet>();
+    bulletEntity.addComponent<ScriptComponent>("Assets/Scripts/bullet.lua");
 }
 
 void PlayerController::onUpdate(float deltaTime) { 
@@ -127,4 +127,8 @@ void PlayerController::onUpdate(float deltaTime) {
             animator->pause();
         }
     }   
+}
+
+std::unique_ptr<Component> PlayerController::clone() const {
+    return std::make_unique<PlayerController>();
 }

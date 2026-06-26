@@ -32,6 +32,7 @@ public:
 
     Entity &createEntity();
     Entity &addEntity(Entity entity);
+    Entity *duplicateEntity(const Entity &source, bool duplicateChildren = true);
     bool removeEntity(std::size_t index);
     bool destroyEntity(Entity &entity);
     bool destroyEntity(Entity *entity);

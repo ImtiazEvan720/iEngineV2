@@ -363,6 +363,60 @@ bool ScriptSystem::callEntityScriptFunction(
     return true;
 }
 
+bool ScriptSystem::callEntityScriptFunctionWithSelf(
+    Entity& entity,
+    const std::string& functionName
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    sol::protected_function_result result = function(entity);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::callEntityScriptFunctionWithSelf(
+    Entity& entity,
+    const std::string& functionName,
+    Entity& argument
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    sol::protected_function_result result = function(entity, argument);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::callEntityScriptFunction(
+    Entity& entity,
+    const std::string& functionName,
+    Entity& entityArgument,
+    float floatArgument
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    sol::protected_function_result result = function(entityArgument, floatArgument);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
 bool ScriptSystem::callEntityScriptFunction(
     Entity& entity,
     const std::string& functionName,
@@ -410,6 +464,48 @@ bool ScriptSystem::callEntityCollisionFunction(
 ) {
     sol::protected_function function;
     if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    Entity* otherEntity = other.getEntity();
+    sol::protected_function_result result = function(
+        entity,
+        otherEntity == nullptr ? sol::make_object(lua, sol::nil) : sol::make_object(lua, otherEntity),
+        &self,
+        &other
+    );
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::tryCallEntityCollisionFunction(
+    Entity& entity,
+    const std::string& functionName,
+    CollisionComponent& self,
+    CollisionComponent& other
+) {
+    if (!entity.isEnabled() || entity.isDestroyed()) {
+        return false;
+    }
+
+    ScriptComponent* scriptComponent = entity.getComponent<ScriptComponent>();
+    if (scriptComponent == nullptr) {
+        return false;
+    }
+
+    const auto scriptIterator = scripts.find(scriptComponent);
+    if (scriptIterator == scripts.end()) {
+        return false;
+    }
+
+    refreshScriptPropertyTables(scriptIterator->second, *scriptComponent);
+
+    sol::protected_function function =
+        scriptIterator->second.environment.get<sol::protected_function>(functionName);
+    if (!function.valid()) {
         return false;
     }
 
@@ -575,6 +671,7 @@ void ScriptSystem::bindEngineTypes() {
         "reset", &AnimationComponent::reset,
         "isPlaying", &AnimationComponent::isPlaying,
         "isFinished", &AnimationComponent::isFinished,
+        "getCurrentFrameIndex", &AnimationComponent::getCurrentFrameIndex,
         "setLooping", &AnimationComponent::setLooping
     );
 
@@ -617,6 +714,7 @@ void ScriptSystem::bindEngineTypes() {
         "getTag", &Entity::getTag,
         "setTag", &Entity::setTag,
         "isEnabled", &Entity::isEnabled,
+        "isDestroyed", &Entity::isDestroyed,
         "setEnabled", &Entity::setEnabled,
         "setPersistent", &Entity::setPersistent,
         "isPersistent", &Entity::isPersistent,
@@ -663,6 +761,9 @@ void ScriptSystem::bindEngineTypes() {
             [](Entity& entity, const std::string& functionName, Entity& argument) {
                 return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, argument);
             },
+            [](Entity& entity, const std::string& functionName, Entity& argument, float value) {
+                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, argument, value);
+            },
             [](Entity& entity, const std::string& functionName, const Vector2F& position, float rotation) {
                 return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, position, rotation);
             },
@@ -674,6 +775,14 @@ void ScriptSystem::bindEngineTypes() {
                     rotation,
                     argument
                 );
+            }
+        ),
+        "callScriptSelf", sol::overload(
+            [](Entity& entity, const std::string& functionName) {
+                return ScriptSystem::getInstance().callEntityScriptFunctionWithSelf(entity, functionName);
+            },
+            [](Entity& entity, const std::string& functionName, Entity& argument) {
+                return ScriptSystem::getInstance().callEntityScriptFunctionWithSelf(entity, functionName, argument);
             }
         ),
         "spawnPrefab", sol::overload(
@@ -705,7 +814,7 @@ bool ScriptSystem::callOnStart(ScriptInstance& script, Entity& entity) {
 
     sol::protected_function_result result = script.onStart(entity, scriptComponent);
     if (!result.valid()) {
-        return reportScriptError("onStart", result);
+        return reportScriptError(entity.getName() + ".onStart", result);
     }
 
     return true;
@@ -723,7 +832,7 @@ bool ScriptSystem::callOnUpdate(ScriptInstance& script, Entity& entity, float de
 
     sol::protected_function_result result = script.onUpdate(entity, deltaTime, scriptComponent);
     if (!result.valid()) {
-        return reportScriptError("onUpdate", result);
+        return reportScriptError(entity.getName() + ".onUpdate", result);
     }
 
     return true;

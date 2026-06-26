@@ -17,6 +17,7 @@ public:
     void setPosition(const Vector2F& position);
     void setRotation(float rotation);
     void setParent(TransformComponent* parent);
+    std::unique_ptr<Component> clone() const override;
 
 private:
     Vector2F position;

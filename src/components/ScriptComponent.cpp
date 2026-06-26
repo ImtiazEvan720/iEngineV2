@@ -455,6 +455,10 @@ void ScriptComponent::onDestroy() {
     loaded = false;
 }
 
+std::unique_ptr<Component> ScriptComponent::clone() const {
+    return std::make_unique<ScriptComponent>(scriptPath, properties);
+}
+
 const ScriptProperty* ScriptComponent::findProperty(const std::string& name) const {
     for (const ScriptProperty& property : properties) {
         if (property.name == name) {

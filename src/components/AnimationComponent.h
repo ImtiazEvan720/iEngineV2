@@ -17,10 +17,12 @@ public:
     void reset();
     bool isPlaying() const;
     bool isFinished() const;
+    std::size_t getCurrentFrameIndex() const;
     void setLooping(bool looping);
 
     const Sprite& getCurrentFrame() const;
     void onUpdate(float deltaTime) override;
+    std::unique_ptr<Component> clone() const override;
 
 private:
     Animation animation;

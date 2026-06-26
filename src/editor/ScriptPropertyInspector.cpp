@@ -130,6 +130,7 @@ bool drawEntityReferenceValue(std::string& value, std::string& statusMessage) {
         ListViewOptions options;
         options.height = 240.0f;
         options.border = false;
+        options.closePopupOnSelection = true;
         options.emptyText = "No entities.";
         const ListViewResult result = EditorCollectionViews::drawListView(
             "##EntityReferenceList",
@@ -189,6 +190,7 @@ bool drawPrefabNameValue(
         ListViewOptions options;
         options.height = 220.0f;
         options.border = false;
+        options.closePopupOnSelection = true;
         options.emptyText = "No prefab assets loaded.";
         const ListViewResult result = EditorCollectionViews::drawListView(
             "##PrefabNameList",

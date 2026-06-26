@@ -11,6 +11,7 @@ public:
     const Sprite& getSprite() const;
 
     void setSprite(const Sprite& sprite);
+    std::unique_ptr<Component> clone() const override;
 
 private:
     Sprite sprite;

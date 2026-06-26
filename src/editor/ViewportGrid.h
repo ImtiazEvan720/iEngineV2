@@ -17,7 +17,7 @@ public:
     float getGridSize() const;
 
 private:
-    bool showGrid = true;
+    bool showGrid = false;
     bool snapToGrid = false;
     bool showColliders = false;
     bool showSideMenu = true;

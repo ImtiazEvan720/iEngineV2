@@ -26,7 +26,6 @@ ComponentSerializerRegistry::ComponentSerializerRegistry() {
     registerSerializer(std::make_unique<ScriptComponentSerializer>());
     registerSerializer(std::make_unique<PlayerControllerComponentSerializer>());
     registerSerializer(std::make_unique<BrickComponentSerializer>());
-    registerSerializer(std::make_unique<BulletComponentSerializer>());
 }
 
 void ComponentSerializerRegistry::registerSerializer(std::unique_ptr<IComponentSerializer> serializer) {

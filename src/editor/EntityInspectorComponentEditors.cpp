@@ -188,6 +188,7 @@ void EntityInspectorPanel::drawAnimationComponentFields(
     }
 
     ImGui::Text("Frames: %zu", animation.getFrameCount());
+    ImGui::Text("Current Frame: %zu", animationComponent.getCurrentFrameIndex());
     ImGui::Text("Finished: %s", animationComponent.isFinished() ? "true" : "false");
 
     ImGui::InputFloat("Frame Duration", &entityEditState.animationFrameDuration, 0.0f, 0.0f, "%.3f");

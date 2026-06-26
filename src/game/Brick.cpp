@@ -67,7 +67,6 @@ void Brick::onCollisionEnter(CollisionComponent& self, CollisionComponent& other
     destroying = true;
 
     if (collision != nullptr) {
-        collision->onDestroy();
         collision->setListener(nullptr);
         collision = nullptr;
     }
@@ -79,4 +78,8 @@ void Brick::onUpdate(float deltaTime) {
     if (destroying && destroyAnimation != nullptr && destroyAnimation->isFinished()) {
         Level::getCurrentLevel().destroyEntity(getEntity());
     }
+}
+
+std::unique_ptr<Component> Brick::clone() const {
+    return std::make_unique<Brick>();
 }

@@ -3,6 +3,7 @@
 #include "Entity.h"
 #include "components/TransformComponent.h"
 #include "system/PhysicsSystem.h"
+#include "system/ScriptSystem.h"
 
 #include <cmath>
 #include <iostream>
@@ -158,6 +159,18 @@ void CollisionComponent::notifyCollisionEnter(CollisionComponent& other) {
     if (listener != nullptr) {
         listener->onCollisionEnter(*this, other);
     }
+
+    Entity* owner = getEntity();
+    if (owner == nullptr || owner->isDestroyed() || !owner->isEnabled()) {
+        return;
+    }
+
+    ScriptSystem::getInstance().tryCallEntityCollisionFunction(
+        *owner,
+        "onCollisionEnter",
+        *this,
+        other
+    );
 }
 
 void CollisionComponent::syncBodyToTransform() {
@@ -177,6 +190,18 @@ void CollisionComponent::syncBodyToTransform() {
         {worldPosition.x + offset.x, worldPosition.y + offset.y},
         b2MakeRot(transform->getWorldRotation() * degreesToRadians)
     );
+}
+
+std::unique_ptr<Component> CollisionComponent::clone() const {
+    auto copy = std::make_unique<CollisionComponent>(
+        width,
+        height,
+        bodyType,
+        sensor,
+        name
+    );
+    copy->setOffset(offset);
+    return copy;
 }
 
 b2BodyType CollisionComponent::toBox2DBodyType(BodyType bodyType) {

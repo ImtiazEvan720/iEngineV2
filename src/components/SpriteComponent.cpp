@@ -14,3 +14,7 @@ const Sprite& SpriteComponent::getSprite() const {
 void SpriteComponent::setSprite(const Sprite& sprite) {
     this->sprite = sprite;
 }
+
+std::unique_ptr<Component> SpriteComponent::clone() const {
+    return std::make_unique<SpriteComponent>(sprite);
+}
