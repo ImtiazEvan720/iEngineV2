@@ -9,12 +9,12 @@
 #include "tinyxml2.h"
 
 namespace {
-void addMarkerComponent(
+tinyxml2::XMLElement* addMarkerComponent(
     tinyxml2::XMLDocument& document,
     tinyxml2::XMLElement& entityElement,
     const char* type
 ) {
-    ComponentSerializationHelpers::addComponentElement(document, entityElement, type);
+    return ComponentSerializationHelpers::addComponentElement(document, entityElement, type);
 }
 }
 
@@ -31,8 +31,10 @@ void PlayerControllerComponentSerializer::save(
     tinyxml2::XMLElement& entityElement,
     const Entity& entity
 ) const {
-    if (hasComponent(entity)) {
-        addMarkerComponent(document, entityElement, getTypeName());
+    const PlayerController* playerController = entity.getComponent<PlayerController>();
+    if (playerController != nullptr) {
+        tinyxml2::XMLElement* component = addMarkerComponent(document, entityElement, getTypeName());
+        ComponentSerializationHelpers::setComponentEnabledAttribute(*component, *playerController);
     }
 }
 
@@ -46,7 +48,8 @@ bool PlayerControllerComponentSerializer::load(
     (void)context;
     (void)errorMessage;
 
-    entity.addComponent<ScriptComponent>("Assets/Scripts/player_controller.lua");
+    ScriptComponent& scriptComponent = entity.addComponent<ScriptComponent>("Assets/Scripts/player_controller.lua");
+    ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, scriptComponent);
     return true;
 }
 
@@ -63,8 +66,10 @@ void BrickComponentSerializer::save(
     tinyxml2::XMLElement& entityElement,
     const Entity& entity
 ) const {
-    if (hasComponent(entity)) {
-        addMarkerComponent(document, entityElement, getTypeName());
+    const Brick* brick = entity.getComponent<Brick>();
+    if (brick != nullptr) {
+        tinyxml2::XMLElement* component = addMarkerComponent(document, entityElement, getTypeName());
+        ComponentSerializationHelpers::setComponentEnabledAttribute(*component, *brick);
     }
 }
 
@@ -78,6 +83,7 @@ bool BrickComponentSerializer::load(
     (void)context;
     (void)errorMessage;
 
-    entity.addComponent<Brick>();
+    Brick& brick = entity.addComponent<Brick>();
+    ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, brick);
     return true;
 }

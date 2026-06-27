@@ -65,5 +65,7 @@ TransformComponent* TransformComponent::getParent() const {
 }
 
 std::unique_ptr<Component> TransformComponent::clone() const {
-    return std::make_unique<TransformComponent>(position, rotation);
+    auto copy = std::make_unique<TransformComponent>(position, rotation);
+    copy->setEnabled(isEnabled());
+    return copy;
 }

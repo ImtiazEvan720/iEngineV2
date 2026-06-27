@@ -30,6 +30,7 @@ void AnimationComponentSerializer::save(
 
     tinyxml2::XMLElement* component =
         ComponentSerializationHelpers::addComponentElement(document, entityElement, getTypeName());
+    ComponentSerializationHelpers::setComponentEnabledAttribute(*component, *animationComponent);
     const Animation& animation = animationComponent->getAnimation();
     component->SetAttribute("frameDuration", animation.getFrameDuration());
     component->SetAttribute("playing", ComponentSerializationHelpers::boolText(animationComponent->isPlaying()));
@@ -76,5 +77,6 @@ bool AnimationComponentSerializer::load(
         animationComponent.pause();
     }
 
+    ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, animationComponent);
     return true;
 }

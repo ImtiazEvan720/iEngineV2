@@ -2,6 +2,7 @@
 
 #include "Entity.h"
 #include "components/AnimationComponent.h"
+#include "components/Component.h"
 #include "components/CollisionComponent.h"
 #include "components/PlayerController.h"
 #include "components/ScriptComponent.h"
@@ -98,6 +99,19 @@ void normalizeDisplayOrder(std::vector<Entity*>& entities) {
         if (entities[index] != nullptr) {
             entities[index]->setDisplayOrder(static_cast<int>(index));
         }
+    }
+}
+
+void drawComponentEnabledCheckbox(
+    Component& component,
+    const char* componentName,
+    std::string& statusMessage
+) {
+    bool enabled = component.isEnabled();
+    if (ImGui::Checkbox("Enabled", &enabled)) {
+        component.setEnabled(enabled);
+        statusMessage = std::string(componentName)
+            + (enabled ? " enabled." : " disabled.");
     }
 }
 
@@ -471,6 +485,8 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
                 return;
             }
 
+            drawComponentEnabledCheckbox(*transform, "TransformComponent", statusMessage);
+
             if (editable) {
                 drawTransformComponentFields(*transform, statusMessage);
             } else {
@@ -495,6 +511,8 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
                 ImGui::TreePop();
                 return;
             }
+
+            drawComponentEnabledCheckbox(*spriteComponent, "SpriteComponent", statusMessage);
 
             if (editable) {
                 drawSpriteComponentFields(*spriteComponent, statusMessage);
@@ -522,6 +540,8 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
                 return;
             }
 
+            drawComponentEnabledCheckbox(*animationComponent, "AnimationComponent", statusMessage);
+
             if (editable) {
                 drawAnimationComponentFields(*animationComponent, statusMessage);
             } else {
@@ -547,6 +567,8 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
                 return;
             }
 
+            drawComponentEnabledCheckbox(*collisionComponent, "CollisionComponent", statusMessage);
+
             if (editable) {
                 drawCollisionComponentFields(*collisionComponent, statusMessage);
             } else {
@@ -568,12 +590,14 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
                 return;
             }
 
+            drawComponentEnabledCheckbox(*scriptComponent, "ScriptComponent", statusMessage);
+
             drawScriptComponentFields(*scriptComponent, statusMessage);
             ImGui::TreePop();
         }
     }
 
-    if (entity.getComponent<PlayerController>() != nullptr) {
+    if (auto* playerController = entity.getComponent<PlayerController>()) {
         hasComponents = true;
         if (ImGui::TreeNodeEx("PlayerController", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
             if (drawRemoveComponentButton(entity, "PlayerController", statusMessage)) {
@@ -582,12 +606,13 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
                 return;
             }
 
+            drawComponentEnabledCheckbox(*playerController, "PlayerController", statusMessage);
             ImGui::TextUnformatted("No editable fields.");
             ImGui::TreePop();
         }
     }
 
-    if (entity.getComponent<Brick>() != nullptr) {
+    if (auto* brick = entity.getComponent<Brick>()) {
         hasComponents = true;
         if (ImGui::TreeNodeEx("Brick", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
             if (drawRemoveComponentButton(entity, "Brick", statusMessage)) {
@@ -596,6 +621,7 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
                 return;
             }
 
+            drawComponentEnabledCheckbox(*brick, "Brick", statusMessage);
             ImGui::TextUnformatted("No editable fields.");
             ImGui::TreePop();
         }

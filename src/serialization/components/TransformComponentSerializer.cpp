@@ -26,6 +26,7 @@ void TransformComponentSerializer::save(
 
     tinyxml2::XMLElement* component =
         ComponentSerializationHelpers::addComponentElement(document, entityElement, getTypeName());
+    ComponentSerializationHelpers::setComponentEnabledAttribute(*component, *transform);
     const Vector2F& position = transform->getPosition();
     component->SetAttribute("x", position.x);
     component->SetAttribute("y", position.y);
@@ -52,10 +53,12 @@ bool TransformComponentSerializer::load(
 
     TransformComponent* transform = entity.getComponent<TransformComponent>();
     if (transform == nullptr) {
-        entity.addComponent<TransformComponent>(position, rotation);
+        TransformComponent& transformComponent = entity.addComponent<TransformComponent>(position, rotation);
+        ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, transformComponent);
     } else {
         transform->setPosition(position);
         transform->setRotation(rotation);
+        ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, *transform);
     }
 
     return true;

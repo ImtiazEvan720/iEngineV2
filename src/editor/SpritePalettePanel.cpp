@@ -151,7 +151,9 @@ void SpritePalettePanel::drawSelectedTileAnimationEditor(EditorTileset& tileset,
     }
 
     if (ImGui::Button("Save Tileset Animations")) {
-        saveTilesetAnimations(tileset, statusMessage);
+        if (saveTilesetAnimations(tileset, statusMessage)) {
+            spritePicker.refreshTilesets();
+        }
     }
 }
 
@@ -366,6 +368,6 @@ bool SpritePalettePanel::saveTilesetAnimations(EditorTileset& tileset, std::stri
         return false;
     }
 
-    statusMessage = "Saved tileset animations to " + std::filesystem::path(tileset.path).filename().string() + ".";
+    statusMessage = "Saved tileset animations to " + std::filesystem::path(tileset.path).string() + ".";
     return true;
 }

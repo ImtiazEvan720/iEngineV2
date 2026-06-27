@@ -43,6 +43,13 @@ std::filesystem::path resolveRelativePath(const std::filesystem::path& baseFile,
 }
 
 std::filesystem::path findAssetsRoot() {
+    const std::filesystem::path projectAssetsPath = ProjectManager::getInstance().getAssetsPath();
+    if (!projectAssetsPath.empty()
+        && std::filesystem::exists(projectAssetsPath)
+        && std::filesystem::is_directory(projectAssetsPath)) {
+        return projectAssetsPath;
+    }
+
     for (const auto& asset : AssetManager::getInstance().getAssets()) {
         std::filesystem::path path(asset->getPath());
         std::filesystem::path parent = path.parent_path();

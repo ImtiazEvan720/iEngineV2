@@ -81,5 +81,7 @@ void Brick::onUpdate(float deltaTime) {
 }
 
 std::unique_ptr<Component> Brick::clone() const {
-    return std::make_unique<Brick>();
+    auto copy = std::make_unique<Brick>();
+    copy->setEnabled(isEnabled());
+    return copy;
 }

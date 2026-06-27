@@ -21,12 +21,12 @@ bool rectanglesIntersect(const RenderRect& left, const RenderRect& right) {
 
 const Sprite* getRenderableSprite(const Entity& entity) {
     const AnimationComponent* animationComponent = entity.getComponent<AnimationComponent>();
-    if (animationComponent != nullptr && animationComponent->getAnimation().hasFrames()) {
+    if (animationComponent != nullptr && animationComponent->getAnimation().hasFrames() && animationComponent->isEnabled()) {
         return &animationComponent->getCurrentFrame();
     }
 
     const SpriteComponent* spriteComponent = entity.getComponent<SpriteComponent>();
-    if (spriteComponent != nullptr) {
+    if (spriteComponent != nullptr && spriteComponent->isEnabled()) {
         return &spriteComponent->getSprite();
     }
 

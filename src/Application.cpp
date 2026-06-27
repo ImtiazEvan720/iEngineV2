@@ -56,6 +56,7 @@ bool iengineIsTouchDevice() {
 #endif
 
 namespace {
+constexpr RenderColor clearColor = {0, 0, 0, 255};
 std::string getBackendName(int argc, char* argv[]) {
 #ifdef IENGINE_SDL_ONLY
     std::string backendName = "sdl";
@@ -393,7 +394,7 @@ void Application::tick() {
     guiBackend->update(deltaTime);
     Renderer::getInstance().updateEditorOnly(deltaTime);
 
-    windowBackend->beginFrame(RenderColor{45, 45, 50, 255});
+    windowBackend->beginFrame(clearColor);
     Renderer::getInstance().render();
     guiBackend->render(inputSystem);
     windowBackend->endFrame();

@@ -258,6 +258,16 @@ namespace
         return component;
     }
 
+    void setComponentEnabledAttribute(tinyxml2::XMLElement &element, const Component &component)
+    {
+        element.SetAttribute("enabled", boolText(component.isEnabled()));
+    }
+
+    void applyComponentEnabledAttribute(const tinyxml2::XMLElement &element, Component &component)
+    {
+        component.setEnabled(parseBool(element.Attribute("enabled"), true));
+    }
+
     void setSpriteAttributes(tinyxml2::XMLElement &element, const Sprite &sprite)
     {
         const RenderRect &source = sprite.getSourceRect();
@@ -281,6 +291,7 @@ namespace
         const TransformComponent &transform)
     {
         tinyxml2::XMLElement *component = addComponentElement(document, entityElement, "TransformComponent");
+        setComponentEnabledAttribute(*component, transform);
         const Vector2F &position = transform.getPosition();
         component->SetAttribute("x", position.x);
         component->SetAttribute("y", position.y);
@@ -293,6 +304,7 @@ namespace
         const SpriteComponent &spriteComponent)
     {
         tinyxml2::XMLElement *component = addComponentElement(document, entityElement, "SpriteComponent");
+        setComponentEnabledAttribute(*component, spriteComponent);
         setSpriteAttributes(*component, spriteComponent.getSprite());
     }
 
@@ -302,6 +314,7 @@ namespace
         const AnimationComponent &animationComponent)
     {
         tinyxml2::XMLElement *component = addComponentElement(document, entityElement, "AnimationComponent");
+        setComponentEnabledAttribute(*component, animationComponent);
         const Animation &animation = animationComponent.getAnimation();
         component->SetAttribute("frameDuration", animation.getFrameDuration());
         component->SetAttribute("playing", boolText(animationComponent.isPlaying()));
@@ -320,6 +333,7 @@ namespace
         const CollisionComponent &collisionComponent)
     {
         tinyxml2::XMLElement *component = addComponentElement(document, entityElement, "CollisionComponent");
+        setComponentEnabledAttribute(*component, collisionComponent);
         const Vector2F &offset = collisionComponent.getOffset();
         component->SetAttribute("name", collisionComponent.getName().c_str());
         component->SetAttribute("width", collisionComponent.getWidth());
@@ -389,6 +403,7 @@ namespace
         const ScriptComponent &scriptComponent)
     {
         tinyxml2::XMLElement *component = addComponentElement(document, entityElement, "ScriptComponent");
+        setComponentEnabledAttribute(*component, scriptComponent);
         component->SetAttribute("path", scriptComponent.getScriptPath().c_str());
 
         for (const ScriptProperty &property : scriptComponent.getProperties())
@@ -404,9 +419,14 @@ namespace
         }
     }
 
-    void addMarkerComponent(tinyxml2::XMLDocument &document, tinyxml2::XMLElement &entityElement, const char *type)
+    void addMarkerComponent(
+        tinyxml2::XMLDocument &document,
+        tinyxml2::XMLElement &entityElement,
+        const char *type,
+        const Component &sourceComponent)
     {
-        addComponentElement(document, entityElement, type);
+        tinyxml2::XMLElement *component = addComponentElement(document, entityElement, type);
+        setComponentEnabledAttribute(*component, sourceComponent);
     }
 
     TextureAsset *getTextureAsset(const tinyxml2::XMLElement &element)
@@ -448,7 +468,9 @@ namespace
             return false;
         }
 
-        entity.addComponent<SpriteComponent>(makeSpriteFromAttributes(component, *textureAsset));
+        SpriteComponent &spriteComponent = entity.addComponent<SpriteComponent>(
+            makeSpriteFromAttributes(component, *textureAsset));
+        applyComponentEnabledAttribute(component, spriteComponent);
         return true;
     }
 
@@ -481,6 +503,7 @@ namespace
         {
             animationComponent.pause();
         }
+        applyComponentEnabledAttribute(component, animationComponent);
 
         return true;
     }
@@ -600,6 +623,7 @@ namespace
             collisionComponent.setOffset(Vector2F(
                 component.FloatAttribute("offsetX", 0.0f),
                 component.FloatAttribute("offsetY", 0.0f)));
+            applyComponentEnabledAttribute(component, collisionComponent);
             return true;
         }
 
@@ -608,20 +632,25 @@ namespace
             const char *path = component.Attribute("path");
             if (path != nullptr && path[0] != '\0')
             {
-                entity.addComponent<ScriptComponent>(path, loadScriptPropertiesFromElement(component));
+                ScriptComponent &scriptComponent =
+                    entity.addComponent<ScriptComponent>(path, loadScriptPropertiesFromElement(component));
+                applyComponentEnabledAttribute(component, scriptComponent);
             }
             return true;
         }
 
         if (componentType == "PlayerController")
         {
-            entity.addComponent<ScriptComponent>("Assets/Scripts/player_controller.lua");
+            ScriptComponent &scriptComponent =
+                entity.addComponent<ScriptComponent>("Assets/Scripts/player_controller.lua");
+            applyComponentEnabledAttribute(component, scriptComponent);
             return true;
         }
 
         if (componentType == "Brick")
         {
-            entity.addComponent<Brick>();
+            Brick &brick = entity.addComponent<Brick>();
+            applyComponentEnabledAttribute(component, brick);
             return true;
         }
 
@@ -721,14 +750,14 @@ bool Level::saveCurrentLevel(const std::string &path, std::string &errorMessage)
             saveScriptComponent(document, *entityElement, *scriptComponent);
         }
 
-        if (entity.getComponent<PlayerController>() != nullptr)
+        if (const PlayerController *playerController = entity.getComponent<PlayerController>())
         {
-            addMarkerComponent(document, *entityElement, "PlayerController");
+            addMarkerComponent(document, *entityElement, "PlayerController", *playerController);
         }
 
-        if (entity.getComponent<Brick>() != nullptr)
+        if (const Brick *brick = entity.getComponent<Brick>())
         {
-            addMarkerComponent(document, *entityElement, "Brick");
+            addMarkerComponent(document, *entityElement, "Brick", *brick);
         }
 
         ++savedEntityCount;
@@ -845,11 +874,12 @@ bool Level::loadFromFile(const std::string &path, Level &level, std::string &err
 
         if (transformElement != nullptr)
         {
-            entity.addComponent<TransformComponent>(
+            TransformComponent &transformComponent = entity.addComponent<TransformComponent>(
                 Vector2F(
                     transformElement->FloatAttribute("x", 0.0f),
                     transformElement->FloatAttribute("y", 0.0f)),
                 transformElement->FloatAttribute("rotation", 0.0f));
+            applyComponentEnabledAttribute(*transformElement, transformComponent);
         }
         else if (collisionElement != nullptr)
         {

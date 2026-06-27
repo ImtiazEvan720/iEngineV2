@@ -443,7 +443,7 @@ void ScriptComponent::onStart() {
 }
 
 void ScriptComponent::onUpdate(float deltaTime) {
-    if (!loaded) {
+    if (!loaded || !this->isEnabled()) {
         return;
     }
 
@@ -456,7 +456,9 @@ void ScriptComponent::onDestroy() {
 }
 
 std::unique_ptr<Component> ScriptComponent::clone() const {
-    return std::make_unique<ScriptComponent>(scriptPath, properties);
+    auto copy = std::make_unique<ScriptComponent>(scriptPath, properties);
+    copy->setEnabled(isEnabled());
+    return copy;
 }
 
 const ScriptProperty* ScriptComponent::findProperty(const std::string& name) const {

@@ -6,6 +6,7 @@
 #include <string>
 
 class TextureAsset;
+class Component;
 
 namespace tinyxml2 {
 class XMLDocument;
@@ -21,6 +22,9 @@ tinyxml2::XMLElement* addComponentElement(
     tinyxml2::XMLElement& entityElement,
     const char* type
 );
+
+void setComponentEnabledAttribute(tinyxml2::XMLElement& element, const Component& component);
+void applyComponentEnabledAttribute(const tinyxml2::XMLElement& element, Component& component);
 
 std::string getTextureAssetName(RenderTextureHandle textureHandle);
 TextureAsset* getTextureAsset(const tinyxml2::XMLElement& element);

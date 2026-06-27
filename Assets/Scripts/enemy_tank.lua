@@ -1,37 +1,92 @@
-ScriptProperties = {
-    { name = "speed", type = "float", default = 70.0 },
-    { name = "life", type = "float", default = 3.0 },
-    { name = "fireCooldown", type = "float", default = 10 },
-    { name = "aiWaitTime", type = "float", default = 4.0 },
-    { name = "alignmentTolerance", type = "float", default = 12.0 },
-    { name = "viewportMargin", type = "float", default = 16.0 },
-    { name = "obstacleTag", type = "string", default = "Obstacle" },
-    { name = "obstacleRayDistance", type = "float", default = 48.0 },
-    { name = "raycastStartOffset", type = "float", default = 18.0 },
-    { name = "moveTimeMin", type = "float", default = 0.75 },
-    { name = "moveTimeMax", type = "float", default = 2.0 },
-    { name = "target", type = "entity", default = "" },
-    { name = "bulletManager", type = "entity", default = "" },
-    { name = "turret", type = "entity", default = "" },
-    { name = "destroyAnimationEntity", type = "entity", default = "" },
-    { name = "destroyDelay", type = "float", default = 0.6 },
-}
+ScriptProperties = {{
+    name = "speed",
+    type = "float",
+    default = 70.0
+}, {
+    name = "life",
+    type = "float",
+    default = 3.0
+}, {
+    name = "fireCooldown",
+    type = "float",
+    default = 10
+}, {
+    name = "aiWaitTime",
+    type = "float",
+    default = 4.0
+}, {
+    name = "alignmentTolerance",
+    type = "float",
+    default = 12.0
+}, {
+    name = "viewportMargin",
+    type = "float",
+    default = 16.0
+}, {
+    name = "obstacleTag",
+    type = "string",
+    default = "Obstacle"
+}, {
+    name = "obstacleRayDistance",
+    type = "float",
+    default = 48.0
+}, {
+    name = "raycastStartOffset",
+    type = "float",
+    default = 18.0
+}, {
+    name = "moveTimeMin",
+    type = "float",
+    default = 0.75
+}, {
+    name = "moveTimeMax",
+    type = "float",
+    default = 2.0
+}, {
+    name = "target",
+    type = "entity",
+    default = ""
+}, {
+    name = "bulletManager",
+    type = "entity",
+    default = ""
+}, {
+    name = "turret",
+    type = "entity",
+    default = ""
+}, {
+    name = "destroyAnimationEntity",
+    type = "entity",
+    default = ""
+}, {
+    name = "destroyDelay",
+    type = "float",
+    default = 0.6
+}}
 
-local directions = {
-    { x = 0.0, y = -1.0, rotation = 0.0 },
-    { x = 1.0, y = 0.0, rotation = 90.0 },
-    { x = 0.0, y = 1.0, rotation = 180.0 },
-    { x = -1.0, y = 0.0, rotation = -90.0 },
-}
+local directions = {{
+    x = 0.0,
+    y = -1.0,
+    rotation = 0.0
+}, {
+    x = 1.0,
+    y = 0.0,
+    rotation = 90.0
+}, {
+    x = 0.0,
+    y = 1.0,
+    rotation = 180.0
+}, {
+    x = -1.0,
+    y = 0.0,
+    rotation = -90.0
+}}
 
 local EnemyTank = {}
 EnemyTank.__index = EnemyTank
 
 local function isFiniteNumber(value)
-    return type(value) == "number"
-        and value == value
-        and value ~= math.huge
-        and value ~= -math.huge
+    return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
 local function numberOr(value, fallback)
@@ -132,7 +187,7 @@ local blockingTags = {
     obstacle = true,
     tank = true,
     player = true,
-    enemy = true,
+    enemy = true
 }
 
 function EnemyTank:new(entity)
@@ -163,7 +218,7 @@ function EnemyTank:new(entity)
         destroyTimer = 0.0,
         pendingDestroy = false,
         missingDependencyLogTimer = 0.0,
-        animationMoving = false,
+        animationMoving = false
     }, EnemyTank)
 
     enemyTank:resetAimWaitTimer()
@@ -250,26 +305,15 @@ function EnemyTank:refreshProperties()
     end
 
     if self.target == nil then
-        self.target = findUsableEntityByName({
-            "PlayerTank",
-            "Player_Tank",
-            "Player1",
-            "Player"
-        })
+        self.target = findUsableEntityByName({"PlayerTank", "Player_Tank", "Player1", "Player"})
     end
 
     if self.target == nil then
-        self.target = findUsableEntityByTag({
-            "Player",
-            "PlayerTank"
-        })
+        self.target = findUsableEntityByTag({"Player", "PlayerTank"})
     end
 
     if self.bulletManager == nil then
-        self.bulletManager = findUsableEntityByName({
-            "BulletManager",
-            "bulletManager"
-        })
+        self.bulletManager = findUsableEntityByName({"BulletManager", "bulletManager"})
     end
 end
 
@@ -301,14 +345,8 @@ function EnemyTank:takeDamage(damage)
     end
 
     self.life = self.life - damageAmount
-    Engine.log(
-        "EnemyTank damaged: "
-        .. self.entity:getName()
-        .. " damage="
-        .. tostring(damageAmount)
-        .. " life="
-        .. tostring(self.life)
-    )
+    Engine.log("EnemyTank damaged: " .. self.entity:getName() .. " damage=" .. tostring(damageAmount) .. " life=" ..
+                   tostring(self.life))
 
     if self.life > 0.0 then
         return
@@ -318,12 +356,7 @@ function EnemyTank:takeDamage(damage)
     self.destroyTimer = self.destroyDelay
     self:setMovingAnimation(false)
     self:playDestroyAnimation()
-    Engine.log(
-        "EnemyTank destruction started: "
-        .. self.entity:getName()
-        .. " delay="
-        .. tostring(self.destroyDelay)
-    )
+    Engine.log("EnemyTank destruction started: " .. self.entity:getName() .. " delay=" .. tostring(self.destroyDelay))
 end
 
 function EnemyTank:getAnimation()
@@ -378,23 +411,14 @@ function EnemyTank:playDestroyAnimation()
         return
     end
 
-    Engine.log("Destroy animation found " .. self.destroyAnimationEntity:getName())
-
-    -- local sourceTransform = self.entity:getTransform()
-    -- local destroyTransform = self.destroyAnimationEntity:getTransform()
-    -- if sourceTransform ~= nil and destroyTransform ~= nil then
-    --     destroyTransform:setPosition(sourceTransform:getWorldPosition())
-    --     destroyTransform:setRotation(sourceTransform:getWorldRotation())
-    -- end
+    local tankAnimation = self.entity:getAnimation()
+    if tankAnimation ~= nil then
+        tankAnimation:pause()
+        tankAnimation:setEnabled(false)
+    end
 
     self.destroyAnimationEntity:setEnabled(true)
 
-    -- local animation = self.destroyAnimationEntity:getAnimation()
-    -- if animation ~= nil then
-    --     animation:setLooping(false)
-    --     animation:reset()
-    --     animation:play()
-    -- end
 end
 
 function EnemyTank:updatePendingDestroy(deltaTime)
@@ -459,14 +483,9 @@ end
 
 function EnemyTank:raycastInDirection(transform, direction, distance)
     local worldPosition = transform:getWorldPosition()
-    local rayStart = Vector2F.new(
-        worldPosition.x + direction.x * self.raycastStartOffset,
-        worldPosition.y + direction.y * self.raycastStartOffset
-    )
-    local rayEnd = Vector2F.new(
-        rayStart.x + direction.x * distance,
-        rayStart.y + direction.y * distance
-    )
+    local rayStart = Vector2F.new(worldPosition.x + direction.x * self.raycastStartOffset,
+        worldPosition.y + direction.y * self.raycastStartOffset)
+    local rayEnd = Vector2F.new(rayStart.x + direction.x * distance, rayStart.y + direction.y * distance)
 
     local ok, hit = pcall(function()
         return Engine.raycast(rayStart, rayEnd)
@@ -495,10 +514,8 @@ function EnemyTank:canMoveInDirection(transform, direction, moveDistance)
     end
 
     local worldPosition = transform:getWorldPosition()
-    local nextWorldPosition = Vector2F.new(
-        worldPosition.x + direction.x * moveDistance,
-        worldPosition.y + direction.y * moveDistance
-    )
+    local nextWorldPosition = Vector2F.new(worldPosition.x + direction.x * moveDistance,
+        worldPosition.y + direction.y * moveDistance)
 
     return Engine.isWorldPointInViewport(nextWorldPosition, self.viewportMargin)
 end
@@ -631,10 +648,8 @@ function EnemyTank:moveForward(transform, deltaTime)
         return false
     end
 
-    local nextWorldPosition = Vector2F.new(
-        worldPosition.x + self.direction.x * distance,
-        worldPosition.y + self.direction.y * distance
-    )
+    local nextWorldPosition = Vector2F.new(worldPosition.x + self.direction.x * distance,
+        worldPosition.y + self.direction.y * distance)
 
     if not Engine.isWorldPointInViewport(nextWorldPosition, self.viewportMargin) then
         self:chooseUnblockedDirection(transform)

@@ -17,6 +17,10 @@ void dispatchCollision(b2ShapeId shapeIdA, b2ShapeId shapeIdB) {
         return;
     }
 
+    if (!colliderA->isEnabled() || !colliderB->isEnabled()) {
+        return;
+    }
+
     std::cout << "Collision started between "
               << colliderA->getName() << " and "
               << colliderB->getName() << std::endl;
@@ -128,7 +132,14 @@ PhysicsRaycastHit PhysicsSystem::raycast(const Vector2F& start, const Vector2F& 
     hit.leafVisits = result.leafVisits;
 
     if (result.hit && b2Shape_IsValid(result.shapeId)) {
-        hit.collider = static_cast<CollisionComponent*>(b2Shape_GetUserData(result.shapeId));
+        auto* collider = static_cast<CollisionComponent*>(b2Shape_GetUserData(result.shapeId));
+        if (collider == nullptr || !collider->isEnabled()) {
+            hit.hit = false;
+            hit.collider = nullptr;
+            return hit;
+        }
+
+        hit.collider = collider;
     }
 
     return hit;

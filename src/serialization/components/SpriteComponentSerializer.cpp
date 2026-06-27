@@ -29,6 +29,7 @@ void SpriteComponentSerializer::save(
 
     tinyxml2::XMLElement* component =
         ComponentSerializationHelpers::addComponentElement(document, entityElement, getTypeName());
+    ComponentSerializationHelpers::setComponentEnabledAttribute(*component, *spriteComponent);
     ComponentSerializationHelpers::setSpriteAttributes(*component, spriteComponent->getSprite());
 }
 
@@ -49,8 +50,9 @@ bool SpriteComponentSerializer::load(
         return false;
     }
 
-    entity.addComponent<SpriteComponent>(
+    SpriteComponent& spriteComponent = entity.addComponent<SpriteComponent>(
         ComponentSerializationHelpers::makeSpriteFromAttributes(componentElement, *textureAsset)
     );
+    ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, spriteComponent);
     return true;
 }

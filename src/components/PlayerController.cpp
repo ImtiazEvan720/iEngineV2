@@ -130,5 +130,7 @@ void PlayerController::onUpdate(float deltaTime) {
 }
 
 std::unique_ptr<Component> PlayerController::clone() const {
-    return std::make_unique<PlayerController>();
+    auto copy = std::make_unique<PlayerController>();
+    copy->setEnabled(isEnabled());
+    return copy;
 }

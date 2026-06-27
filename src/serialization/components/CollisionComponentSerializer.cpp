@@ -65,6 +65,7 @@ void CollisionComponentSerializer::save(
 
     tinyxml2::XMLElement* component =
         ComponentSerializationHelpers::addComponentElement(document, entityElement, getTypeName());
+    ComponentSerializationHelpers::setComponentEnabledAttribute(*component, *collisionComponent);
     const Vector2F& offset = collisionComponent->getOffset();
     component->SetAttribute("name", collisionComponent->getName().c_str());
     component->SetAttribute("width", collisionComponent->getWidth());
@@ -99,6 +100,7 @@ bool CollisionComponentSerializer::load(
         componentElement.FloatAttribute("offsetX", 0.0f),
         componentElement.FloatAttribute("offsetY", 0.0f)
     ));
+    ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, collisionComponent);
 
     return true;
 }

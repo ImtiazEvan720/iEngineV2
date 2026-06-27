@@ -63,6 +63,10 @@ void CollisionComponent::onStart() {
 }
 
 void CollisionComponent::onUpdate(float deltaTime) {
+    if (!this->isEnabled()) {
+        return;
+    }
+
     (void)deltaTime;
     syncBodyToTransform();
 }
@@ -201,6 +205,7 @@ std::unique_ptr<Component> CollisionComponent::clone() const {
         name
     );
     copy->setOffset(offset);
+    copy->setEnabled(isEnabled());
     return copy;
 }
 

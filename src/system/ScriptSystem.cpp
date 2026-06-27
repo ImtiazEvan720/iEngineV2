@@ -650,6 +650,8 @@ void ScriptSystem::bindEngineTypes() {
 
     lua.new_usertype<TransformComponent>(
         "TransformComponent",
+        "isEnabled", &TransformComponent::isEnabled,
+        "setEnabled", &TransformComponent::setEnabled,
         "getPosition", [](const TransformComponent& transform) {
             return transform.getPosition();
         },
@@ -666,6 +668,8 @@ void ScriptSystem::bindEngineTypes() {
 
     lua.new_usertype<AnimationComponent>(
         "AnimationComponent",
+        "isEnabled", &AnimationComponent::isEnabled,
+        "setEnabled", &AnimationComponent::setEnabled,
         "play", &AnimationComponent::play,
         "pause", &AnimationComponent::pause,
         "reset", &AnimationComponent::reset,
@@ -677,6 +681,8 @@ void ScriptSystem::bindEngineTypes() {
 
     lua.new_usertype<CollisionComponent>(
         "CollisionComponent",
+        "isEnabled", &CollisionComponent::isEnabled,
+        "setEnabled", &CollisionComponent::setEnabled,
         "getName", &CollisionComponent::getName,
         "getWidth", &CollisionComponent::getWidth,
         "getHeight", &CollisionComponent::getHeight,
@@ -685,6 +691,8 @@ void ScriptSystem::bindEngineTypes() {
 
     lua.new_usertype<ScriptComponent>(
         "ScriptComponent",
+        "isEnabled", &ScriptComponent::isEnabled,
+        "setEnabled", &ScriptComponent::setEnabled,
         "getString", [](const ScriptComponent& component, const std::string& name, const std::string& fallback) {
             return component.getString(name, fallback);
         },

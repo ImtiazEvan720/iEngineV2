@@ -1,5 +1,6 @@
 #include "serialization/ComponentSerializationHelpers.h"
 
+#include "components/Component.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
 
@@ -37,6 +38,14 @@ tinyxml2::XMLElement* addComponentElement(
     component->SetAttribute("type", type);
     entityElement.InsertEndChild(component);
     return component;
+}
+
+void setComponentEnabledAttribute(tinyxml2::XMLElement& element, const Component& component) {
+    element.SetAttribute("enabled", boolText(component.isEnabled()));
+}
+
+void applyComponentEnabledAttribute(const tinyxml2::XMLElement& element, Component& component) {
+    component.setEnabled(parseBool(element.Attribute("enabled"), true));
 }
 
 std::string getTextureAssetName(RenderTextureHandle textureHandle) {

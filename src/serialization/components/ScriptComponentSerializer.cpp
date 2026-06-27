@@ -198,6 +198,7 @@ void ScriptComponentSerializer::save(
 
     tinyxml2::XMLElement* component =
         ComponentSerializationHelpers::addComponentElement(document, entityElement, getTypeName());
+    ComponentSerializationHelpers::setComponentEnabledAttribute(*component, *scriptComponent);
     component->SetAttribute("path", scriptComponent->getScriptPath().c_str());
     saveScriptProperties(document, *component, *scriptComponent);
 }
@@ -213,7 +214,9 @@ bool ScriptComponentSerializer::load(
 
     const char* scriptPath = componentElement.Attribute("path");
     if (scriptPath != nullptr && scriptPath[0] != '\0') {
-        entity.addComponent<ScriptComponent>(scriptPath, loadScriptProperties(componentElement));
+        ScriptComponent& scriptComponent =
+            entity.addComponent<ScriptComponent>(scriptPath, loadScriptProperties(componentElement));
+        ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, scriptComponent);
     }
 
     return true;

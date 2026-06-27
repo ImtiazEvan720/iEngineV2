@@ -16,5 +16,7 @@ void SpriteComponent::setSprite(const Sprite& sprite) {
 }
 
 std::unique_ptr<Component> SpriteComponent::clone() const {
-    return std::make_unique<SpriteComponent>(sprite);
+    auto copy = std::make_unique<SpriteComponent>(sprite);
+    copy->setEnabled(isEnabled());
+    return copy;
 }

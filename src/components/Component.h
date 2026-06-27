@@ -17,6 +17,9 @@ public:
     virtual void onDestroy();
     virtual std::unique_ptr<Component> clone() const;
 
+    bool isEnabled() const;
+    void setEnabled(bool value);
+
 private:
     friend class Entity;
 
@@ -24,5 +27,5 @@ private:
 
     Entity* entity = nullptr;
     bool started = false;
-    bool active = true;
+    bool enabled = true;
 };

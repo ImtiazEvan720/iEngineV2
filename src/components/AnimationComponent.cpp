@@ -65,7 +65,7 @@ const Sprite& AnimationComponent::getCurrentFrame() const {
 }
 
 void AnimationComponent::onUpdate(float deltaTime) {
-    if (!animation.hasFrames()) {
+    if (!animation.hasFrames() || !this->isEnabled()) {
         return;
     }
 
@@ -112,5 +112,6 @@ std::unique_ptr<Component> AnimationComponent::clone() const {
         copy->pause();
     }
 
+    copy->setEnabled(isEnabled());
     return copy;
 }
