@@ -24,4 +24,5 @@ private:
 
     Entity* entity = nullptr;
     bool started = false;
+    bool active = true;
 };
