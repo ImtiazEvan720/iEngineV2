@@ -10,6 +10,7 @@
 #include "misc/TextureAsset.h"
 #include "serialization/PrefabSerializer.h"
 #include "system/AssetManager.h"
+#include "system/ProjectManager.h"
 #include "system/Renderer.h"
 
 #include "imgui.h"
@@ -175,6 +176,7 @@ void PrefabPanel::draw(std::string& statusMessage) {
     GridViewOptions options;
     options.cellWidth = 88.0f;
     options.cellHeight = 84.0f;
+    options.height = std::max(120.0f, ImGui::GetContentRegionAvail().y - (ImGui::GetFrameHeightWithSpacing() * 2.0f));
     options.emptyText = "No prefab assets loaded.";
 
     EditorCollectionViews::drawGridView(
@@ -183,6 +185,9 @@ void PrefabPanel::draw(std::string& statusMessage) {
         selectedPrefabIndex,
         options
     );
+
+    drawDeleteSelectedPrefabButton(statusMessage);
+    drawDeletePrefabConfirmPopup(statusMessage);
 }
 
 void PrefabPanel::refreshPrefabs() {
@@ -220,6 +225,85 @@ void PrefabPanel::refreshPrefabs() {
     }
 
     prefabsScanned = true;
+}
+
+void PrefabPanel::drawDeleteSelectedPrefabButton(std::string& statusMessage) {
+    const bool hasSelection =
+        selectedPrefabIndex >= 0 && selectedPrefabIndex < static_cast<int>(prefabs.size());
+
+    if (!hasSelection) {
+        ImGui::BeginDisabled();
+    }
+
+    if (ImGui::Button("Delete Selected Prefab")) {
+        const PrefabInfo& prefab = prefabs[static_cast<std::size_t>(selectedPrefabIndex)];
+        pendingDeletePrefabPath = prefab.path;
+        pendingDeletePrefabName = prefab.name;
+        deleteConfirmOpen = true;
+        ImGui::OpenPopup("Delete Prefab?");
+    }
+
+    if (!hasSelection) {
+        ImGui::EndDisabled();
+    }
+
+    (void)statusMessage;
+}
+
+void PrefabPanel::drawDeletePrefabConfirmPopup(std::string& statusMessage) {
+    if (deleteConfirmOpen) {
+        ImGui::OpenPopup("Delete Prefab?");
+        deleteConfirmOpen = false;
+    }
+
+    if (!ImGui::BeginPopupModal("Delete Prefab?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        return;
+    }
+
+    ImGui::Text("Delete prefab \"%s\"?", pendingDeletePrefabName.c_str());
+    ImGui::TextWrapped("This deletes the .iprefab file from disk.");
+
+    if (ImGui::Button("Delete", ImVec2(120.0f, 0.0f))) {
+        deleteSelectedPrefab(statusMessage);
+        pendingDeletePrefabPath.clear();
+        pendingDeletePrefabName.clear();
+        ImGui::CloseCurrentPopup();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Cancel", ImVec2(120.0f, 0.0f))) {
+        pendingDeletePrefabPath.clear();
+        pendingDeletePrefabName.clear();
+        ImGui::CloseCurrentPopup();
+    }
+
+    ImGui::EndPopup();
+}
+
+bool PrefabPanel::deleteSelectedPrefab(std::string& statusMessage) {
+    if (pendingDeletePrefabPath.empty()) {
+        statusMessage = "No prefab selected for deletion.";
+        return false;
+    }
+
+    std::error_code error;
+    const bool removed = std::filesystem::remove(pendingDeletePrefabPath, error);
+    if (error) {
+        statusMessage = "Failed to delete prefab: " + error.message();
+        return false;
+    }
+
+    if (!removed) {
+        statusMessage = "Failed to delete prefab: file was not found.";
+        return false;
+    }
+
+    AssetManager::getInstance().loadAssets(ProjectManager::getInstance().getAssetsPath().string());
+    refreshPrefabs();
+
+    statusMessage = "Deleted prefab: " + pendingDeletePrefabName + ".";
+    return true;
 }
 
 void PrefabPanel::drawLevelDropTarget(

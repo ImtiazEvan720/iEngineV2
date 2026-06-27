@@ -38,7 +38,14 @@ private:
         PrefabPreview preview;
     };
 
+    void drawDeleteSelectedPrefabButton(std::string& statusMessage);
+    void drawDeletePrefabConfirmPopup(std::string& statusMessage);
+    bool deleteSelectedPrefab(std::string& statusMessage);
+
     bool prefabsScanned = false;
     int selectedPrefabIndex = -1;
+    bool deleteConfirmOpen = false;
+    std::string pendingDeletePrefabPath;
+    std::string pendingDeletePrefabName;
     std::vector<PrefabInfo> prefabs;
 };
