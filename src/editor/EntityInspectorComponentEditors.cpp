@@ -8,14 +8,19 @@
 #include "math/Vector2F.h"
 #include "misc/Animation.h"
 #include "misc/Sprite.h"
+#include "system/ProjectManager.h"
 #include "system/Renderer.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
+#include "tinyxml2.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace {
 CollisionComponent::BodyType bodyTypeFromIndex(int index) {
@@ -28,6 +33,60 @@ CollisionComponent::BodyType bodyTypeFromIndex(int index) {
         default:
             return CollisionComponent::BodyType::Static;
     }
+}
+
+bool hasAnimationFileExtension(const std::filesystem::path& path) {
+    return path.extension().string() == ".ianim";
+}
+
+std::string makeAnimationFileLabel(const std::filesystem::path& animationPath) {
+    const std::filesystem::path animationsRoot =
+        ProjectManager::getInstance().getAssetsPath() / "Animations";
+
+    std::error_code error;
+    const std::filesystem::path relativePath =
+        std::filesystem::relative(animationPath, animationsRoot, error);
+
+    if (!error && !relativePath.empty()) {
+        return relativePath.string();
+    }
+
+    return animationPath.filename().string();
+}
+
+std::string makeAnimationComponentPath(const std::filesystem::path& animationPath) {
+    const std::filesystem::path assetsRoot = ProjectManager::getInstance().getAssetsPath();
+
+    std::error_code error;
+    const std::filesystem::path relativePath =
+        std::filesystem::relative(animationPath, assetsRoot, error);
+
+    if (!error && !relativePath.empty()) {
+        return (std::filesystem::path("Assets") / relativePath).lexically_normal().string();
+    }
+
+    return animationPath.lexically_normal().string();
+}
+
+int findAnimationFileIndex(
+    const std::vector<std::filesystem::path>& animationFilePaths,
+    const std::string& sourcePath
+) {
+    if (sourcePath.empty()) {
+        return -1;
+    }
+
+    const std::filesystem::path source(sourcePath);
+    const std::string sourceFilename = source.filename().string();
+
+    for (std::size_t index = 0; index < animationFilePaths.size(); ++index) {
+        const std::filesystem::path& path = animationFilePaths[index];
+        if (path == source || path.filename().string() == sourceFilename) {
+            return static_cast<int>(index);
+        }
+    }
+
+    return -1;
 }
 }
 
@@ -143,45 +202,84 @@ void EntityInspectorPanel::drawAnimationComponentFields(
 ) {
     Animation& animation = animationComponent.getAnimation();
 
-    if (!animationPicker.hasScannedTilesets()) {
-        animationPicker.refreshTilesets();
+    if (!animationFilesScanned) {
+        refreshAnimationFiles();
     }
 
     if (ImGui::TreeNodeEx(
-            "Animation Picker",
+            "Animation File",
             ImGuiTreeNodeFlags_DefaultOpen |
             ImGuiTreeNodeFlags_OpenOnArrow |
             ImGuiTreeNodeFlags_SpanAvailWidth)) {
-        if (ImGui::Button("Refresh Animations")) {
-            animationPicker.refreshTilesets();
+        if (selectedAnimationFileIndex < 0) {
+            selectedAnimationFileIndex = findAnimationFileIndex(
+                animationFilePaths,
+                animationComponent.getAnimationSourcePath()
+            );
         }
 
-        animationPicker.drawTilesetSelector();
-        if (animationPicker.drawSelectedTilesetDetails(statusMessage)) {
-            const bool selectionChanged =
-                animationPicker.drawTileGrid("##InspectorAnimationPickerGrid", false, -1, 220.0f, true);
-            const bool applyClicked = ImGui::Button("Apply Selected Animation");
+        const char* previewText = "No animation selected";
+        if (selectedAnimationFileIndex >= 0
+            && selectedAnimationFileIndex < static_cast<int>(animationFileLabels.size())) {
+            previewText = animationFileLabels[static_cast<std::size_t>(selectedAnimationFileIndex)].c_str();
+        }
 
-            if (selectionChanged || applyClicked) {
-                std::optional<Animation> selectedAnimation = animationPicker.createAnimationFromSelectedTile(
-                    Renderer::getInstance().getRenderScale(),
-                    statusMessage
-                );
+        if (ImGui::BeginCombo("Animation", previewText)) {
+            if (animationFileLabels.empty()) {
+                ImGui::TextDisabled("No .ianim files found.");
+            }
 
-                if (selectedAnimation.has_value()) {
-                    animationComponent.setAnimation(*selectedAnimation);
+            for (std::size_t index = 0; index < animationFileLabels.size(); ++index) {
+                const bool selected = selectedAnimationFileIndex == static_cast<int>(index);
+                if (ImGui::Selectable(animationFileLabels[index].c_str(), selected)) {
+                    selectedAnimationFileIndex = static_cast<int>(index);
+                    loadAnimationFileIntoComponent(animationFilePaths[index], animationComponent, statusMessage);
                     entityEditState.animationFrameDuration =
                         animationComponent.getAnimation().getFrameDuration();
                     entityEditState.animationPlaying = animationComponent.isPlaying();
+                    entityEditState.animationLooping = animationComponent.isLooping();
+                }
 
-                    statusMessage =
-                        "Updated AnimationComponent from animated tile id "
-                        + std::to_string(animationPicker.getSelectedTileId())
-                        + " with "
-                        + std::to_string(animationComponent.getAnimation().getFrameCount())
-                        + " frame(s).";
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
                 }
             }
+
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::Button("Refresh Animations")) {
+            refreshAnimationFiles();
+            selectedAnimationFileIndex = findAnimationFileIndex(
+                animationFilePaths,
+                animationComponent.getAnimationSourcePath()
+            );
+            statusMessage = "Refreshed animation files.";
+        }
+
+        ImGui::SameLine();
+        const bool canApply =
+            selectedAnimationFileIndex >= 0
+            && selectedAnimationFileIndex < static_cast<int>(animationFilePaths.size());
+
+        if (!canApply) {
+            ImGui::BeginDisabled();
+        }
+
+        if (ImGui::Button("Apply Animation")) {
+            loadAnimationFileIntoComponent(
+                animationFilePaths[static_cast<std::size_t>(selectedAnimationFileIndex)],
+                animationComponent,
+                statusMessage
+            );
+            entityEditState.animationFrameDuration =
+                animationComponent.getAnimation().getFrameDuration();
+            entityEditState.animationPlaying = animationComponent.isPlaying();
+            entityEditState.animationLooping = animationComponent.isLooping();
+        }
+
+        if (!canApply) {
+            ImGui::EndDisabled();
         }
 
         ImGui::TreePop();
@@ -207,6 +305,164 @@ void EntityInspectorPanel::drawAnimationComponentFields(
 
         statusMessage = "Updated AnimationComponent playback.";
     }
+
+    if (ImGui::Checkbox("Looping", &entityEditState.animationLooping)) {
+        animationComponent.setLooping(entityEditState.animationLooping);
+        statusMessage = "Updated AnimationComponent looping.";
+    }
+}
+
+void EntityInspectorPanel::refreshAnimationFiles() {
+    animationFileLabels.clear();
+    animationFilePaths.clear();
+
+    const std::filesystem::path animationsRoot =
+        ProjectManager::getInstance().getAssetsPath() / "Animations";
+
+    std::error_code error;
+    if (!std::filesystem::exists(animationsRoot, error)
+        || !std::filesystem::is_directory(animationsRoot, error)) {
+        selectedAnimationFileIndex = -1;
+        animationFilesScanned = true;
+        return;
+    }
+
+    std::vector<std::filesystem::path> paths;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::recursive_directory_iterator(animationsRoot, error)) {
+        if (error) {
+            break;
+        }
+
+        if (entry.is_regular_file(error) && hasAnimationFileExtension(entry.path())) {
+            paths.push_back(entry.path());
+        }
+    }
+
+    std::sort(paths.begin(), paths.end());
+
+    for (const std::filesystem::path& path : paths) {
+        animationFilePaths.push_back(path);
+        animationFileLabels.push_back(makeAnimationFileLabel(path));
+    }
+
+    if (selectedAnimationFileIndex >= static_cast<int>(animationFilePaths.size())) {
+        selectedAnimationFileIndex = static_cast<int>(animationFilePaths.size()) - 1;
+    }
+
+    animationFilesScanned = true;
+}
+
+bool EntityInspectorPanel::loadAnimationFileIntoComponent(
+    const std::filesystem::path& animationPath,
+    AnimationComponent& animationComponent,
+    std::string& statusMessage
+) {
+    tinyxml2::XMLDocument document;
+    const tinyxml2::XMLError loadResult = document.LoadFile(animationPath.string().c_str());
+    if (loadResult != tinyxml2::XML_SUCCESS) {
+        statusMessage = "Failed to load animation file: " + std::string(document.ErrorStr());
+        return false;
+    }
+
+    const tinyxml2::XMLElement* root = document.FirstChildElement("ianim");
+    if (root == nullptr) {
+        statusMessage = "Animation file is missing ianim root: " + animationPath.filename().string();
+        return false;
+    }
+
+    const char* tilesetFilename = root->Attribute("tileset");
+    if (tilesetFilename == nullptr || tilesetFilename[0] == '\0') {
+        statusMessage = "Animation file is missing tileset reference: " + animationPath.filename().string();
+        return false;
+    }
+
+    if (!animationPicker.setSelectedTilesetByFilename(tilesetFilename)) {
+        statusMessage = "Animation tileset was not found: " + std::string(tilesetFilename);
+        return false;
+    }
+
+    const int tilesetIndex = animationPicker.getSelectedTilesetIndex();
+    const EditorTileset* tileset = animationPicker.getTileset(tilesetIndex);
+    if (tileset == nullptr || tileset->tileWidth <= 0 || tileset->tileHeight <= 0) {
+        statusMessage = "Animation tileset metadata is invalid: " + std::string(tilesetFilename);
+        return false;
+    }
+
+    const float renderScale = Renderer::getInstance().getRenderScale();
+    const float tileWidth = static_cast<float>(tileset->tileWidth) * renderScale;
+    const float tileHeight = static_cast<float>(tileset->tileHeight) * renderScale;
+    Animation loadedAnimation;
+
+    for (const tinyxml2::XMLElement* frameElement = root->FirstChildElement("frame");
+         frameElement != nullptr;
+         frameElement = frameElement->NextSiblingElement("frame")) {
+        const int durationMs = std::max(1, frameElement->IntAttribute("duration", 100));
+        const int widthInTiles = std::max(1, frameElement->IntAttribute("width", 1));
+        const int heightInTiles = std::max(1, frameElement->IntAttribute("height", 1));
+        const Vector2F frameCenter(
+            static_cast<float>(widthInTiles) * tileWidth * 0.5f,
+            static_cast<float>(heightInTiles) * tileHeight * 0.5f
+        );
+        std::vector<AnimationFrameSprite> frameSprites;
+
+        for (const tinyxml2::XMLElement* tileElement = frameElement->FirstChildElement("tile");
+             tileElement != nullptr;
+             tileElement = tileElement->NextSiblingElement("tile")) {
+            const int tileId = tileElement->IntAttribute("id", -1);
+            const int tileX = tileElement->IntAttribute("x", 0);
+            const int tileY = tileElement->IntAttribute("y", 0);
+
+            std::optional<Sprite> sprite = animationPicker.createSpriteFromTile(
+                tilesetIndex,
+                tileId,
+                renderScale,
+                statusMessage
+            );
+            if (!sprite.has_value()) {
+                return false;
+            }
+
+            sprite->setOrigin(Vector2F::zero());
+            frameSprites.emplace_back(
+                *sprite,
+                Vector2F(
+                    static_cast<float>(tileX) * tileWidth - frameCenter.x,
+                    static_cast<float>(tileY) * tileHeight - frameCenter.y
+                )
+            );
+        }
+
+        if (frameSprites.empty()) {
+            continue;
+        }
+
+        loadedAnimation.addFrame(
+            std::move(frameSprites),
+            Vector2F(
+                static_cast<float>(widthInTiles) * tileWidth,
+                static_cast<float>(heightInTiles) * tileHeight
+            ),
+            static_cast<float>(durationMs) / 1000.0f
+        );
+    }
+
+    if (!loadedAnimation.hasFrames()) {
+        statusMessage = "Animation file has no valid frames: " + animationPath.filename().string();
+        return false;
+    }
+
+    animationComponent.setAnimation(loadedAnimation);
+    animationComponent.setAnimationSourcePath(makeAnimationComponentPath(animationPath));
+
+    statusMessage =
+        "Loaded AnimationComponent from "
+        + animationPath.filename().string()
+        + " with "
+        + std::to_string(loadedAnimation.getFrameCount())
+        + " frame(s).";
+
+    return true;
 }
 
 void EntityInspectorPanel::drawCollisionComponentFields(

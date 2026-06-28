@@ -711,6 +711,7 @@ void EntityInspectorPanel::syncEditStateFromEntity(Entity& entity, bool force) {
     entityEditState.name = entity.getName();
     entityEditState.tag = entity.getTag();
     entityEditState.enabled = entity.isEnabled();
+    selectedAnimationFileIndex = -1;
 
     if (TransformComponent* transform = entity.getComponent<TransformComponent>()) {
         const Vector2F& position = transform->getPosition();
@@ -738,6 +739,7 @@ void EntityInspectorPanel::syncEditStateFromEntity(Entity& entity, bool force) {
     if (AnimationComponent* animationComponent = entity.getComponent<AnimationComponent>()) {
         entityEditState.animationFrameDuration = animationComponent->getAnimation().getFrameDuration();
         entityEditState.animationPlaying = animationComponent->isPlaying();
+        entityEditState.animationLooping = animationComponent->isLooping();
     }
 
     if (CollisionComponent* collisionComponent = entity.getComponent<CollisionComponent>()) {

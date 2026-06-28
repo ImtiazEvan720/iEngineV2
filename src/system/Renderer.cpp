@@ -8,15 +8,29 @@
 #include "system/IWindowBackend.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <vector>
 
 namespace {
+constexpr float Pi = 3.14159265358979323846f;
+
 bool rectanglesIntersect(const RenderRect& left, const RenderRect& right) {
     return left.x < right.x + right.width
         && left.x + left.width > right.x
         && left.y < right.y + right.height
         && left.y + left.height > right.y;
+}
+
+Vector2F rotateOffset(const Vector2F& offset, float rotationDegrees) {
+    const float radians = rotationDegrees * Pi / 180.0f;
+    const float cosine = std::cos(radians);
+    const float sine = std::sin(radians);
+
+    return Vector2F(
+        (offset.x * cosine) - (offset.y * sine),
+        (offset.x * sine) + (offset.y * cosine)
+    );
 }
 
 const Sprite* getRenderableSprite(const Entity& entity) {
@@ -31,6 +45,48 @@ const Sprite* getRenderableSprite(const Entity& entity) {
     }
 
     return nullptr;
+}
+
+void drawSprite(
+    IRenderBackend& renderBackend,
+    const Camera2D& camera,
+    const RenderRect& viewport,
+    const TransformComponent& transformComponent,
+    const Sprite& engineSprite,
+    const Vector2F& localPosition
+) {
+    RenderTextureHandle texture = engineSprite.getTextureHandle();
+    if (texture == nullptr) {
+        return;
+    }
+
+    const float worldRotation = transformComponent.getWorldRotation();
+    const Vector2F worldPosition =
+        transformComponent.getWorldPosition() + rotateOffset(localPosition, worldRotation);
+    const Vector2F screenPosition = camera.worldToScreen(worldPosition, viewport);
+    const auto& sourceRect = engineSprite.getSourceRect();
+    const float zoom = camera.getZoom();
+
+    renderBackend.drawTexture(
+        texture,
+        RenderRect{
+            sourceRect.x,
+            sourceRect.y,
+            sourceRect.width,
+            sourceRect.height
+        },
+        RenderRect{
+            screenPosition.x,
+            screenPosition.y,
+            engineSprite.getSize().x * zoom,
+            engineSprite.getSize().y * zoom
+        },
+        RenderVector2{
+            engineSprite.getOrigin().x,
+            engineSprite.getOrigin().y
+        },
+        worldRotation
+    );
 }
 }
 
@@ -187,41 +243,35 @@ void Renderer::render() {
             continue;
         }
 
-        const Sprite* engineSprite = getRenderableSprite(entity);
-        if (engineSprite == nullptr) {
+        const AnimationComponent* animationComponent = entity.getComponent<AnimationComponent>();
+        if (animationComponent != nullptr
+            && animationComponent->isEnabled()
+            && animationComponent->getAnimation().hasFrames()) {
+            for (const AnimationFrameSprite& frameSprite : animationComponent->getCurrentFrameSprites()) {
+                drawSprite(
+                    *renderBackend,
+                    camera,
+                    viewport,
+                    *transformComponent,
+                    frameSprite.sprite,
+                    frameSprite.localPosition
+                );
+            }
             continue;
         }
 
-        RenderTextureHandle texture = engineSprite->getTextureHandle();
-
-        if (texture == nullptr) {
+        const SpriteComponent* spriteComponent = entity.getComponent<SpriteComponent>();
+        if (spriteComponent == nullptr || !spriteComponent->isEnabled()) {
             continue;
         }
 
-        const Vector2F worldPosition = transformComponent->getWorldPosition();
-        const Vector2F screenPosition = camera.worldToScreen(worldPosition, viewport);
-        const auto& sourceRect = engineSprite->getSourceRect();
-        const float zoom = camera.getZoom();
-
-        renderBackend->drawTexture(
-            texture,
-            RenderRect{
-                sourceRect.x,
-                sourceRect.y,
-                sourceRect.width,
-                sourceRect.height
-            },
-            RenderRect{
-                screenPosition.x,
-                screenPosition.y,
-                engineSprite->getSize().x * zoom,
-                engineSprite->getSize().y * zoom
-            },
-            RenderVector2{
-                engineSprite->getOrigin().x,
-                engineSprite->getOrigin().y
-            },
-            transformComponent->getWorldRotation()
+        drawSprite(
+            *renderBackend,
+            camera,
+            viewport,
+            *transformComponent,
+            spriteComponent->getSprite(),
+            Vector2F::zero()
         );
     }
 }

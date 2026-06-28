@@ -22,6 +22,14 @@ void AnimationComponent::setAnimation(const Animation& animation) {
     playing = true;
 }
 
+void AnimationComponent::setAnimationSourcePath(const std::string& path) {
+    animationSourcePath = path;
+}
+
+const std::string& AnimationComponent::getAnimationSourcePath() const {
+    return animationSourcePath;
+}
+
 void AnimationComponent::play() {
     if (finished) {
         reset();
@@ -44,6 +52,10 @@ bool AnimationComponent::isPlaying() const {
     return playing;
 }
 
+bool AnimationComponent::isLooping() const {
+    return looping;
+}
+
 bool AnimationComponent::isFinished() const {
     return finished;
 }
@@ -64,6 +76,18 @@ const Sprite& AnimationComponent::getCurrentFrame() const {
     return animation.getFrame(currentFrameIndex);
 }
 
+const AnimationRuntimeFrame& AnimationComponent::getCurrentRuntimeFrame() const {
+    if (!animation.hasFrames()) {
+        throw std::runtime_error("AnimationComponent has no frames.");
+    }
+
+    return animation.getRuntimeFrame(currentFrameIndex);
+}
+
+const std::vector<AnimationFrameSprite>& AnimationComponent::getCurrentFrameSprites() const {
+    return getCurrentRuntimeFrame().sprites;
+}
+
 void AnimationComponent::onUpdate(float deltaTime) {
     if (!animation.hasFrames() || !this->isEnabled()) {
         return;
@@ -73,11 +97,11 @@ void AnimationComponent::onUpdate(float deltaTime) {
         currentFrameIndex = 0;
     }
 
-    if (playing && !finished && animation.getFrameDuration() > 0.0f) {
+    if (playing && !finished && animation.getFrameDuration(currentFrameIndex) > 0.0f) {
         elapsedTime += deltaTime;
 
-        while (elapsedTime >= animation.getFrameDuration()) {
-            elapsedTime -= animation.getFrameDuration();
+        while (elapsedTime >= animation.getFrameDuration(currentFrameIndex)) {
+            elapsedTime -= animation.getFrameDuration(currentFrameIndex);
 
             if (currentFrameIndex + 1 < animation.getFrameCount()) {
                 ++currentFrameIndex;
@@ -101,11 +125,15 @@ void AnimationComponent::onUpdate(float deltaTime) {
         return;
     }
 
-    spriteComponent->setSprite(getCurrentFrame());
+    const std::vector<AnimationFrameSprite>& frameSprites = getCurrentFrameSprites();
+    if (!frameSprites.empty()) {
+        spriteComponent->setSprite(frameSprites.front().sprite);
+    }
 }
 
 std::unique_ptr<Component> AnimationComponent::clone() const {
     auto copy = std::make_unique<AnimationComponent>(animation);
+    copy->setAnimationSourcePath(animationSourcePath);
     copy->setLooping(looping);
 
     if (!playing) {

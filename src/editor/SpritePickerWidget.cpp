@@ -33,6 +33,23 @@ std::string getAttribute(const tinyxml2::XMLElement* element, const char* name, 
     return value == nullptr ? fallback : value;
 }
 
+int getIntAttributeWithFallback(
+    const tinyxml2::XMLElement* element,
+    const char* primaryName,
+    const char* fallbackName,
+    int fallback = 0
+) {
+    if (element == nullptr) {
+        return fallback;
+    }
+
+    if (element->FindAttribute(primaryName) != nullptr) {
+        return element->IntAttribute(primaryName, fallback);
+    }
+
+    return element->IntAttribute(fallbackName, fallback);
+}
+
 std::filesystem::path resolveRelativePath(const std::filesystem::path& baseFile, const std::string& relativePath) {
     std::filesystem::path path(relativePath);
     if (path.is_absolute()) {
@@ -114,7 +131,7 @@ void SpritePickerWidget::refreshTilesets() {
             continue;
         }
 
-        if (toLower(entry.path().extension().string()) == ".tsx") {
+        if (toLower(entry.path().extension().string()) == ".itile") {
             tilesetPaths.push_back(entry.path());
         }
     }
@@ -129,7 +146,7 @@ void SpritePickerWidget::refreshTilesets() {
             continue;
         }
 
-        const tinyxml2::XMLElement* tilesetRoot = document.FirstChildElement("tileset");
+        const tinyxml2::XMLElement* tilesetRoot = document.FirstChildElement("itile");
         if (tilesetRoot == nullptr) {
             std::cerr << "Editor tileset is missing root: " << tilesetPath.string() << std::endl;
             continue;
@@ -138,10 +155,10 @@ void SpritePickerWidget::refreshTilesets() {
         EditorTileset tileset;
         tileset.path = tilesetPath.string();
         tileset.name = getAttribute(tilesetRoot, "name", tilesetPath.stem().string());
-        tileset.tileWidth = tilesetRoot->IntAttribute("tilewidth");
-        tileset.tileHeight = tilesetRoot->IntAttribute("tileheight");
+        tileset.tileWidth = getIntAttributeWithFallback(tilesetRoot, "tileWidth", "tilewidth");
+        tileset.tileHeight = getIntAttributeWithFallback(tilesetRoot, "tileHeight", "tileheight");
         tileset.columns = tilesetRoot->IntAttribute("columns");
-        tileset.tileCount = tilesetRoot->IntAttribute("tilecount");
+        tileset.tileCount = getIntAttributeWithFallback(tilesetRoot, "tileCount", "tilecount");
 
         const tinyxml2::XMLElement* image = tilesetRoot->FirstChildElement("image");
         if (image != nullptr) {
@@ -193,7 +210,7 @@ void SpritePickerWidget::refreshTilesets() {
 
 bool SpritePickerWidget::drawTilesetSelector() {
     if (tilesets.empty()) {
-        ImGui::TextUnformatted("No .tsx files found in Assets.");
+        ImGui::TextUnformatted("No .itile files found in Assets.");
         return false;
     }
 
@@ -512,6 +529,30 @@ int SpritePickerWidget::getSelectedTilesetIndex() const {
 
 int SpritePickerWidget::getSelectedTileId() const {
     return selectedTileId;
+}
+
+bool SpritePickerWidget::setSelectedTilesetByFilename(const std::string& filename) {
+    if (!tilesetsScanned) {
+        refreshTilesets();
+    }
+
+    if (filename.empty()) {
+        return false;
+    }
+
+    const std::filesystem::path targetPath(filename);
+    const std::string targetFilename = targetPath.filename().string();
+
+    for (std::size_t index = 0; index < tilesets.size(); ++index) {
+        const std::filesystem::path tilesetPath(tilesets[index].path);
+        if (tilesetPath.filename().string() == targetFilename) {
+            selectedTilesetIndex = static_cast<int>(index);
+            selectedTileId = -1;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void SpritePickerWidget::setSelectedTileId(int tileId) {

@@ -41,6 +41,7 @@ public:
     bool hasScannedTilesets() const;
     int getSelectedTilesetIndex() const;
     int getSelectedTileId() const;
+    bool setSelectedTilesetByFilename(const std::string& filename);
     void setSelectedTileId(int tileId);
 
     EditorTileset* getSelectedTileset();

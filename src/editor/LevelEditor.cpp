@@ -188,6 +188,10 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
                 spritePalette.draw(statusMessage);
                 ImGui::EndTabItem();
             }
+            if (ImGui::BeginTabItem("Animations")) {
+                animationEditorPanel.draw(statusMessage);
+                ImGui::EndTabItem();
+            }
 
             if (ImGui::BeginTabItem("Prefabs")) {
                 prefabPanel.draw(statusMessage);

@@ -316,13 +316,31 @@ namespace
         tinyxml2::XMLElement *component = addComponentElement(document, entityElement, "AnimationComponent");
         setComponentEnabledAttribute(*component, animationComponent);
         const Animation &animation = animationComponent.getAnimation();
+        if (!animationComponent.getAnimationSourcePath().empty())
+        {
+            component->SetAttribute("source", animationComponent.getAnimationSourcePath().c_str());
+        }
         component->SetAttribute("frameDuration", animation.getFrameDuration());
         component->SetAttribute("playing", boolText(animationComponent.isPlaying()));
+        component->SetAttribute("looping", boolText(animationComponent.isLooping()));
 
         for (std::size_t frameIndex = 0; frameIndex < animation.getFrameCount(); ++frameIndex)
         {
+            const AnimationRuntimeFrame &runtimeFrame = animation.getRuntimeFrame(frameIndex);
             tinyxml2::XMLElement *frame = document.NewElement("frame");
-            setSpriteAttributes(*frame, animation.getFrame(frameIndex));
+            frame->SetAttribute("duration", runtimeFrame.duration);
+            frame->SetAttribute("sizeX", runtimeFrame.size.x);
+            frame->SetAttribute("sizeY", runtimeFrame.size.y);
+
+            for (const AnimationFrameSprite &frameSprite : runtimeFrame.sprites)
+            {
+                tinyxml2::XMLElement *sprite = document.NewElement("sprite");
+                setSpriteAttributes(*sprite, frameSprite.sprite);
+                sprite->SetAttribute("localX", frameSprite.localPosition.x);
+                sprite->SetAttribute("localY", frameSprite.localPosition.y);
+                frame->InsertEndChild(sprite);
+            }
+
             component->InsertEndChild(frame);
         }
     }
@@ -459,6 +477,49 @@ namespace
         return sprite;
     }
 
+    Vector2F calculateAnimationFrameSize(const std::vector<AnimationFrameSprite> &frameSprites)
+    {
+        if (frameSprites.empty())
+        {
+            return Vector2F::zero();
+        }
+
+        float minX = frameSprites.front().localPosition.x;
+        float minY = frameSprites.front().localPosition.y;
+        float maxX = frameSprites.front().localPosition.x + frameSprites.front().sprite.getSize().x;
+        float maxY = frameSprites.front().localPosition.y + frameSprites.front().sprite.getSize().y;
+
+        for (const AnimationFrameSprite &frameSprite : frameSprites)
+        {
+            minX = std::min(minX, frameSprite.localPosition.x);
+            minY = std::min(minY, frameSprite.localPosition.y);
+            maxX = std::max(maxX, frameSprite.localPosition.x + frameSprite.sprite.getSize().x);
+            maxY = std::max(maxY, frameSprite.localPosition.y + frameSprite.sprite.getSize().y);
+        }
+
+        return Vector2F(maxX - minX, maxY - minY);
+    }
+
+    bool loadAnimationFrameSprite(
+        const tinyxml2::XMLElement &element,
+        AnimationFrameSprite &frameSprite,
+        std::string &errorMessage)
+    {
+        TextureAsset *textureAsset = getTextureAsset(element);
+        if (textureAsset == nullptr || textureAsset->getTextureHandle() == nullptr)
+        {
+            errorMessage = "Level animation frame texture is missing.";
+            return false;
+        }
+
+        frameSprite = AnimationFrameSprite(
+            makeSpriteFromAttributes(element, *textureAsset),
+            Vector2F(
+                element.FloatAttribute("localX", 0.0f),
+                element.FloatAttribute("localY", 0.0f)));
+        return true;
+    }
+
     bool addSpriteComponentFromElement(const tinyxml2::XMLElement &component, Entity &entity, std::string &errorMessage)
     {
         TextureAsset *textureAsset = getTextureAsset(component);
@@ -482,14 +543,48 @@ namespace
              frame != nullptr;
              frame = frame->NextSiblingElement("frame"))
         {
-            TextureAsset *textureAsset = getTextureAsset(*frame);
-            if (textureAsset == nullptr || textureAsset->getTextureHandle() == nullptr)
+            std::vector<AnimationFrameSprite> frameSprites;
+
+            for (const tinyxml2::XMLElement *sprite = frame->FirstChildElement("sprite");
+                 sprite != nullptr;
+                 sprite = sprite->NextSiblingElement("sprite"))
             {
-                errorMessage = "Level animation frame texture is missing.";
-                return false;
+                AnimationFrameSprite frameSprite(
+                    Sprite(nullptr, RenderRect{}),
+                    Vector2F::zero());
+                if (!loadAnimationFrameSprite(*sprite, frameSprite, errorMessage))
+                {
+                    return false;
+                }
+
+                frameSprites.push_back(frameSprite);
             }
 
-            animation.addFrame(makeSpriteFromAttributes(*frame, *textureAsset));
+            if (frameSprites.empty())
+            {
+                AnimationFrameSprite frameSprite(
+                    Sprite(nullptr, RenderRect{}),
+                    Vector2F::zero());
+                if (!loadAnimationFrameSprite(*frame, frameSprite, errorMessage))
+                {
+                    return false;
+                }
+
+                frameSprites.push_back(frameSprite);
+            }
+
+            Vector2F frameSize(
+                frame->FloatAttribute("sizeX", 0.0f),
+                frame->FloatAttribute("sizeY", 0.0f));
+            if (frameSize.x <= 0.0f || frameSize.y <= 0.0f)
+            {
+                frameSize = calculateAnimationFrameSize(frameSprites);
+            }
+
+            animation.addFrame(
+                std::move(frameSprites),
+                frameSize,
+                frame->FloatAttribute("duration", component.FloatAttribute("frameDuration", 0.1f)));
         }
 
         if (!animation.hasFrames())
@@ -499,10 +594,16 @@ namespace
         }
 
         AnimationComponent &animationComponent = entity.addComponent<AnimationComponent>(animation);
+        const char *source = component.Attribute("source");
+        if (source != nullptr && source[0] != '\0')
+        {
+            animationComponent.setAnimationSourcePath(source);
+        }
         if (!parseBool(component.Attribute("playing"), true))
         {
             animationComponent.pause();
         }
+        animationComponent.setLooping(parseBool(component.Attribute("looping"), true));
         applyComponentEnabledAttribute(component, animationComponent);
 
         return true;

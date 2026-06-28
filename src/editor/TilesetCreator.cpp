@@ -62,11 +62,7 @@ std::filesystem::path resolveTilesetOutputPath(const std::string& outputFile) {
     std::filesystem::path outputPath(outputFile);
 
     if (outputPath.empty()) {
-        outputPath = "NewTileset.tsx";
-    }
-
-    if (outputPath.extension() != ".tsx") {
-        outputPath.replace_extension(".tsx");
+        outputPath = "NewTileset.itile";
     }
 
     if (!outputPath.is_absolute()) {
@@ -150,7 +146,7 @@ bool TilesetCreator::draw(std::string& statusMessage) {
         }
 
         if (outputFile.empty()) {
-            outputFile = defaultName + ".tsx";
+            outputFile = defaultName + ".itile";
         }
     }
 
@@ -170,7 +166,7 @@ bool TilesetCreator::draw(std::string& statusMessage) {
 
                 const std::string defaultName = makeDefaultTilesetName(*textureAsset);
                 tilesetName = defaultName;
-                outputFile = defaultName + ".tsx";
+                outputFile = defaultName + ".itile";
             }
 
             if (selected) {
@@ -405,7 +401,9 @@ bool TilesetCreator::createTilesetFromTexture(
 
     namespace fs = std::filesystem;
 
-    const fs::path outputPath = resolveTilesetOutputPath(outputFile);
+    fs::path outputPath = resolveTilesetOutputPath(outputFile);
+    outputPath.replace_extension(".itile");
+
     std::error_code directoryError;
     fs::create_directories(outputPath.parent_path(), directoryError);
     if (directoryError) {
@@ -427,13 +425,12 @@ bool TilesetCreator::createTilesetFromTexture(
     tinyxml2::XMLDocument document;
     document.InsertEndChild(document.NewDeclaration(R"(xml version="1.0" encoding="UTF-8")"));
 
-    tinyxml2::XMLElement* tileset = document.NewElement("tileset");
-    tileset->SetAttribute("version", "1.10");
-    tileset->SetAttribute("tiledversion", "1.12.2");
+    tinyxml2::XMLElement* tileset = document.NewElement("itile");
+    tileset->SetAttribute("version", "1.0");
     tileset->SetAttribute("name", tilesetName.c_str());
-    tileset->SetAttribute("tilewidth", tileWidth);
-    tileset->SetAttribute("tileheight", tileHeight);
-    tileset->SetAttribute("tilecount", tileCount);
+    tileset->SetAttribute("tileWidth", tileWidth);
+    tileset->SetAttribute("tileHeight", tileHeight);
+    tileset->SetAttribute("tileCount", tileCount);
     tileset->SetAttribute("columns", columns);
     document.InsertEndChild(tileset);
 
@@ -442,7 +439,7 @@ bool TilesetCreator::createTilesetFromTexture(
     image->SetAttribute("source", imageSourceText.c_str());
     if (useTransparencyColor) {
         const std::string transparencyHex = colorToTiledHex(transparencyColor);
-        image->SetAttribute("trans", transparencyHex.c_str());
+        image->SetAttribute("transparency", transparencyHex.c_str());
     }
 
     image->SetAttribute("width", imageWidth);

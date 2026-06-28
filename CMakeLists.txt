@@ -273,6 +273,7 @@ if(IENGINE_WITH_EDITOR)
         src/editor/ScriptPropertyInspector.cpp
         src/editor/ScriptPropertyParser.cpp
         src/editor/SpritePalettePanel.cpp
+        src/editor/AnimationEditorPanel.cpp
         src/editor/SpritePickerWidget.cpp
         src/editor/TilesetCreator.cpp
         src/editor/TransformGizmo.cpp

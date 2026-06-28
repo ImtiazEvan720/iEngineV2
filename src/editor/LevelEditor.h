@@ -6,6 +6,7 @@
 #include "editor/LevelManagerPanel.h"
 #include "editor/PrefabPanel.h"
 #include "editor/SpritePalettePanel.h"
+#include "editor/AnimationEditorPanel.h"
 #include "editor/TilesetCreator.h"
 #include "editor/ViewportGrid.h"
 
@@ -79,6 +80,7 @@ private:
     EntityInspectorPanel entityInspector;
     LevelManagerPanel levelManagerPanel;
     SpritePalettePanel spritePalette;
+    AnimationEditorPanel animationEditorPanel;
     PrefabPanel prefabPanel;
     TilesetCreator tilesetCreator;
     LevelEditorViewport viewport;
