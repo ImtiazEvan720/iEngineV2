@@ -178,9 +178,9 @@ void CollisionComponent::setListener(CollisionListener* listener) {
     this->listener = listener;
 }
 
-void CollisionComponent::notifyCollisionEnter(CollisionComponent& other, const Vector2F& normal) {
+void CollisionComponent::notifyCollisionEnter(CollisionComponent& other, const Vector2F& normal, const Vector2F& contactPoint) {
     if (listener != nullptr) {
-        listener->onCollisionEnter(*this, other, normal);
+        listener->onCollisionEnter(*this, other, normal, contactPoint);
     }
 
     Entity* owner = getEntity();
@@ -193,7 +193,27 @@ void CollisionComponent::notifyCollisionEnter(CollisionComponent& other, const V
         "onCollisionEnter",
         *this,
         other,
-        normal
+        normal,
+        contactPoint
+    );
+}
+
+
+void CollisionComponent::notifySensorEnter(CollisionComponent &other) {
+    if (listener != nullptr) {
+        listener->onSensorEnter(*this, other);
+    }
+
+    Entity *owner = getEntity();
+    if (owner == nullptr || owner->isDestroyed() || !owner->isEnabled()) {
+        return;
+    }
+
+    ScriptSystem::getInstance().tryCallEntitySensorFunction(
+        *owner,
+        "onSensorEnter",
+        *this,
+        other
     );
 }
 

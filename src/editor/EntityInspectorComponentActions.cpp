@@ -9,7 +9,6 @@
 #include "components/TransformComponent.h"
 #include "editor/EditorCollectionViews.h"
 #include "editor/ScriptPropertyParser.h"
-#include "game/Brick.h"
 #include "math/Vector2F.h"
 #include "system/InputSystem.h"
 #include "system/ProjectManager.h"
@@ -169,23 +168,6 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
                     "Assets/Scripts/player_controller.lua"
                 );
             }
-        },
-        {
-            "Brick",
-            false,
-            [](Entity& entity, const std::string& scriptPath) {
-                (void)scriptPath;
-                ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
-                ensureComponent<CollisionComponent>(
-                    entity,
-                    64.0f,
-                    64.0f,
-                    CollisionComponent::BodyType::Static,
-                    false,
-                    "Brick"
-                );
-                return addComponentIfMissing<Brick>(entity);
-            }
         }
     };
 
@@ -228,7 +210,6 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
         entries.push_back({
             "CollisionComponent",
             [](Entity& target) {
-                removeDependencyIfPresent<Brick>(target);
                 return target.removeComponent<CollisionComponent>();
             }
         });
@@ -248,15 +229,6 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
             "PlayerController",
             [](Entity& target) {
                 return target.removeComponent<PlayerController>();
-            }
-        });
-    }
-
-    if (entity.getComponent<Brick>() != nullptr) {
-        entries.push_back({
-            "Brick",
-            [](Entity& target) {
-                return target.removeComponent<Brick>();
             }
         });
     }

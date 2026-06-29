@@ -149,6 +149,7 @@ void Renderer::clearTileLayerBatches() {
 }
 
 void Renderer::update(float deltaTime) {
+    debugDrawDeltaTime = deltaTime;
     tileLayerRenderer.update(deltaTime);
 }
 
@@ -163,7 +164,7 @@ void Renderer::setEditorViewportActivity(
 }
 
 void Renderer::updateEditorOnly(float deltaTime) {
-    (void)deltaTime;
+    debugDrawDeltaTime = deltaTime;
     editorViewportRenderRequested =
         editorDragDropActive
         || editorGridVisible
@@ -202,6 +203,33 @@ bool Renderer::isEntityInViewport(const Entity& entity) const {
     };
 
     return rectanglesIntersect(entityBounds, viewport);
+}
+
+void Renderer::debugDrawPoint(
+    const Vector2F& worldPosition,
+    float radius,
+    RenderColor color,
+    float lifetimeSeconds
+) {
+    if (radius <= 0.0f || !std::isfinite(radius)) {
+        return;
+    }
+
+    if (!std::isfinite(worldPosition.x) || !std::isfinite(worldPosition.y)) {
+        return;
+    }
+
+    debugPoints.push_back(DebugPoint{
+        worldPosition,
+        radius,
+        color,
+        lifetimeSeconds,
+        lifetimeSeconds <= 0.0f
+    });
+}
+
+void Renderer::clearDebugDraw() {
+    debugPoints.clear();
 }
 
 void Renderer::render() {
@@ -274,4 +302,30 @@ void Renderer::render() {
             Vector2F::zero()
         );
     }
+
+    for (const DebugPoint& point : debugPoints) {
+        const Vector2F screenPosition = camera.worldToScreen(point.worldPosition, viewport);
+        renderBackend->drawPoint(
+            RenderVector2{screenPosition.x, screenPosition.y},
+            point.radius * camera.getZoom(),
+            point.color
+        );
+    }
+
+    for (DebugPoint& point : debugPoints) {
+        if (!point.oneFrame) {
+            point.remainingSeconds -= debugDrawDeltaTime;
+        }
+    }
+
+    debugPoints.erase(
+        std::remove_if(
+            debugPoints.begin(),
+            debugPoints.end(),
+            [](const DebugPoint& point) {
+                return point.oneFrame || point.remainingSeconds <= 0.0f;
+            }
+        ),
+        debugPoints.end()
+    );
 }

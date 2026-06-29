@@ -1,7 +1,10 @@
 #pragma once
 
 #include "misc/Camera2D.h"
+#include "system/IRenderBackend.h"
 #include "system/TileLayerRenderer.h"
+
+#include <vector>
 
 class IWindowBackend;
 class LevelAsset;
@@ -25,6 +28,13 @@ public:
     void updateEditorOnly(float deltaTime);
     bool shouldRenderEditorViewport() const;
     bool isEntityInViewport(const Entity& entity) const;
+    void debugDrawPoint(
+        const Vector2F& worldPosition,
+        float radius,
+        RenderColor color,
+        float lifetimeSeconds = 0.0f
+    );
+    void clearDebugDraw();
     void render();
 
     Renderer(const Renderer& other) = delete;
@@ -33,6 +43,14 @@ public:
     Renderer& operator=(Renderer&& other) = delete;
 
 private:
+    struct DebugPoint {
+        Vector2F worldPosition;
+        float radius = 4.0f;
+        RenderColor color{255, 0, 0, 255};
+        float remainingSeconds = 0.0f;
+        bool oneFrame = true;
+    };
+
     Renderer() = default;
     ~Renderer() = default;
 
@@ -43,6 +61,8 @@ private:
     bool editorGridVisible = false;
     bool editorCameraActive = false;
     bool editorViewportRenderRequested = false;
+    float debugDrawDeltaTime = 0.0f;
     Camera2D camera;
     TileLayerRenderer tileLayerRenderer;
+    std::vector<DebugPoint> debugPoints;
 };

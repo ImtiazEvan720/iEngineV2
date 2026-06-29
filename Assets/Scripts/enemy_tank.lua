@@ -735,6 +735,15 @@ local function getEnemyTank(entity)
     return enemyTank
 end
 
+function getLife(entity)
+    local enemyTank = getEnemyTank(entity)
+    if enemyTank == nil then
+        return 0.0
+    end
+
+    return enemyTank.life
+end
+
 function onStart(entity, script)
     scriptEntity = entity
     math.randomseed(entity:getId() * 1103515245)

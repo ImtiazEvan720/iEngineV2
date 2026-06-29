@@ -16,7 +16,9 @@
 #include "EmbeddedScripts.h"
 #endif
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <utility>
@@ -117,6 +119,10 @@ sol::table makeRaycastResultTable(sol::state& lua, const PhysicsRaycastHit& hit)
     }
 
     return result;
+}
+
+std::uint8_t toRenderColorChannel(int value) {
+    return static_cast<std::uint8_t>(std::clamp(value, 0, 255));
 }
 }
 
@@ -363,6 +369,32 @@ bool ScriptSystem::callEntityScriptFunction(
     return true;
 }
 
+float ScriptSystem::callEntityScriptFloatFunction(
+    Entity& entity,
+    const std::string& functionName,
+    float fallback
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return fallback;
+    }
+
+    sol::protected_function_result result = function(entity);
+    if (!result.valid()) {
+        reportScriptError(entity.getName() + "." + functionName, result);
+        return fallback;
+    }
+
+    sol::optional<float> value = result.get<sol::optional<float>>();
+    if (!value.has_value()) {
+        std::cerr << "[Lua] Script function did not return a number: "
+                  << entity.getName() << "." << functionName << std::endl;
+        return fallback;
+    }
+
+    return value.value();
+}
+
 bool ScriptSystem::callEntityScriptFunctionWithSelf(
     Entity& entity,
     const std::string& functionName
@@ -461,7 +493,8 @@ bool ScriptSystem::callEntityCollisionFunction(
     const std::string& functionName,
     CollisionComponent& self,
     CollisionComponent& other,
-    const Vector2F& normal
+    const Vector2F& normal,
+    const Vector2F& contactPoint
 ) {
     sol::protected_function function;
     if (!getEntityScriptFunction(entity, functionName, function)) {
@@ -474,7 +507,8 @@ bool ScriptSystem::callEntityCollisionFunction(
         otherEntity == nullptr ? sol::make_object(lua, sol::nil) : sol::make_object(lua, otherEntity),
         &self,
         &other,
-        normal
+        normal,
+        contactPoint
     );
     if (!result.valid()) {
         return reportScriptError(entity.getName() + "." + functionName, result);
@@ -488,7 +522,8 @@ bool ScriptSystem::tryCallEntityCollisionFunction(
     const std::string& functionName,
     CollisionComponent& self,
     CollisionComponent& other,
-    const Vector2F& normal
+    const Vector2F& normal,
+    const Vector2F& contactPoint
 ) {
     if (!entity.isEnabled() || entity.isDestroyed()) {
         return false;
@@ -518,7 +553,75 @@ bool ScriptSystem::tryCallEntityCollisionFunction(
         otherEntity == nullptr ? sol::make_object(lua, sol::nil) : sol::make_object(lua, otherEntity),
         &self,
         &other,
-        normal
+        normal,
+        contactPoint
+    );
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::callEntitySensorFunction(
+    Entity& entity,
+    const std::string& functionName,
+    CollisionComponent& self,
+    CollisionComponent& other
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return false;
+    }
+
+    Entity* otherEntity = other.getEntity();
+    sol::protected_function_result result = function(
+        entity,
+        otherEntity == nullptr ? sol::make_object(lua, sol::nil) : sol::make_object(lua, otherEntity),
+        &self,
+        &other
+    );
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+
+    return true;
+}
+
+bool ScriptSystem::tryCallEntitySensorFunction(
+    Entity& entity,
+    const std::string& functionName,
+    CollisionComponent& self,
+    CollisionComponent& other
+) {
+    if (!entity.isEnabled() || entity.isDestroyed()) {
+        return false;
+    }
+
+    ScriptComponent* scriptComponent = entity.getComponent<ScriptComponent>();
+    if (scriptComponent == nullptr) {
+        return false;
+    }
+
+    const auto scriptIterator = scripts.find(scriptComponent);
+    if (scriptIterator == scripts.end()) {
+        return false;
+    }
+
+    refreshScriptPropertyTables(scriptIterator->second, *scriptComponent);
+
+    sol::protected_function function =
+        scriptIterator->second.environment.get<sol::protected_function>(functionName);
+    if (!function.valid()) {
+        return false;
+    }
+
+    Entity* otherEntity = other.getEntity();
+    sol::protected_function_result result = function(
+        entity,
+        otherEntity == nullptr ? sol::make_object(lua, sol::nil) : sol::make_object(lua, otherEntity),
+        &self,
+        &other
     );
     if (!result.valid()) {
         return reportScriptError(entity.getName() + "." + functionName, result);
@@ -588,6 +691,62 @@ void ScriptSystem::bindEngineTypes() {
     engineTable["raycast"] = [this](const Vector2F& start, const Vector2F& end) {
         const PhysicsRaycastHit hit = PhysicsSystem::getInstance().raycast(start, end);
         return makeRaycastResultTable(lua, hit);
+    };
+    engineTable["debugDrawPoint"] = sol::overload(
+        [](const Vector2F& worldPosition) {
+            Renderer::getInstance().debugDrawPoint(
+                worldPosition,
+                4.0f,
+                RenderColor{255, 255, 0, 255}
+            );
+        },
+        [](const Vector2F& worldPosition, float radius) {
+            Renderer::getInstance().debugDrawPoint(
+                worldPosition,
+                radius,
+                RenderColor{255, 255, 0, 255}
+            );
+        },
+        [](const Vector2F& worldPosition, float radius, int r, int g, int b) {
+            Renderer::getInstance().debugDrawPoint(
+                worldPosition,
+                radius,
+                RenderColor{
+                    toRenderColorChannel(r),
+                    toRenderColorChannel(g),
+                    toRenderColorChannel(b),
+                    255
+                }
+            );
+        },
+        [](const Vector2F& worldPosition, float radius, int r, int g, int b, int a) {
+            Renderer::getInstance().debugDrawPoint(
+                worldPosition,
+                radius,
+                RenderColor{
+                    toRenderColorChannel(r),
+                    toRenderColorChannel(g),
+                    toRenderColorChannel(b),
+                    toRenderColorChannel(a)
+                }
+            );
+        },
+        [](const Vector2F& worldPosition, float radius, int r, int g, int b, int a, float lifetimeSeconds) {
+            Renderer::getInstance().debugDrawPoint(
+                worldPosition,
+                radius,
+                RenderColor{
+                    toRenderColorChannel(r),
+                    toRenderColorChannel(g),
+                    toRenderColorChannel(b),
+                    toRenderColorChannel(a)
+                },
+                lifetimeSeconds
+            );
+        }
+    );
+    engineTable["clearDebugDraw"] = []() {
+        Renderer::getInstance().clearDebugDraw();
     };
     engineTable["findEntityByName"] = [](const std::string& entityName) {
         return findEntityByName(entityName);
@@ -789,6 +948,13 @@ void ScriptSystem::bindEngineTypes() {
                 );
             }
         ),
+        "callScriptFloat", [](Entity& entity, const std::string& functionName, float fallback) {
+            return ScriptSystem::getInstance().callEntityScriptFloatFunction(
+                entity,
+                functionName,
+                fallback
+            );
+        },
         "callScriptSelf", sol::overload(
             [](Entity& entity, const std::string& functionName) {
                 return ScriptSystem::getInstance().callEntityScriptFunctionWithSelf(entity, functionName);
@@ -797,6 +963,9 @@ void ScriptSystem::bindEngineTypes() {
                 return ScriptSystem::getInstance().callEntityScriptFunctionWithSelf(entity, functionName, argument);
             }
         ),
+        "getScript", [](Entity& entity) {
+            return entity.getComponent<ScriptComponent>();
+        },
         "spawnPrefab", sol::overload(
             [](const std::string& prefabName, float x, float y) {
                 return Entity::spawnPrefab(prefabName, x, y);

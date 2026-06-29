@@ -19,6 +19,11 @@ public:
         RenderTextureHandle texture,
         const std::vector<RenderVertex>& vertices
     ) override;
+    void drawPoint(
+        const RenderVector2& position,
+        float radius,
+        RenderColor color
+    ) override;
 
 private:
     SdlWindowBackend& windowBackend;

@@ -37,17 +37,36 @@ public:
         const std::string& functionName,
         CollisionComponent& self,
         CollisionComponent& other,
-        const Vector2F& normal
+        const Vector2F& normal,
+        const Vector2F& contactPoint
     );
     bool tryCallEntityCollisionFunction(
         Entity& entity,
         const std::string& functionName,
         CollisionComponent& self,
         CollisionComponent& other,
-        const Vector2F& normal
+        const Vector2F& normal,
+        const Vector2F& contactPoint
+    );
+    bool callEntitySensorFunction(
+        Entity& entity,
+        const std::string& functionName,
+        CollisionComponent& self,
+        CollisionComponent& other
+    );
+    bool tryCallEntitySensorFunction(
+        Entity& entity,
+        const std::string& functionName,
+        CollisionComponent& self,
+        CollisionComponent& other
     );
     bool requestLevelLoad(const std::string& levelName);
     bool consumePendingLevelLoad(std::string& levelName);
+    float callEntityScriptFloatFunction(
+        Entity& entity,
+        const std::string& functionName,
+        float fallback
+    );
 
 private:
     struct ScriptInstance {

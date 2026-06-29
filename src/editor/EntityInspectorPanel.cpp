@@ -10,7 +10,6 @@
 #include "components/TransformComponent.h"
 #include "editor/EditorCollectionViews.h"
 #include "editor/ScriptPropertyParser.h"
-#include "game/Brick.h"
 #include "math/Vector2F.h"
 #include "misc/Animation.h"
 #include "misc/Level.h"
@@ -607,21 +606,6 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
             }
 
             drawComponentEnabledCheckbox(*playerController, "PlayerController", statusMessage);
-            ImGui::TextUnformatted("No editable fields.");
-            ImGui::TreePop();
-        }
-    }
-
-    if (auto* brick = entity.getComponent<Brick>()) {
-        hasComponents = true;
-        if (ImGui::TreeNodeEx("Brick", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-            if (drawRemoveComponentButton(entity, "Brick", statusMessage)) {
-                ImGui::TreePop();
-                ImGui::TreePop();
-                return;
-            }
-
-            drawComponentEnabledCheckbox(*brick, "Brick", statusMessage);
             ImGui::TextUnformatted("No editable fields.");
             ImGui::TreePop();
         }

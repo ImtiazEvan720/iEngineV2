@@ -205,7 +205,38 @@ function getHitSide(normal)
     return "TopSide"
 end
 
-function onCollisionEnter(entity, otherEntity, selfCollider, otherCollider, normal)
+local function getEntityPosition(entity)
+    if entity == nil then
+        return nil
+    end
+
+    local transform = entity:getTransform()
+    if transform == nil then
+        return nil
+    end
+
+    return transform:getPosition()
+end
+
+local function approximateNormalFromEntities(entity, otherEntity)
+    local selfPosition = getEntityPosition(entity)
+    local otherPosition = getEntityPosition(otherEntity)
+
+    if selfPosition == nil or otherPosition == nil then
+        return Vector2F.new(0.0, 0.0)
+    end
+
+    local deltaX = otherPosition.x - selfPosition.x
+    local deltaY = otherPosition.y - selfPosition.y
+
+    if math.abs(deltaX) > math.abs(deltaY) then
+        return Vector2F.new(deltaX > 0.0 and 1.0 or -1.0, 0.0)
+    end
+
+    return Vector2F.new(0.0, deltaY > 0.0 and 1.0 or -1.0)
+end
+
+local function handleBulletHit(entity, otherEntity, selfCollider, otherCollider, normal, contactPoint, eventName)
     local bullet = getBulletState(entity)
 
     if entity == nil or bullet == nil or not entity:isEnabled() then
@@ -214,6 +245,14 @@ function onCollisionEnter(entity, otherEntity, selfCollider, otherCollider, norm
 
     if bullet.active == false then
         return
+    end
+
+    if normal == nil then
+        normal = Vector2F.new(0.0, 0.0)
+    end
+
+    if contactPoint == nil then
+        contactPoint = getEntityPosition(entity)
     end
 
     local otherName = "unknown"
@@ -227,7 +266,7 @@ function onCollisionEnter(entity, otherEntity, selfCollider, otherCollider, norm
 
     if bullet.owner ~= nil and otherEntity ~= nil and bullet.owner:getId() == otherEntity:getId() then
         if bullet:shouldDebug() then
-            Engine.log("Bullet ignored owner collision " .. bullet:getDebugName() .. " owner=" ..
+            Engine.log("Bullet ignored owner " .. tostring(eventName) .. " " .. bullet:getDebugName() .. " owner=" ..
                            bullet:getOwnerDebugName() .. " hit=" .. tostring(otherName) .. "#" ..
                            tostring(otherEntity:getId()))
         end
@@ -238,22 +277,26 @@ function onCollisionEnter(entity, otherEntity, selfCollider, otherCollider, norm
     local normalizedTag = string.lower(otherTag or "")
     if normalizedTag ~= "player" and normalizedTag ~= "obstacle" and normalizedTag ~= "enemy" then
         if bullet:shouldDebug() then
-            Engine.log(
-                "Bullet ignored collision " .. bullet:getDebugName() .. " owner=" .. bullet:getOwnerDebugName() ..
-                    " hit=" .. tostring(otherName) .. " tag=" .. tostring(otherTag) .. " reason=unhandled_tag")
+            Engine.log("Bullet ignored " .. tostring(eventName) .. " " .. bullet:getDebugName() .. " owner=" ..
+                           bullet:getOwnerDebugName() .. " hit=" .. tostring(otherName) .. " tag=" .. tostring(otherTag) ..
+                           " reason=unhandled_tag")
         end
 
         return
     end
 
-    Engine.log("Bullet handled collision " .. bullet:getDebugName() .. " owner=" .. bullet:getOwnerDebugName() ..
-                   " hit=" .. tostring(otherName) .. " tag=" .. tostring(otherTag) .. " active=" ..
-                   tostring(bullet.active))
+    Engine.log("Bullet handled " .. tostring(eventName) .. " " .. bullet:getDebugName() .. " owner=" ..
+                   bullet:getOwnerDebugName() .. " hit=" .. tostring(otherName) .. " tag=" .. tostring(otherTag) ..
+                   " active=" .. tostring(bullet.active))
 
     bullet.active = false
 
     if normalizedTag == "enemy" and otherEntity ~= nil then
         otherEntity:callScript("takeDamage", otherEntity, bullet.damage)
+        if otherEntity ~= nil then
+            local life = otherEntity:callScriptFloat("getLife", 0.0)
+            Engine.log("Enemy life = " .. tostring(life))
+        end
     end
 
     if normalizedTag == "obstacle" and otherEntity ~= nil then
@@ -263,9 +306,18 @@ function onCollisionEnter(entity, otherEntity, selfCollider, otherCollider, norm
         }
         local hitSide = getHitSide(boxNormal)
 
+        if contactPoint ~= nil then
+            Engine.debugDrawPoint(contactPoint, 6.0, 255, 255, 0, 255, 0.25)
+            local effect = spawnPrefab("DestroyEntityAnimation", contactPoint, 0.0)
+            if effect == nil then
+                Engine.log("Failed to spawn DestroyEntityAnimation prefab.")
+            end
+        end
+
         Engine.log(
             "Bullet hit obstacle " .. bullet:getDebugName() .. " owner=" .. bullet:getOwnerDebugName() .. " hit=" ..
                 tostring(otherName) .. " side=" .. tostring(hitSide))
+
     end
 
     local manager = Engine.findEntityByName("BulletManager")
@@ -274,4 +326,15 @@ function onCollisionEnter(entity, otherEntity, selfCollider, otherCollider, norm
     end
 
     entity:setEnabled(false)
+end
+
+function onCollisionEnter(entity, otherEntity, selfCollider, otherCollider, normal, contactPoint)
+    handleBulletHit(entity, otherEntity, selfCollider, otherCollider, normal, contactPoint, "collision")
+end
+
+function onSensorEnter(entity, otherEntity, selfCollider, otherCollider)
+    local normal = approximateNormalFromEntities(entity, otherEntity)
+    local contactPoint = getEntityPosition(entity)
+
+    handleBulletHit(entity, otherEntity, selfCollider, otherCollider, normal, contactPoint, "sensor")
 end

@@ -9,19 +9,25 @@
 
 class CollisionComponent;
 
-class CollisionListener {
+class CollisionListener
+{
 public:
     virtual ~CollisionListener() = default;
     virtual void onCollisionEnter(
-        CollisionComponent& self,
-        CollisionComponent& other,
-        const Vector2F& normal
-    ) = 0;
+        CollisionComponent &self,
+        CollisionComponent &other,
+        const Vector2F &normal,
+        const Vector2F &contactPoint) = 0;
+    virtual void onSensorEnter(
+        CollisionComponent &self,
+        CollisionComponent &other) = 0;
 };
 
-class CollisionComponent : public Component {
+class CollisionComponent : public Component
+{
 public:
-    enum class BodyType {
+    enum class BodyType
+    {
         Static,
         Kinematic,
         Dynamic
@@ -39,19 +45,20 @@ public:
     b2BodyId getBodyId() const;
     b2ShapeId getShapeId() const;
     Vector2F getWorldPosition() const;
-    const std::string& getName() const;
-    const Vector2F& getOffset() const;
+    const std::string &getName() const;
+    const Vector2F &getOffset() const;
     float getWidth() const;
     float getHeight() const;
     BodyType getBodyType() const;
     bool isSensor() const;
-    void setName(const std::string& name);
-    void setOffset(const Vector2F& offset);
+    void setName(const std::string &name);
+    void setOffset(const Vector2F &offset);
     void setSize(float width, float height);
     void setBodyType(BodyType bodyType);
     void setSensor(bool sensor);
-    void setListener(CollisionListener* listener);
-    void notifyCollisionEnter(CollisionComponent& other, const Vector2F& normal);
+    void setListener(CollisionListener *listener);
+    void notifyCollisionEnter(CollisionComponent &other, const Vector2F &normal, const Vector2F &contactPoint);
+    void notifySensorEnter(CollisionComponent &other);
     void syncBodyToTransform();
     std::unique_ptr<Component> clone() const override;
 
@@ -67,5 +74,5 @@ private:
     std::string name;
     b2BodyId bodyId = b2_nullBodyId;
     b2ShapeId shapeId = b2_nullShapeId;
-    CollisionListener* listener = nullptr;
+    CollisionListener *listener = nullptr;
 };

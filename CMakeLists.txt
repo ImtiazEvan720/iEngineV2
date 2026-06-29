@@ -214,7 +214,6 @@ set(IENGINE_SOURCES
     src/components/SpriteComponent.cpp
     src/components/TransformComponent.cpp
     src/components/PlayerController.cpp
-    src/game/Brick.cpp
     src/math/Vector2F.cpp
     src/misc/Asset.cpp
     src/misc/Animation.cpp

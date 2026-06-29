@@ -2,6 +2,7 @@
 
 #include "system/sfml/SfmlWindowBackend.h"
 
+#include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/PrimitiveType.hpp>
 #include <SFML/Graphics/RenderStates.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
@@ -69,4 +70,20 @@ void SfmlRenderBackend::drawGeometry(
     sf::RenderStates states;
     states.texture = static_cast<const sf::Texture*>(texture);
     window.draw(sfmlVertices.data(), sfmlVertices.size(), sf::PrimitiveType::Triangles, states);
+}
+
+void SfmlRenderBackend::drawPoint(
+    const RenderVector2& position,
+    float radius,
+    RenderColor color
+) {
+    if (radius <= 0.0f) {
+        return;
+    }
+
+    sf::CircleShape point(radius);
+    point.setOrigin({radius, radius});
+    point.setPosition({position.x, position.y});
+    point.setFillColor(sf::Color(color.r, color.g, color.b, color.a));
+    windowBackend.getWindow().draw(point);
 }

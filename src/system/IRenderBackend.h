@@ -48,4 +48,10 @@ public:
         RenderTextureHandle texture,
         const std::vector<RenderVertex>& vertices
     ) = 0;
+
+    virtual void drawPoint(
+        const RenderVector2& position,
+        float radius,
+        RenderColor color
+    ) = 0;
 };

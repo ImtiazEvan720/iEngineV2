@@ -6,7 +6,6 @@
 #include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
-#include "game/Brick.h"
 #include "misc/Animation.h"
 #include "misc/AnimationLoader.h"
 #include "misc/Guid.h"
@@ -770,13 +769,6 @@ namespace
             return true;
         }
 
-        if (componentType == "Brick")
-        {
-            Brick &brick = entity.addComponent<Brick>();
-            applyComponentEnabledAttribute(component, brick);
-            return true;
-        }
-
         if (componentType == "Bullet")
         {
             return true;
@@ -876,11 +868,6 @@ bool Level::saveCurrentLevel(const std::string &path, std::string &errorMessage)
         if (const PlayerController *playerController = entity.getComponent<PlayerController>())
         {
             addMarkerComponent(document, *entityElement, "PlayerController", *playerController);
-        }
-
-        if (const Brick *brick = entity.getComponent<Brick>())
-        {
-            addMarkerComponent(document, *entityElement, "Brick", *brick);
         }
 
         ++savedEntityCount;

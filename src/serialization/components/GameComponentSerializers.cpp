@@ -3,7 +3,6 @@
 #include "Entity.h"
 #include "components/PlayerController.h"
 #include "components/ScriptComponent.h"
-#include "game/Brick.h"
 #include "serialization/ComponentSerializationHelpers.h"
 
 #include "tinyxml2.h"
@@ -50,40 +49,5 @@ bool PlayerControllerComponentSerializer::load(
 
     ScriptComponent& scriptComponent = entity.addComponent<ScriptComponent>("Assets/Scripts/player_controller.lua");
     ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, scriptComponent);
-    return true;
-}
-
-const char* BrickComponentSerializer::getTypeName() const {
-    return "Brick";
-}
-
-bool BrickComponentSerializer::hasComponent(const Entity& entity) const {
-    return entity.getComponent<Brick>() != nullptr;
-}
-
-void BrickComponentSerializer::save(
-    tinyxml2::XMLDocument& document,
-    tinyxml2::XMLElement& entityElement,
-    const Entity& entity
-) const {
-    const Brick* brick = entity.getComponent<Brick>();
-    if (brick != nullptr) {
-        tinyxml2::XMLElement* component = addMarkerComponent(document, entityElement, getTypeName());
-        ComponentSerializationHelpers::setComponentEnabledAttribute(*component, *brick);
-    }
-}
-
-bool BrickComponentSerializer::load(
-    const tinyxml2::XMLElement& componentElement,
-    Entity& entity,
-    const ComponentSerializationContext& context,
-    std::string& errorMessage
-) const {
-    (void)componentElement;
-    (void)context;
-    (void)errorMessage;
-
-    Brick& brick = entity.addComponent<Brick>();
-    ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, brick);
     return true;
 }
