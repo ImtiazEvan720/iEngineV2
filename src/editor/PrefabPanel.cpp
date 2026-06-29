@@ -40,6 +40,11 @@ const tinyxml2::XMLElement* findPreviewElement(const tinyxml2::XMLElement& entit
         if (componentType == "AnimationComponent") {
             const tinyxml2::XMLElement* frame = component->FirstChildElement("frame");
             if (frame != nullptr) {
+                const tinyxml2::XMLElement* sprite = frame->FirstChildElement("sprite");
+                if (sprite != nullptr) {
+                    return sprite;
+                }
+
                 return frame;
             }
         }

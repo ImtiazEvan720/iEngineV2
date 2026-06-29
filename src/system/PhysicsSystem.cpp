@@ -1,11 +1,12 @@
 #include "system/PhysicsSystem.h"
 #include "components/CollisionComponent.h"
+#include "components/TransformComponent.h"
 
 #include <cmath>
 #include <iostream>
 
 namespace {
-void dispatchCollision(b2ShapeId shapeIdA, b2ShapeId shapeIdB) {
+void dispatchCollision(b2ShapeId shapeIdA, b2ShapeId shapeIdB, const Vector2F& normalFromAToB) {
     if (!b2Shape_IsValid(shapeIdA) || !b2Shape_IsValid(shapeIdB)) {
         return;
     }
@@ -25,8 +26,44 @@ void dispatchCollision(b2ShapeId shapeIdA, b2ShapeId shapeIdB) {
               << colliderA->getName() << " and "
               << colliderB->getName() << std::endl;
 
-    colliderA->notifyCollisionEnter(*colliderB);
-    colliderB->notifyCollisionEnter(*colliderA);
+    colliderA->notifyCollisionEnter(*colliderB, normalFromAToB);
+    colliderB->notifyCollisionEnter(*colliderA, normalFromAToB * -1.0f);
+}
+
+Vector2F approximateNormalFromCenters(
+    CollisionComponent& sensor,
+    CollisionComponent& visitor
+) {
+    const Vector2F a = sensor.getWorldPosition();
+    const Vector2F b = visitor.getWorldPosition();
+
+    const Vector2F delta = b - a;
+
+    if (std::abs(delta.x) > std::abs(delta.y)) {
+        return Vector2F(delta.x > 0.0f ? 1.0f : -1.0f, 0.0f);
+    }
+
+    return Vector2F(0.0f, delta.y > 0.0f ? 1.0f : -1.0f);
+}
+
+void dispatchSensorCollision(b2ShapeId sensorShapeId, b2ShapeId visitorShapeId) {
+    if (!b2Shape_IsValid(sensorShapeId) || !b2Shape_IsValid(visitorShapeId)) {
+        return;
+    }
+
+    auto* sensor = static_cast<CollisionComponent*>(b2Shape_GetUserData(sensorShapeId));
+    auto* visitor = static_cast<CollisionComponent*>(b2Shape_GetUserData(visitorShapeId));
+
+    if (sensor == nullptr || visitor == nullptr) {
+        return;
+    }
+
+    if (!sensor->isEnabled() || !visitor->isEnabled()) {
+        return;
+    }
+
+    const Vector2F normalFromSensorToVisitor = approximateNormalFromCenters(*sensor, *visitor);
+    dispatchCollision(sensorShapeId, visitorShapeId, normalFromSensorToVisitor);
 }
 }
 
@@ -61,13 +98,13 @@ void PhysicsSystem::update(float deltaTime) {
     const b2ContactEvents contactEvents = b2World_GetContactEvents(worldId);
     for (int i = 0; i < contactEvents.beginCount; ++i) {
         const b2ContactBeginTouchEvent& event = contactEvents.beginEvents[i];
-        dispatchCollision(event.shapeIdA, event.shapeIdB);
+        dispatchCollision(event.shapeIdA, event.shapeIdB, Vector2F(event.manifold.normal.x, event.manifold.normal.y));
     }
 
     const b2SensorEvents sensorEvents = b2World_GetSensorEvents(worldId);
     for (int i = 0; i < sensorEvents.beginCount; ++i) {
         const b2SensorBeginTouchEvent& event = sensorEvents.beginEvents[i];
-        dispatchCollision(event.sensorShapeId, event.visitorShapeId);
+        dispatchSensorCollision(event.sensorShapeId, event.visitorShapeId);
     }
 
     processingEvents = false;

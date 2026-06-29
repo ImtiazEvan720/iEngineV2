@@ -36,13 +36,15 @@ public:
         Entity& entity,
         const std::string& functionName,
         CollisionComponent& self,
-        CollisionComponent& other
+        CollisionComponent& other,
+        const Vector2F& normal
     );
     bool tryCallEntityCollisionFunction(
         Entity& entity,
         const std::string& functionName,
         CollisionComponent& self,
-        CollisionComponent& other
+        CollisionComponent& other,
+        const Vector2F& normal
     );
     bool requestLevelLoad(const std::string& levelName);
     bool consumePendingLevelLoad(std::string& levelName);

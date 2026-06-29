@@ -218,6 +218,7 @@ set(IENGINE_SOURCES
     src/math/Vector2F.cpp
     src/misc/Asset.cpp
     src/misc/Animation.cpp
+    src/misc/AnimationLoader.cpp
     src/misc/Camera2D.cpp
     src/misc/Guid.cpp
     src/misc/Level.cpp

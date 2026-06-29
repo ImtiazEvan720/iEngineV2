@@ -11,7 +11,11 @@ public:
     void onStart() override;
     void onUpdate(float deltaTime) override;
     void onDestroy() override;
-    void onCollisionEnter(CollisionComponent& self, CollisionComponent& other) override;
+    void onCollisionEnter(
+        CollisionComponent& self,
+        CollisionComponent& other,
+        const Vector2F& normal
+    ) override;
     std::unique_ptr<Component> clone() const override;
 
 private:

@@ -101,6 +101,25 @@ b2ShapeId CollisionComponent::getShapeId() const {
     return shapeId;
 }
 
+Vector2F CollisionComponent::getWorldPosition() const {
+    if (b2Body_IsValid(bodyId)) {
+        const b2Vec2 position = b2Body_GetPosition(bodyId);
+        return Vector2F(position.x, position.y);
+    }
+
+    const Entity* entity = getEntity();
+    if (entity == nullptr) {
+        return Vector2F::zero();
+    }
+
+    const TransformComponent* transform = entity->getComponent<TransformComponent>();
+    if (transform == nullptr) {
+        return Vector2F::zero();
+    }
+
+    return transform->getWorldPosition() + offset;
+}
+
 const std::string& CollisionComponent::getName() const {
     return name;
 }
@@ -159,9 +178,9 @@ void CollisionComponent::setListener(CollisionListener* listener) {
     this->listener = listener;
 }
 
-void CollisionComponent::notifyCollisionEnter(CollisionComponent& other) {
+void CollisionComponent::notifyCollisionEnter(CollisionComponent& other, const Vector2F& normal) {
     if (listener != nullptr) {
-        listener->onCollisionEnter(*this, other);
+        listener->onCollisionEnter(*this, other, normal);
     }
 
     Entity* owner = getEntity();
@@ -173,7 +192,8 @@ void CollisionComponent::notifyCollisionEnter(CollisionComponent& other) {
         *owner,
         "onCollisionEnter",
         *this,
-        other
+        other,
+        normal
     );
 }
 

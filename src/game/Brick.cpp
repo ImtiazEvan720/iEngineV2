@@ -30,7 +30,13 @@ void Brick::onDestroy() {
     }
 }
 
-void Brick::onCollisionEnter(CollisionComponent& self, CollisionComponent& other) {
+void Brick::onCollisionEnter(
+    CollisionComponent& self,
+    CollisionComponent& other,
+    const Vector2F& normal
+) {
+    (void)normal;
+
     if (destroying) {
         return;
     }

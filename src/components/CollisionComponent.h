@@ -12,7 +12,11 @@ class CollisionComponent;
 class CollisionListener {
 public:
     virtual ~CollisionListener() = default;
-    virtual void onCollisionEnter(CollisionComponent& self, CollisionComponent& other) = 0;
+    virtual void onCollisionEnter(
+        CollisionComponent& self,
+        CollisionComponent& other,
+        const Vector2F& normal
+    ) = 0;
 };
 
 class CollisionComponent : public Component {
@@ -34,6 +38,7 @@ public:
 
     b2BodyId getBodyId() const;
     b2ShapeId getShapeId() const;
+    Vector2F getWorldPosition() const;
     const std::string& getName() const;
     const Vector2F& getOffset() const;
     float getWidth() const;
@@ -46,7 +51,7 @@ public:
     void setBodyType(BodyType bodyType);
     void setSensor(bool sensor);
     void setListener(CollisionListener* listener);
-    void notifyCollisionEnter(CollisionComponent& other);
+    void notifyCollisionEnter(CollisionComponent& other, const Vector2F& normal);
     void syncBodyToTransform();
     std::unique_ptr<Component> clone() const override;
 

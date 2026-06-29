@@ -8,6 +8,7 @@
 #include "components/TransformComponent.h"
 #include "game/Brick.h"
 #include "misc/Animation.h"
+#include "misc/AnimationLoader.h"
 #include "misc/Guid.h"
 #include "misc/Sprite.h"
 #include "misc/TextureAsset.h"
@@ -538,53 +539,75 @@ namespace
     bool addAnimationComponentFromElement(const tinyxml2::XMLElement &component, Entity &entity, std::string &errorMessage)
     {
         Animation animation(component.FloatAttribute("frameDuration", 0.1f));
+        const char *source = component.Attribute("source");
+        const bool hasSource = source != nullptr && source[0] != '\0';
+        bool loadedFromSource = false;
 
-        for (const tinyxml2::XMLElement *frame = component.FirstChildElement("frame");
-             frame != nullptr;
-             frame = frame->NextSiblingElement("frame"))
+        if (hasSource)
         {
-            std::vector<AnimationFrameSprite> frameSprites;
-
-            for (const tinyxml2::XMLElement *sprite = frame->FirstChildElement("sprite");
-                 sprite != nullptr;
-                 sprite = sprite->NextSiblingElement("sprite"))
+            std::string sourceError;
+            Animation sourceAnimation;
+            if (AnimationLoader::loadFromFile(source, sourceAnimation, sourceError))
             {
-                AnimationFrameSprite frameSprite(
-                    Sprite(nullptr, RenderRect{}),
-                    Vector2F::zero());
-                if (!loadAnimationFrameSprite(*sprite, frameSprite, errorMessage))
+                animation = sourceAnimation;
+                loadedFromSource = true;
+            }
+            else if (component.FirstChildElement("frame") == nullptr)
+            {
+                errorMessage = sourceError;
+                return false;
+            }
+        }
+
+        if (!loadedFromSource)
+        {
+            for (const tinyxml2::XMLElement *frame = component.FirstChildElement("frame");
+                 frame != nullptr;
+                 frame = frame->NextSiblingElement("frame"))
+            {
+                std::vector<AnimationFrameSprite> frameSprites;
+
+                for (const tinyxml2::XMLElement *sprite = frame->FirstChildElement("sprite");
+                     sprite != nullptr;
+                     sprite = sprite->NextSiblingElement("sprite"))
                 {
-                    return false;
+                    AnimationFrameSprite frameSprite(
+                        Sprite(nullptr, RenderRect{}),
+                        Vector2F::zero());
+                    if (!loadAnimationFrameSprite(*sprite, frameSprite, errorMessage))
+                    {
+                        return false;
+                    }
+
+                    frameSprites.push_back(frameSprite);
                 }
 
-                frameSprites.push_back(frameSprite);
-            }
-
-            if (frameSprites.empty())
-            {
-                AnimationFrameSprite frameSprite(
-                    Sprite(nullptr, RenderRect{}),
-                    Vector2F::zero());
-                if (!loadAnimationFrameSprite(*frame, frameSprite, errorMessage))
+                if (frameSprites.empty())
                 {
-                    return false;
+                    AnimationFrameSprite frameSprite(
+                        Sprite(nullptr, RenderRect{}),
+                        Vector2F::zero());
+                    if (!loadAnimationFrameSprite(*frame, frameSprite, errorMessage))
+                    {
+                        return false;
+                    }
+
+                    frameSprites.push_back(frameSprite);
                 }
 
-                frameSprites.push_back(frameSprite);
-            }
+                Vector2F frameSize(
+                    frame->FloatAttribute("sizeX", 0.0f),
+                    frame->FloatAttribute("sizeY", 0.0f));
+                if (frameSize.x <= 0.0f || frameSize.y <= 0.0f)
+                {
+                    frameSize = calculateAnimationFrameSize(frameSprites);
+                }
 
-            Vector2F frameSize(
-                frame->FloatAttribute("sizeX", 0.0f),
-                frame->FloatAttribute("sizeY", 0.0f));
-            if (frameSize.x <= 0.0f || frameSize.y <= 0.0f)
-            {
-                frameSize = calculateAnimationFrameSize(frameSprites);
+                animation.addFrame(
+                    std::move(frameSprites),
+                    frameSize,
+                    frame->FloatAttribute("duration", component.FloatAttribute("frameDuration", 0.1f)));
             }
-
-            animation.addFrame(
-                std::move(frameSprites),
-                frameSize,
-                frame->FloatAttribute("duration", component.FloatAttribute("frameDuration", 0.1f)));
         }
 
         if (!animation.hasFrames())
@@ -594,8 +617,7 @@ namespace
         }
 
         AnimationComponent &animationComponent = entity.addComponent<AnimationComponent>(animation);
-        const char *source = component.Attribute("source");
-        if (source != nullptr && source[0] != '\0')
+        if (hasSource)
         {
             animationComponent.setAnimationSourcePath(source);
         }

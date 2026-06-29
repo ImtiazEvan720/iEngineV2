@@ -3,6 +3,7 @@
 #include "Entity.h"
 #include "components/AnimationComponent.h"
 #include "misc/Animation.h"
+#include "misc/AnimationLoader.h"
 #include "misc/TextureAsset.h"
 #include "serialization/ComponentSerializationHelpers.h"
 
@@ -116,51 +117,68 @@ bool AnimationComponentSerializer::load(
     (void)context;
 
     Animation animation(componentElement.FloatAttribute("frameDuration", 0.1f));
+    const char* source = componentElement.Attribute("source");
+    const bool hasSource = source != nullptr && source[0] != '\0';
+    bool loadedFromSource = false;
 
-    for (const tinyxml2::XMLElement* frame = componentElement.FirstChildElement("frame");
-         frame != nullptr;
-         frame = frame->NextSiblingElement("frame")) {
-        std::vector<AnimationFrameSprite> frameSprites;
+    if (hasSource) {
+        std::string sourceError;
+        Animation sourceAnimation;
+        if (AnimationLoader::loadFromFile(source, sourceAnimation, sourceError)) {
+            animation = sourceAnimation;
+            loadedFromSource = true;
+        } else if (componentElement.FirstChildElement("frame") == nullptr) {
+            errorMessage = sourceError;
+            return false;
+        }
+    }
 
-        for (const tinyxml2::XMLElement* sprite = frame->FirstChildElement("sprite");
-             sprite != nullptr;
-             sprite = sprite->NextSiblingElement("sprite")) {
-            AnimationFrameSprite frameSprite(
-                Sprite(nullptr, RenderRect{}),
-                Vector2F::zero()
-            );
-            if (!loadFrameSprite(*sprite, frameSprite, errorMessage)) {
-                return false;
+    if (!loadedFromSource) {
+        for (const tinyxml2::XMLElement* frame = componentElement.FirstChildElement("frame");
+             frame != nullptr;
+             frame = frame->NextSiblingElement("frame")) {
+            std::vector<AnimationFrameSprite> frameSprites;
+
+            for (const tinyxml2::XMLElement* sprite = frame->FirstChildElement("sprite");
+                 sprite != nullptr;
+                 sprite = sprite->NextSiblingElement("sprite")) {
+                AnimationFrameSprite frameSprite(
+                    Sprite(nullptr, RenderRect{}),
+                    Vector2F::zero()
+                );
+                if (!loadFrameSprite(*sprite, frameSprite, errorMessage)) {
+                    return false;
+                }
+
+                frameSprites.push_back(frameSprite);
             }
 
-            frameSprites.push_back(frameSprite);
-        }
+            if (frameSprites.empty()) {
+                AnimationFrameSprite frameSprite(
+                    Sprite(nullptr, RenderRect{}),
+                    Vector2F::zero()
+                );
+                if (!loadFrameSprite(*frame, frameSprite, errorMessage)) {
+                    return false;
+                }
 
-        if (frameSprites.empty()) {
-            AnimationFrameSprite frameSprite(
-                Sprite(nullptr, RenderRect{}),
-                Vector2F::zero()
-            );
-            if (!loadFrameSprite(*frame, frameSprite, errorMessage)) {
-                return false;
+                frameSprites.push_back(frameSprite);
             }
 
-            frameSprites.push_back(frameSprite);
-        }
+            Vector2F frameSize(
+                frame->FloatAttribute("sizeX", 0.0f),
+                frame->FloatAttribute("sizeY", 0.0f)
+            );
+            if (frameSize.x <= 0.0f || frameSize.y <= 0.0f) {
+                frameSize = calculateFrameSize(frameSprites);
+            }
 
-        Vector2F frameSize(
-            frame->FloatAttribute("sizeX", 0.0f),
-            frame->FloatAttribute("sizeY", 0.0f)
-        );
-        if (frameSize.x <= 0.0f || frameSize.y <= 0.0f) {
-            frameSize = calculateFrameSize(frameSprites);
+            animation.addFrame(
+                std::move(frameSprites),
+                frameSize,
+                frame->FloatAttribute("duration", componentElement.FloatAttribute("frameDuration", 0.1f))
+            );
         }
-
-        animation.addFrame(
-            std::move(frameSprites),
-            frameSize,
-            frame->FloatAttribute("duration", componentElement.FloatAttribute("frameDuration", 0.1f))
-        );
     }
 
     if (!animation.hasFrames()) {
@@ -169,8 +187,7 @@ bool AnimationComponentSerializer::load(
     }
 
     AnimationComponent& animationComponent = entity.addComponent<AnimationComponent>(animation);
-    const char* source = componentElement.Attribute("source");
-    if (source != nullptr && source[0] != '\0') {
+    if (hasSource) {
         animationComponent.setAnimationSourcePath(source);
     }
     if (!ComponentSerializationHelpers::parseBool(componentElement.Attribute("playing"), true)) {

@@ -460,7 +460,8 @@ bool ScriptSystem::callEntityCollisionFunction(
     Entity& entity,
     const std::string& functionName,
     CollisionComponent& self,
-    CollisionComponent& other
+    CollisionComponent& other,
+    const Vector2F& normal
 ) {
     sol::protected_function function;
     if (!getEntityScriptFunction(entity, functionName, function)) {
@@ -472,7 +473,8 @@ bool ScriptSystem::callEntityCollisionFunction(
         entity,
         otherEntity == nullptr ? sol::make_object(lua, sol::nil) : sol::make_object(lua, otherEntity),
         &self,
-        &other
+        &other,
+        normal
     );
     if (!result.valid()) {
         return reportScriptError(entity.getName() + "." + functionName, result);
@@ -485,7 +487,8 @@ bool ScriptSystem::tryCallEntityCollisionFunction(
     Entity& entity,
     const std::string& functionName,
     CollisionComponent& self,
-    CollisionComponent& other
+    CollisionComponent& other,
+    const Vector2F& normal
 ) {
     if (!entity.isEnabled() || entity.isDestroyed()) {
         return false;
@@ -514,7 +517,8 @@ bool ScriptSystem::tryCallEntityCollisionFunction(
         entity,
         otherEntity == nullptr ? sol::make_object(lua, sol::nil) : sol::make_object(lua, otherEntity),
         &self,
-        &other
+        &other,
+        normal
     );
     if (!result.valid()) {
         return reportScriptError(entity.getName() + "." + functionName, result);

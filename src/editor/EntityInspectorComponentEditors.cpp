@@ -7,19 +7,18 @@
 #include "components/TransformComponent.h"
 #include "math/Vector2F.h"
 #include "misc/Animation.h"
+#include "misc/AnimationLoader.h"
 #include "misc/Sprite.h"
 #include "system/ProjectManager.h"
 #include "system/Renderer.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
-#include "tinyxml2.h"
 
 #include <algorithm>
 #include <filesystem>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace {
@@ -358,97 +357,8 @@ bool EntityInspectorPanel::loadAnimationFileIntoComponent(
     AnimationComponent& animationComponent,
     std::string& statusMessage
 ) {
-    tinyxml2::XMLDocument document;
-    const tinyxml2::XMLError loadResult = document.LoadFile(animationPath.string().c_str());
-    if (loadResult != tinyxml2::XML_SUCCESS) {
-        statusMessage = "Failed to load animation file: " + std::string(document.ErrorStr());
-        return false;
-    }
-
-    const tinyxml2::XMLElement* root = document.FirstChildElement("ianim");
-    if (root == nullptr) {
-        statusMessage = "Animation file is missing ianim root: " + animationPath.filename().string();
-        return false;
-    }
-
-    const char* tilesetFilename = root->Attribute("tileset");
-    if (tilesetFilename == nullptr || tilesetFilename[0] == '\0') {
-        statusMessage = "Animation file is missing tileset reference: " + animationPath.filename().string();
-        return false;
-    }
-
-    if (!animationPicker.setSelectedTilesetByFilename(tilesetFilename)) {
-        statusMessage = "Animation tileset was not found: " + std::string(tilesetFilename);
-        return false;
-    }
-
-    const int tilesetIndex = animationPicker.getSelectedTilesetIndex();
-    const EditorTileset* tileset = animationPicker.getTileset(tilesetIndex);
-    if (tileset == nullptr || tileset->tileWidth <= 0 || tileset->tileHeight <= 0) {
-        statusMessage = "Animation tileset metadata is invalid: " + std::string(tilesetFilename);
-        return false;
-    }
-
-    const float renderScale = Renderer::getInstance().getRenderScale();
-    const float tileWidth = static_cast<float>(tileset->tileWidth) * renderScale;
-    const float tileHeight = static_cast<float>(tileset->tileHeight) * renderScale;
     Animation loadedAnimation;
-
-    for (const tinyxml2::XMLElement* frameElement = root->FirstChildElement("frame");
-         frameElement != nullptr;
-         frameElement = frameElement->NextSiblingElement("frame")) {
-        const int durationMs = std::max(1, frameElement->IntAttribute("duration", 100));
-        const int widthInTiles = std::max(1, frameElement->IntAttribute("width", 1));
-        const int heightInTiles = std::max(1, frameElement->IntAttribute("height", 1));
-        const Vector2F frameCenter(
-            static_cast<float>(widthInTiles) * tileWidth * 0.5f,
-            static_cast<float>(heightInTiles) * tileHeight * 0.5f
-        );
-        std::vector<AnimationFrameSprite> frameSprites;
-
-        for (const tinyxml2::XMLElement* tileElement = frameElement->FirstChildElement("tile");
-             tileElement != nullptr;
-             tileElement = tileElement->NextSiblingElement("tile")) {
-            const int tileId = tileElement->IntAttribute("id", -1);
-            const int tileX = tileElement->IntAttribute("x", 0);
-            const int tileY = tileElement->IntAttribute("y", 0);
-
-            std::optional<Sprite> sprite = animationPicker.createSpriteFromTile(
-                tilesetIndex,
-                tileId,
-                renderScale,
-                statusMessage
-            );
-            if (!sprite.has_value()) {
-                return false;
-            }
-
-            sprite->setOrigin(Vector2F::zero());
-            frameSprites.emplace_back(
-                *sprite,
-                Vector2F(
-                    static_cast<float>(tileX) * tileWidth - frameCenter.x,
-                    static_cast<float>(tileY) * tileHeight - frameCenter.y
-                )
-            );
-        }
-
-        if (frameSprites.empty()) {
-            continue;
-        }
-
-        loadedAnimation.addFrame(
-            std::move(frameSprites),
-            Vector2F(
-                static_cast<float>(widthInTiles) * tileWidth,
-                static_cast<float>(heightInTiles) * tileHeight
-            ),
-            static_cast<float>(durationMs) / 1000.0f
-        );
-    }
-
-    if (!loadedAnimation.hasFrames()) {
-        statusMessage = "Animation file has no valid frames: " + animationPath.filename().string();
+    if (!AnimationLoader::loadFromFile(animationPath.string(), loadedAnimation, statusMessage)) {
         return false;
     }
 
