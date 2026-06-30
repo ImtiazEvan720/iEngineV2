@@ -395,6 +395,32 @@ float ScriptSystem::callEntityScriptFloatFunction(
     return value.value();
 }
 
+bool ScriptSystem::callEntityScriptBoolFunction(
+    Entity& entity,
+    const std::string& functionName,
+    bool fallback
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, functionName, function)) {
+        return fallback;
+    }
+
+    sol::protected_function_result result = function(entity);
+    if (!result.valid()) {
+        reportScriptError(entity.getName() + "." + functionName, result);
+        return fallback;
+    }
+
+    sol::optional<bool> value = result.get<sol::optional<bool>>();
+    if (!value.has_value()) {
+        std::cerr << "[Lua] Script function did not return a boolean: "
+                  << entity.getName() << "." << functionName << std::endl;
+        return fallback;
+    }
+
+    return value.value();
+}
+
 bool ScriptSystem::callEntityScriptFunctionWithSelf(
     Entity& entity,
     const std::string& functionName
@@ -428,6 +454,32 @@ bool ScriptSystem::callEntityScriptFunctionWithSelf(
     }
 
     return true;
+}
+
+bool ScriptSystem::callEntityScriptEventFunction(Entity& entity, const std::string& eventType) {
+    sol::table eventData = lua.create_table();
+    return callEntityScriptEventFunction(entity, eventType, eventData);
+}
+
+bool ScriptSystem::callEntityScriptEventFunction(
+    Entity& entity,
+    const std::string& eventType,
+    sol::table eventData
+) {
+    sol::protected_function function;
+    if (!getEntityScriptFunction(entity, "onEvent", function)) {
+        return false;
+    }
+
+    eventData["type"] = eventType;
+
+    sol::protected_function_result result = function(entity, eventData);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + ".onEvent", result);
+    }
+
+    sol::optional<bool> handled = result.get<sol::optional<bool>>();
+    return !handled.has_value() || handled.value();
 }
 
 bool ScriptSystem::callEntityScriptFunction(
@@ -922,45 +974,12 @@ void ScriptSystem::bindEngineTypes() {
         "isInViewport", [](Entity& entity) {
             return Renderer::getInstance().isEntityInViewport(entity);
         },
-        "callScript", sol::overload(
-            [](Entity& entity, const std::string& functionName) {
-                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName);
+        "sendEvent", sol::overload(
+            [](Entity& entity, const std::string& eventType) {
+                return ScriptSystem::getInstance().callEntityScriptEventFunction(entity, eventType);
             },
-            [](Entity& entity, const std::string& functionName, float argument) {
-                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, argument);
-            },
-            [](Entity& entity, const std::string& functionName, Entity& argument) {
-                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, argument);
-            },
-            [](Entity& entity, const std::string& functionName, Entity& argument, float value) {
-                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, argument, value);
-            },
-            [](Entity& entity, const std::string& functionName, const Vector2F& position, float rotation) {
-                return ScriptSystem::getInstance().callEntityScriptFunction(entity, functionName, position, rotation);
-            },
-            [](Entity& entity, const std::string& functionName, const Vector2F& position, float rotation, Entity& argument) {
-                return ScriptSystem::getInstance().callEntityScriptFunction(
-                    entity,
-                    functionName,
-                    position,
-                    rotation,
-                    argument
-                );
-            }
-        ),
-        "callScriptFloat", [](Entity& entity, const std::string& functionName, float fallback) {
-            return ScriptSystem::getInstance().callEntityScriptFloatFunction(
-                entity,
-                functionName,
-                fallback
-            );
-        },
-        "callScriptSelf", sol::overload(
-            [](Entity& entity, const std::string& functionName) {
-                return ScriptSystem::getInstance().callEntityScriptFunctionWithSelf(entity, functionName);
-            },
-            [](Entity& entity, const std::string& functionName, Entity& argument) {
-                return ScriptSystem::getInstance().callEntityScriptFunctionWithSelf(entity, functionName, argument);
+            [](Entity& entity, const std::string& eventType, sol::table eventData) {
+                return ScriptSystem::getInstance().callEntityScriptEventFunction(entity, eventType, eventData);
             }
         ),
         "getScript", [](Entity& entity) {

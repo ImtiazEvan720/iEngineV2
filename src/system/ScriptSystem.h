@@ -32,6 +32,8 @@ public:
         float rotation,
         Entity& argument
     );
+    bool callEntityScriptEventFunction(Entity& entity, const std::string& eventType);
+    bool callEntityScriptEventFunction(Entity& entity, const std::string& eventType, sol::table eventData);
     bool callEntityCollisionFunction(
         Entity& entity,
         const std::string& functionName,
@@ -66,6 +68,11 @@ public:
         Entity& entity,
         const std::string& functionName,
         float fallback
+    );
+    bool callEntityScriptBoolFunction(
+        Entity& entity,
+        const std::string& functionName,
+        bool fallback
     );
 
 private:

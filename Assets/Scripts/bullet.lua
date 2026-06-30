@@ -182,6 +182,24 @@ function clearOwner(entity)
     end
 end
 
+function onEvent(entity, event)
+    if event == nil then
+        return false
+    end
+
+    if event.type == "SetOwner" then
+        setOwner(entity, event.owner)
+        return true
+    end
+
+    if event.type == "ClearOwner" then
+        clearOwner(entity)
+        return true
+    end
+
+    return false
+end
+
 function getOtherDirection(normal)
     if math.abs(normal.x) > math.abs(normal.y) then
         return normal.x > 0 and "Right" or "Left"
@@ -292,10 +310,18 @@ local function handleBulletHit(entity, otherEntity, selfCollider, otherCollider,
     bullet.active = false
 
     if normalizedTag == "enemy" and otherEntity ~= nil then
-        otherEntity:callScript("takeDamage", otherEntity, bullet.damage)
-        if otherEntity ~= nil then
-            local life = otherEntity:callScriptFloat("getLife", 0.0)
-            Engine.log("Enemy life = " .. tostring(life))
+        local damageEvent = {
+            source = entity,
+            damage = bullet.damage,
+            contactPoint = contactPoint,
+            normal = normal
+        }
+
+        if otherEntity:sendEvent("Damage", damageEvent) then
+            Engine.log("Enemy life = " .. tostring(damageEvent.life or 0.0))
+            Engine.debugDrawPoint(contactPoint, 6.0, 255, 255, 0, 255, 0.25)
+        else
+            Engine.log("Enemy damage event was not handled by " .. tostring(otherName))
         end
     end
 
@@ -321,7 +347,7 @@ local function handleBulletHit(entity, otherEntity, selfCollider, otherCollider,
     end
 
     local manager = Engine.findEntityByName("BulletManager")
-    if manager ~= nil and manager:callScript("resetBullet", entity) then
+    if manager ~= nil and manager:sendEvent("ResetBullet", { bullet = entity }) then
         return
     end
 

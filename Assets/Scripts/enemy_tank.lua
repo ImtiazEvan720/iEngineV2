@@ -622,7 +622,11 @@ function EnemyTank:fire(transform)
     local rotation = fireTransform:getWorldRotation()
 
     local ok, fired = pcall(function()
-        return self.bulletManager:callScript("fire", position, rotation, self.entity)
+        return self.bulletManager:sendEvent("Fire", {
+            position = position,
+            rotation = rotation,
+            owner = self.entity
+        })
     end)
 
     if ok and fired then
@@ -742,6 +746,32 @@ function getLife(entity)
     end
 
     return enemyTank.life
+end
+
+function onEvent(entity, event)
+    if event == nil then
+        return false
+    end
+
+    local enemyTank = getEnemyTank(entity)
+    if enemyTank == nil then
+        return false
+    end
+
+    if event.type == "Damage" then
+        enemyTank:takeDamage(event.damage or 0.0)
+        event.life = enemyTank.life
+        event.destroyed = enemyTank.destroyed or enemyTank.pendingDestroy
+        return true
+    end
+
+    if event.type == "GetLife" then
+        event.life = enemyTank.life
+        event.destroyed = enemyTank.destroyed or enemyTank.pendingDestroy
+        return true
+    end
+
+    return false
 end
 
 function onStart(entity, script)

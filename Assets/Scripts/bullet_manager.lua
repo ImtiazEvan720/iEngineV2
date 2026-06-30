@@ -69,7 +69,7 @@ function BulletManager:resetBulletEntity(bulletEntity)
     end
 
     if bulletEntity:isEnabled() then
-        bulletEntity:callScriptSelf("clearOwner")
+        bulletEntity:sendEvent("ClearOwner")
     end
 
     bulletEntity:setEnabled(false)
@@ -163,9 +163,9 @@ function BulletManager:fire(position, rotation, ownerEntity)
     bulletEntity:setEnabled(true)
 
     if ownerEntity ~= nil then
-        bulletEntity:callScriptSelf("setOwner", ownerEntity)
+        bulletEntity:sendEvent("SetOwner", { owner = ownerEntity })
     else
-        bulletEntity:callScriptSelf("clearOwner")
+        bulletEntity:sendEvent("ClearOwner")
     end
 
     return bulletEntity
@@ -220,6 +220,24 @@ function resetBullet(bulletEntity)
 
     bulletManager:resetBulletEntity(bulletEntity)
     return true
+end
+
+function onEvent(entity, event)
+    if event == nil then
+        return false
+    end
+
+    if event.type == "Fire" then
+        local bullet = fire(event.position, event.rotation or 0.0, event.owner)
+        event.bullet = bullet
+        return bullet ~= nil
+    end
+
+    if event.type == "ResetBullet" then
+        return resetBullet(event.bullet)
+    end
+
+    return false
 end
 
 function onStart(entity, script)
