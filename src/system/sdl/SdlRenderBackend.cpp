@@ -133,3 +133,65 @@ void SdlRenderBackend::drawPoint(
         );
     }
 }
+
+void SdlRenderBackend::clear(RenderColor color) {
+    SDL_Renderer* renderer = windowBackend.getRenderer();
+    if (renderer == nullptr) {
+        return;
+    }
+
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+    SDL_RenderClear(renderer);
+}
+
+RenderTargetHandle SdlRenderBackend::createRenderTarget(int width, int height) {
+    SDL_Renderer* renderer = windowBackend.getRenderer();
+    if (renderer == nullptr || width <= 0 || height <= 0) {
+        return nullptr;
+    }
+
+    SDL_Texture* texture = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_RGBA32,
+        SDL_TEXTUREACCESS_TARGET,
+        width,
+        height
+    );
+    if (texture == nullptr) {
+        return nullptr;
+    }
+
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    return texture;
+}
+
+void SdlRenderBackend::destroyRenderTarget(RenderTargetHandle target) {
+    SDL_DestroyTexture(static_cast<SDL_Texture*>(target));
+}
+
+void SdlRenderBackend::beginRenderTarget(RenderTargetHandle target) {
+    SDL_Renderer* renderer = windowBackend.getRenderer();
+    if (renderer == nullptr) {
+        return;
+    }
+
+    SDL_SetRenderTarget(renderer, static_cast<SDL_Texture*>(target));
+}
+
+void SdlRenderBackend::endRenderTarget() {
+    SDL_Renderer* renderer = windowBackend.getRenderer();
+    if (renderer == nullptr) {
+        return;
+    }
+
+    SDL_SetRenderTarget(renderer, nullptr);
+}
+
+RenderTextureHandle SdlRenderBackend::getRenderTargetTexture(RenderTargetHandle target) {
+    return static_cast<SDL_Texture*>(target);
+}
+
+ImTextureID SdlRenderBackend::getImGuiTextureId(RenderTextureHandle texture) {
+    return reinterpret_cast<ImTextureID>(const_cast<void*>(texture));
+}

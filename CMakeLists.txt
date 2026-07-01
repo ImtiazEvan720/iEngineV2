@@ -210,6 +210,7 @@ set(IENGINE_SOURCES
     src/components/AnimationComponent.cpp
     src/components/CollisionComponent.cpp
     src/components/Component.cpp
+    src/components/PlayerCameraComponent.cpp
     src/components/ScriptComponent.cpp
     src/components/SpriteComponent.cpp
     src/components/TransformComponent.cpp
@@ -232,6 +233,7 @@ set(IENGINE_SOURCES
     src/serialization/components/AnimationComponentSerializer.cpp
     src/serialization/components/CollisionComponentSerializer.cpp
     src/serialization/components/GameComponentSerializers.cpp
+    src/serialization/components/PlayerCameraComponentSerializer.cpp
     src/serialization/components/ScriptComponentSerializer.cpp
     src/serialization/components/SpriteComponentSerializer.cpp
     src/serialization/components/TransformComponentSerializer.cpp
@@ -260,6 +262,7 @@ if(IENGINE_WITH_EDITOR)
         src/editor/ColliderGizmo.cpp
         src/editor/EditorCamera.cpp
         src/editor/EditorCollectionViews.cpp
+        src/editor/EditorPlayCameraPreviewPanel.cpp
         src/editor/EntityInspectorComponentActions.cpp
         src/editor/EntityInspectorComponentEditors.cpp
         src/editor/EntityInspectorPanel.cpp

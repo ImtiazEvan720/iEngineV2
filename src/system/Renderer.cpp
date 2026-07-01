@@ -2,9 +2,12 @@
 
 #include "Entity.h"
 #include "components/AnimationComponent.h"
+#include "components/PlayerCameraComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "misc/Level.h"
+#include "misc/RenderConstants.h"
+#include "system/EngineState.h"
 #include "system/IWindowBackend.h"
 
 #include <algorithm>
@@ -45,6 +48,33 @@ const Sprite* getRenderableSprite(const Entity& entity) {
     }
 
     return nullptr;
+}
+
+float getPositiveOrFallback(float value, float fallback) {
+    if (!std::isfinite(value) || value <= 0.0f) {
+        return fallback;
+    }
+
+    return value;
+}
+
+float clampCameraCenter(float center, float visibleSize, float minValue, float maxValue) {
+    if (!std::isfinite(center)
+        || !std::isfinite(visibleSize)
+        || !std::isfinite(minValue)
+        || !std::isfinite(maxValue)
+        || visibleSize <= 0.0f
+        || maxValue <= minValue) {
+        return center;
+    }
+
+    const float boundsSize = maxValue - minValue;
+    if (boundsSize <= visibleSize) {
+        return minValue + (boundsSize * 0.5f);
+    }
+
+    const float halfVisibleSize = visibleSize * 0.5f;
+    return std::clamp(center, minValue + halfVisibleSize, maxValue - halfVisibleSize);
 }
 
 void drawSprite(
@@ -96,6 +126,13 @@ Renderer& Renderer::getInstance() {
 }
 
 void Renderer::setRenderBackend(IRenderBackend* backend) {
+    if (cameraPreviewTarget != nullptr && renderBackend != nullptr) {
+        renderBackend->destroyRenderTarget(cameraPreviewTarget);
+        cameraPreviewTarget = nullptr;
+        cameraPreviewWidth = 0;
+        cameraPreviewHeight = 0;
+    }
+
     renderBackend = backend;
 }
 
@@ -175,6 +212,94 @@ bool Renderer::shouldRenderEditorViewport() const {
     return editorViewportRenderRequested;
 }
 
+void Renderer::applyMainCamera(const RenderRect& viewport) {
+    if (!EngineState::getInstance().isPlaying()) {
+        return;
+    }
+
+    const Level& level = Level::getCurrentLevel();
+    for (const Entity& entity : level.getEntities()) {
+        if (entity.isDestroyed() || !entity.isEnabled() || entity.getTag() != "MainCamera") {
+            continue;
+        }
+
+        const TransformComponent* transformComponent = entity.getComponent<TransformComponent>();
+        const PlayerCameraComponent* cameraComponent = entity.getComponent<PlayerCameraComponent>();
+        if (transformComponent == nullptr
+            || cameraComponent == nullptr
+            || !cameraComponent->isEnabled()) {
+            continue;
+        }
+
+        camera = buildCameraFromPlayerCamera(*transformComponent, *cameraComponent, viewport);
+        return;
+    }
+}
+
+void Renderer::ensureCameraPreviewTarget(int width, int height) {
+    if (renderBackend == nullptr || width <= 0 || height <= 0) {
+        return;
+    }
+
+    if (cameraPreviewTarget != nullptr
+        && cameraPreviewWidth == width
+        && cameraPreviewHeight == height) {
+        return;
+    }
+
+    if (cameraPreviewTarget != nullptr) {
+        renderBackend->destroyRenderTarget(cameraPreviewTarget);
+        cameraPreviewTarget = nullptr;
+        cameraPreviewWidth = 0;
+        cameraPreviewHeight = 0;
+    }
+
+    cameraPreviewTarget = renderBackend->createRenderTarget(width, height);
+    if (cameraPreviewTarget != nullptr) {
+        cameraPreviewWidth = width;
+        cameraPreviewHeight = height;
+    }
+}
+
+Camera2D Renderer::buildCameraFromPlayerCamera(
+    const TransformComponent& transform,
+    const PlayerCameraComponent& cameraComponent,
+    const RenderRect& viewport
+) const {
+    Camera2D result;
+    result.setZoom(cameraComponent.getZoom());
+
+    const float zoom = result.getZoom();
+    const float viewportWidth =
+        getPositiveOrFallback(cameraComponent.getViewportWidth(), viewport.width);
+    const float viewportHeight =
+        getPositiveOrFallback(cameraComponent.getViewportHeight(), viewport.height);
+    const float visibleWorldWidth = viewportWidth / zoom;
+    const float visibleWorldHeight = viewportHeight / zoom;
+
+    Vector2F center = transform.getWorldPosition() + cameraComponent.getOffset();
+    if (cameraComponent.shouldClampToBounds()) {
+        center.x = clampCameraCenter(
+            center.x,
+            visibleWorldWidth,
+            cameraComponent.getMinX(),
+            cameraComponent.getMaxX()
+        );
+        center.y = clampCameraCenter(
+            center.y,
+            visibleWorldHeight,
+            cameraComponent.getMinY(),
+            cameraComponent.getMaxY()
+        );
+    }
+
+    result.setPosition(Vector2F(
+        center.x - (visibleWorldWidth * 0.5f),
+        center.y - (visibleWorldHeight * 0.5f)
+    ));
+    return result;
+}
+
 bool Renderer::isEntityInViewport(const Entity& entity) const {
     if (windowBackend == nullptr || entity.isDestroyed() || !entity.isEnabled()) {
         return false;
@@ -232,13 +357,12 @@ void Renderer::clearDebugDraw() {
     debugPoints.clear();
 }
 
-void Renderer::render() {
-    if (renderBackend == nullptr || windowBackend == nullptr) {
+void Renderer::renderWorld(const Camera2D& renderCamera, const RenderRect& viewport) {
+    if (renderBackend == nullptr) {
         return;
     }
 
-    const RenderRect viewport = windowBackend->getViewport();
-    tileLayerRenderer.render(*renderBackend, camera, viewport);
+    tileLayerRenderer.render(*renderBackend, renderCamera, viewport);
 
     const Level& level = Level::getCurrentLevel();
     std::vector<const Entity*> renderableEntities;
@@ -278,7 +402,7 @@ void Renderer::render() {
             for (const AnimationFrameSprite& frameSprite : animationComponent->getCurrentFrameSprites()) {
                 drawSprite(
                     *renderBackend,
-                    camera,
+                    renderCamera,
                     viewport,
                     *transformComponent,
                     frameSprite.sprite,
@@ -295,23 +419,31 @@ void Renderer::render() {
 
         drawSprite(
             *renderBackend,
-            camera,
+            renderCamera,
             viewport,
             *transformComponent,
             spriteComponent->getSprite(),
             Vector2F::zero()
         );
     }
+}
+
+void Renderer::renderDebugPoints(const Camera2D& renderCamera, const RenderRect& viewport) {
+    if (renderBackend == nullptr) {
+        return;
+    }
 
     for (const DebugPoint& point : debugPoints) {
-        const Vector2F screenPosition = camera.worldToScreen(point.worldPosition, viewport);
+        const Vector2F screenPosition = renderCamera.worldToScreen(point.worldPosition, viewport);
         renderBackend->drawPoint(
             RenderVector2{screenPosition.x, screenPosition.y},
-            point.radius * camera.getZoom(),
+            point.radius * renderCamera.getZoom(),
             point.color
         );
     }
+}
 
+void Renderer::updateDebugPoints() {
     for (DebugPoint& point : debugPoints) {
         if (!point.oneFrame) {
             point.remainingSeconds -= debugDrawDeltaTime;
@@ -328,4 +460,54 @@ void Renderer::render() {
         ),
         debugPoints.end()
     );
+}
+
+void Renderer::render() {
+    if (renderBackend == nullptr || windowBackend == nullptr) {
+        return;
+    }
+
+    const RenderRect viewport = windowBackend->getViewport();
+    applyMainCamera(viewport);
+    renderWorld(camera, viewport);
+    renderDebugPoints(camera, viewport);
+    updateDebugPoints();
+}
+
+ImTextureID Renderer::renderCameraPreview(
+    const TransformComponent& transform,
+    const PlayerCameraComponent& cameraComponent,
+    int width,
+    int height
+) {
+    if (renderBackend == nullptr || width <= 0 || height <= 0) {
+        return ImTextureID{};
+    }
+
+    ensureCameraPreviewTarget(width, height);
+    if (cameraPreviewTarget == nullptr) {
+        return ImTextureID{};
+    }
+
+    const RenderRect previewViewport{
+        0.0f,
+        0.0f,
+        static_cast<float>(width),
+        static_cast<float>(height)
+    };
+    const Camera2D previewCamera =
+        buildCameraFromPlayerCamera(transform, cameraComponent, previewViewport);
+
+    renderBackend->beginRenderTarget(cameraPreviewTarget);
+    renderBackend->clear(RenderConstants::ClearColor);
+    renderWorld(previewCamera, previewViewport);
+    renderBackend->endRenderTarget();
+
+    RenderTextureHandle texture =
+        renderBackend->getRenderTargetTexture(cameraPreviewTarget);
+    if (texture == nullptr) {
+        return ImTextureID{};
+    }
+
+    return renderBackend->getImGuiTextureId(texture);
 }

@@ -2,6 +2,7 @@
 
 #include "math/Vector2F.h"
 #include "misc/Level.h"
+#include "misc/RenderConstants.h"
 #include "misc/LevelManager.h"
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
@@ -56,7 +57,6 @@ bool iengineIsTouchDevice() {
 #endif
 
 namespace {
-constexpr RenderColor clearColor = {0, 0, 0, 255};
 std::string getBackendName(int argc, char* argv[]) {
 #ifdef IENGINE_SDL_ONLY
     std::string backendName = "sdl";
@@ -425,7 +425,7 @@ void Application::tick() {
     guiBackend->update(deltaTime);
     Renderer::getInstance().updateEditorOnly(deltaTime);
 
-    windowBackend->beginFrame(clearColor);
+    windowBackend->beginFrame(RenderConstants::ClearColor);
     Renderer::getInstance().render();
     guiBackend->render(inputSystem);
     windowBackend->endFrame();

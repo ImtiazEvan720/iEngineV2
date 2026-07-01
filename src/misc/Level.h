@@ -59,6 +59,7 @@ private:
     std::deque<Entity> entities;
     std::string sourcePath;
     std::deque<Entity> extractPersistentEntities();
+    void ensureMainCameraEntity();
     void rebuildGuidMap();
     void repairParentChildLinks();
     std::unordered_map<std::string, Entity *> entityGuidMap;

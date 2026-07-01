@@ -3,6 +3,7 @@
 #include "Entity.h"
 #include "components/CollisionComponent.h"
 #include "components/AnimationComponent.h"
+#include "components/PlayerCameraComponent.h"
 #include "components/PlayerController.h"
 #include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
@@ -176,6 +177,16 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
             }
         },
         {
+            "PlayerCameraComponent",
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
+                ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
+                entity.setTag("MainCamera");
+                return addComponentIfMissing<PlayerCameraComponent>(entity);
+            }
+        },
+        {
             "ScriptComponent",
             true,
             [](Entity& entity, const std::string& scriptPath) {
@@ -236,6 +247,15 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
             "CollisionComponent",
             [](Entity& target) {
                 return target.removeComponent<CollisionComponent>();
+            }
+        });
+    }
+
+    if (entity.getComponent<PlayerCameraComponent>() != nullptr) {
+        entries.push_back({
+            "PlayerCameraComponent",
+            [](Entity& target) {
+                return target.removeComponent<PlayerCameraComponent>();
             }
         });
     }

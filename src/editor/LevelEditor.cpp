@@ -228,6 +228,10 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
             statusMessage)) {
         currentTool = Tool::Move;
     }
+
+    if (viewportGrid.shouldShowPreviewCamera()) {
+        playCameraPreviewPanel.draw(statusMessage);
+    }
 }
 
 void LevelEditor::updateEditorOnly(float deltaTime) {

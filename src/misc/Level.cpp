@@ -2,6 +2,7 @@
 
 #include "components/AnimationComponent.h"
 #include "components/CollisionComponent.h"
+#include "components/PlayerCameraComponent.h"
 #include "components/PlayerController.h"
 #include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
@@ -360,6 +361,26 @@ namespace
         component->SetAttribute("offsetY", offset.y);
         component->SetAttribute("bodyType", bodyTypeToString(collisionComponent.getBodyType()));
         component->SetAttribute("isSensor", boolText(collisionComponent.isSensor()));
+    }
+
+    void savePlayerCameraComponent(
+        tinyxml2::XMLDocument &document,
+        tinyxml2::XMLElement &entityElement,
+        const PlayerCameraComponent &cameraComponent)
+    {
+        tinyxml2::XMLElement *component = addComponentElement(document, entityElement, "PlayerCameraComponent");
+        setComponentEnabledAttribute(*component, cameraComponent);
+        const Vector2F &offset = cameraComponent.getOffset();
+        component->SetAttribute("zoom", cameraComponent.getZoom());
+        component->SetAttribute("viewportWidth", cameraComponent.getViewportWidth());
+        component->SetAttribute("viewportHeight", cameraComponent.getViewportHeight());
+        component->SetAttribute("offsetX", offset.x);
+        component->SetAttribute("offsetY", offset.y);
+        component->SetAttribute("clampToBounds", boolText(cameraComponent.shouldClampToBounds()));
+        component->SetAttribute("minX", cameraComponent.getMinX());
+        component->SetAttribute("minY", cameraComponent.getMinY());
+        component->SetAttribute("maxX", cameraComponent.getMaxX());
+        component->SetAttribute("maxY", cameraComponent.getMaxY());
     }
 
     void saveScriptValueAttributes(tinyxml2::XMLElement &element, const ScriptValue &value)
@@ -749,6 +770,29 @@ namespace
             return true;
         }
 
+        if (componentType == "PlayerCameraComponent")
+        {
+            if (entity.getComponent<TransformComponent>() == nullptr)
+            {
+                entity.addComponent<TransformComponent>(Vector2F(0.0f, 0.0f), 0.0f);
+            }
+
+            PlayerCameraComponent &cameraComponent = entity.addComponent<PlayerCameraComponent>(
+                component.FloatAttribute("zoom", 1.0f),
+                component.FloatAttribute("viewportWidth", 1280.0f),
+                component.FloatAttribute("viewportHeight", 720.0f),
+                Vector2F(
+                    component.FloatAttribute("offsetX", 0.0f),
+                    component.FloatAttribute("offsetY", 0.0f)),
+                parseBool(component.Attribute("clampToBounds"), false),
+                component.FloatAttribute("minX", 0.0f),
+                component.FloatAttribute("minY", 0.0f),
+                component.FloatAttribute("maxX", 1280.0f),
+                component.FloatAttribute("maxY", 720.0f));
+            applyComponentEnabledAttribute(component, cameraComponent);
+            return true;
+        }
+
         if (componentType == "ScriptComponent")
         {
             const char *path = component.Attribute("path");
@@ -858,6 +902,11 @@ bool Level::saveCurrentLevel(const std::string &path, std::string &errorMessage)
         if (const CollisionComponent *collisionComponent = entity.getComponent<CollisionComponent>())
         {
             saveCollisionComponent(document, *entityElement, *collisionComponent);
+        }
+
+        if (const PlayerCameraComponent *cameraComponent = entity.getComponent<PlayerCameraComponent>())
+        {
+            savePlayerCameraComponent(document, *entityElement, *cameraComponent);
         }
 
         if (const ScriptComponent *scriptComponent = entity.getComponent<ScriptComponent>())
@@ -1060,6 +1109,7 @@ void Level::loadLevel(Level &&level, bool keepPersistentEntities)
 
     currentLevel.repairParentChildLinks();
     currentLevel.rebuildGuidMap();
+    currentLevel.ensureMainCameraEntity();
 
     if (EngineState::getInstance().isPlaying())
     {
@@ -1366,6 +1416,40 @@ std::deque<Entity> Level::extractPersistentEntities()
         }
     }
     return persistentEntities;
+}
+
+void Level::ensureMainCameraEntity()
+{
+    PlayerCameraComponent defaultCameraComponent;
+    const Vector2F defaultCameraPosition(
+        defaultCameraComponent.getViewportWidth() * 0.5f,
+        defaultCameraComponent.getViewportHeight() * 0.5f);
+
+    for (Entity &entity : entities)
+    {
+        if (entity.isDestroyed() || entity.getTag() != "MainCamera")
+        {
+            continue;
+        }
+
+        if (entity.getComponent<TransformComponent>() == nullptr)
+        {
+            entity.addComponent<TransformComponent>(defaultCameraPosition, 0.0f);
+        }
+
+        if (entity.getComponent<PlayerCameraComponent>() == nullptr)
+        {
+            entity.addComponent<PlayerCameraComponent>();
+        }
+
+        return;
+    }
+
+    Entity &cameraEntity = createEntity();
+    cameraEntity.setName("MainCamera");
+    cameraEntity.setTag("MainCamera");
+    cameraEntity.addComponent<TransformComponent>(defaultCameraPosition, 0.0f);
+    cameraEntity.addComponent<PlayerCameraComponent>();
 }
 
 void Level::rebuildGuidMap()

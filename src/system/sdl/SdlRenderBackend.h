@@ -25,6 +25,14 @@ public:
         RenderColor color
     ) override;
 
+    void clear(RenderColor color) override;
+    RenderTargetHandle createRenderTarget(int width, int height) override;
+    void destroyRenderTarget(RenderTargetHandle target) override;
+    void beginRenderTarget(RenderTargetHandle target) override;
+    void endRenderTarget() override;
+    RenderTextureHandle getRenderTargetTexture(RenderTargetHandle target) override;
+    ImTextureID getImGuiTextureId(RenderTextureHandle texture) override;
+
 private:
     SdlWindowBackend& windowBackend;
 };

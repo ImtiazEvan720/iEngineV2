@@ -5,6 +5,7 @@
 #include "serialization/components/AnimationComponentSerializer.h"
 #include "serialization/components/CollisionComponentSerializer.h"
 #include "serialization/components/GameComponentSerializers.h"
+#include "serialization/components/PlayerCameraComponentSerializer.h"
 #include "serialization/components/ScriptComponentSerializer.h"
 #include "serialization/components/SpriteComponentSerializer.h"
 #include "serialization/components/TransformComponentSerializer.h"
@@ -23,6 +24,7 @@ ComponentSerializerRegistry::ComponentSerializerRegistry() {
     registerSerializer(std::make_unique<SpriteComponentSerializer>());
     registerSerializer(std::make_unique<AnimationComponentSerializer>());
     registerSerializer(std::make_unique<CollisionComponentSerializer>());
+    registerSerializer(std::make_unique<PlayerCameraComponentSerializer>());
     registerSerializer(std::make_unique<ScriptComponentSerializer>());
     registerSerializer(std::make_unique<PlayerControllerComponentSerializer>());
 }

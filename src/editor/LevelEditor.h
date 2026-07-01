@@ -9,6 +9,7 @@
 #include "editor/AnimationEditorPanel.h"
 #include "editor/TilesetCreator.h"
 #include "editor/ViewportGrid.h"
+#include "editor/EditorPlayCameraPreviewPanel.h"
 
 #include <filesystem>
 #include <string>
@@ -85,4 +86,5 @@ private:
     TilesetCreator tilesetCreator;
     LevelEditorViewport viewport;
     ViewportGrid viewportGrid;
+    EditorPlayCameraPreviewPanel playCameraPreviewPanel;
 };

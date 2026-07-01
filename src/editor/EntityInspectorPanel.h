@@ -11,6 +11,7 @@ class AnimationComponent;
 class CollisionComponent;
 class Entity;
 class Level;
+class PlayerCameraComponent;
 class ScriptComponent;
 class SpriteComponent;
 class TransformComponent;
@@ -45,6 +46,12 @@ private:
         int collisionBodyType = 0;
         bool collisionSensor = false;
         std::string collisionName;
+        float cameraZoom = 1.0f;
+        float cameraViewportSize[2] = {1280.0f, 720.0f};
+        float cameraOffset[2] = {0.0f, 0.0f};
+        bool cameraClampToBounds = false;
+        float cameraBoundsMin[2] = {0.0f, 0.0f};
+        float cameraBoundsMax[2] = {1280.0f, 720.0f};
     };
 
     void drawEntityTreeNode(Entity& entity, std::string& statusMessage);
@@ -64,6 +71,7 @@ private:
         std::string& statusMessage
     );
     void drawCollisionComponentFields(CollisionComponent& collisionComponent, std::string& statusMessage);
+    void drawPlayerCameraComponentFields(PlayerCameraComponent& cameraComponent, std::string& statusMessage);
     void drawScriptComponentFields(ScriptComponent& scriptComponent, std::string& statusMessage);
 
     int selectedEntityId = -1;

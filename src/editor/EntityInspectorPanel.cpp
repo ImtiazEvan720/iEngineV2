@@ -5,6 +5,7 @@
 #include "components/Component.h"
 #include "components/CollisionComponent.h"
 #include "components/PlayerController.h"
+#include "components/PlayerCameraComponent.h"
 #include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
@@ -580,6 +581,42 @@ void EntityInspectorPanel::drawEntityComponents(Entity& entity, std::string& sta
         }
     }
 
+    if (auto* cameraComponent = entity.getComponent<PlayerCameraComponent>()) {
+        hasComponents = true;
+        if (ImGui::TreeNodeEx("PlayerCameraComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            if (drawRemoveComponentButton(entity, "PlayerCameraComponent", statusMessage)) {
+                ImGui::TreePop();
+                ImGui::TreePop();
+                return;
+            }
+
+            drawComponentEnabledCheckbox(*cameraComponent, "PlayerCameraComponent", statusMessage);
+
+            if (editable) {
+                drawPlayerCameraComponentFields(*cameraComponent, statusMessage);
+            } else {
+                const Vector2F& offset = cameraComponent->getOffset();
+                ImGui::Text("Zoom: %.3f", cameraComponent->getZoom());
+                ImGui::Text(
+                    "Viewport: %.2f, %.2f",
+                    cameraComponent->getViewportWidth(),
+                    cameraComponent->getViewportHeight()
+                );
+                ImGui::Text("Offset: %.2f, %.2f", offset.x, offset.y);
+                ImGui::Text("Clamp: %s", cameraComponent->shouldClampToBounds() ? "true" : "false");
+                ImGui::Text(
+                    "Bounds: %.2f, %.2f -> %.2f, %.2f",
+                    cameraComponent->getMinX(),
+                    cameraComponent->getMinY(),
+                    cameraComponent->getMaxX(),
+                    cameraComponent->getMaxY()
+                );
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
     if (auto* scriptComponent = entity.getComponent<ScriptComponent>()) {
         hasComponents = true;
         if (ImGui::TreeNodeEx("ScriptComponent", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth)) {
@@ -735,6 +772,20 @@ void EntityInspectorPanel::syncEditStateFromEntity(Entity& entity, bool force) {
         entityEditState.collisionBodyType = bodyTypeToIndex(collisionComponent->getBodyType());
         entityEditState.collisionSensor = collisionComponent->isSensor();
         entityEditState.collisionName = collisionComponent->getName();
+    }
+
+    if (PlayerCameraComponent* cameraComponent = entity.getComponent<PlayerCameraComponent>()) {
+        const Vector2F& offset = cameraComponent->getOffset();
+        entityEditState.cameraZoom = cameraComponent->getZoom();
+        entityEditState.cameraViewportSize[0] = cameraComponent->getViewportWidth();
+        entityEditState.cameraViewportSize[1] = cameraComponent->getViewportHeight();
+        entityEditState.cameraOffset[0] = offset.x;
+        entityEditState.cameraOffset[1] = offset.y;
+        entityEditState.cameraClampToBounds = cameraComponent->shouldClampToBounds();
+        entityEditState.cameraBoundsMin[0] = cameraComponent->getMinX();
+        entityEditState.cameraBoundsMin[1] = cameraComponent->getMinY();
+        entityEditState.cameraBoundsMax[0] = cameraComponent->getMaxX();
+        entityEditState.cameraBoundsMax[1] = cameraComponent->getMaxY();
     }
     entityEditState.enabled = entity.isEnabled();
 }

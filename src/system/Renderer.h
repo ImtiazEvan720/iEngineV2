@@ -9,6 +9,8 @@
 class IWindowBackend;
 class LevelAsset;
 class Entity;
+class PlayerCameraComponent;
+class TransformComponent;
 
 class Renderer {
 public:
@@ -36,6 +38,12 @@ public:
     );
     void clearDebugDraw();
     void render();
+    ImTextureID renderCameraPreview(
+        const TransformComponent& transform,
+        const PlayerCameraComponent& camera,
+        int width,
+        int height
+    );
 
     Renderer(const Renderer& other) = delete;
     Renderer& operator=(const Renderer& other) = delete;
@@ -54,8 +62,22 @@ private:
     Renderer() = default;
     ~Renderer() = default;
 
+    void applyMainCamera(const RenderRect& viewport);
+    void ensureCameraPreviewTarget(int width, int height);
+    Camera2D buildCameraFromPlayerCamera(
+        const TransformComponent& transform,
+        const PlayerCameraComponent& cameraComponent,
+        const RenderRect& viewport
+    ) const;
+    void renderWorld(const Camera2D& renderCamera, const RenderRect& viewport);
+    void renderDebugPoints(const Camera2D& renderCamera, const RenderRect& viewport);
+    void updateDebugPoints();
+
     IRenderBackend* renderBackend = nullptr;
     IWindowBackend* windowBackend = nullptr;
+    RenderTargetHandle cameraPreviewTarget = nullptr;
+    int cameraPreviewWidth = 0;
+    int cameraPreviewHeight = 0;
     float renderScale = 4.0f;
     bool editorDragDropActive = false;
     bool editorGridVisible = false;

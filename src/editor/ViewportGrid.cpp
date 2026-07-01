@@ -14,6 +14,7 @@ void ViewportGrid::drawMenuItems() {
     ImGui::MenuItem("Show Colliders", nullptr, &showColliders);
     ImGui::MenuItem("Snap to Grid", nullptr, &snapToGrid);
     ImGui::MenuItem("Show Level Editor", nullptr, &showSideMenu);
+    ImGui::MenuItem("Show Preview Camera", nullptr, &showPreviewCamera);
 }
 
 void ViewportGrid::draw(const RenderRect& viewport) const {
@@ -147,4 +148,8 @@ Vector2F ViewportGrid::snapPosition(const Vector2F& position) const {
 
 float ViewportGrid::getGridSize() const {
     return 16.0f * Renderer::getInstance().getRenderScale();
+}
+
+bool ViewportGrid::shouldShowPreviewCamera() const {
+    return showPreviewCamera;
 }

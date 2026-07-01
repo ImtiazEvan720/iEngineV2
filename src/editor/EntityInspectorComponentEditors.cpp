@@ -2,6 +2,7 @@
 
 #include "components/AnimationComponent.h"
 #include "components/CollisionComponent.h"
+#include "components/PlayerCameraComponent.h"
 #include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
@@ -410,6 +411,63 @@ void EntityInspectorPanel::drawCollisionComponentFields(
     if (ImGui::Checkbox("Sensor", &entityEditState.collisionSensor)) {
         collisionComponent.setSensor(entityEditState.collisionSensor);
         statusMessage = "Updated CollisionComponent sensor.";
+    }
+}
+
+void EntityInspectorPanel::drawPlayerCameraComponentFields(
+    PlayerCameraComponent& cameraComponent,
+    std::string& statusMessage
+) {
+    ImGui::InputFloat("Zoom", &entityEditState.cameraZoom, 0.0f, 0.0f, "%.3f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        entityEditState.cameraZoom = std::max(0.001f, entityEditState.cameraZoom);
+        cameraComponent.setZoom(entityEditState.cameraZoom);
+        statusMessage = "Updated PlayerCameraComponent zoom.";
+    }
+
+    ImGui::InputFloat2("Viewport Size", entityEditState.cameraViewportSize, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        entityEditState.cameraViewportSize[0] = std::max(1.0f, entityEditState.cameraViewportSize[0]);
+        entityEditState.cameraViewportSize[1] = std::max(1.0f, entityEditState.cameraViewportSize[1]);
+        cameraComponent.setViewportWidth(entityEditState.cameraViewportSize[0]);
+        cameraComponent.setViewportHeight(entityEditState.cameraViewportSize[1]);
+        statusMessage = "Updated PlayerCameraComponent viewport size.";
+    }
+
+    ImGui::InputFloat2("Offset", entityEditState.cameraOffset, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        cameraComponent.setOffset(Vector2F(
+            entityEditState.cameraOffset[0],
+            entityEditState.cameraOffset[1]
+        ));
+        statusMessage = "Updated PlayerCameraComponent offset.";
+    }
+
+    if (ImGui::Checkbox("Clamp To Bounds", &entityEditState.cameraClampToBounds)) {
+        cameraComponent.setClampToBounds(entityEditState.cameraClampToBounds);
+        statusMessage = "Updated PlayerCameraComponent bounds clamp.";
+    }
+
+    ImGui::InputFloat2("Bounds Min", entityEditState.cameraBoundsMin, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        cameraComponent.setBounds(
+            entityEditState.cameraBoundsMin[0],
+            entityEditState.cameraBoundsMin[1],
+            entityEditState.cameraBoundsMax[0],
+            entityEditState.cameraBoundsMax[1]
+        );
+        statusMessage = "Updated PlayerCameraComponent bounds minimum.";
+    }
+
+    ImGui::InputFloat2("Bounds Max", entityEditState.cameraBoundsMax, "%.2f");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        cameraComponent.setBounds(
+            entityEditState.cameraBoundsMin[0],
+            entityEditState.cameraBoundsMin[1],
+            entityEditState.cameraBoundsMax[0],
+            entityEditState.cameraBoundsMax[1]
+        );
+        statusMessage = "Updated PlayerCameraComponent bounds maximum.";
     }
 }
 

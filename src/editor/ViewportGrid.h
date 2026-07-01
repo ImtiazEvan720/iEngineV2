@@ -12,6 +12,7 @@ public:
     bool shouldShowColliders() const;
     bool shouldShowSideMenu() const;
     bool shouldSnapToGrid() const;
+    bool shouldShowPreviewCamera() const;
 
     Vector2F snapPosition(const Vector2F& position) const;
     float getGridSize() const;
@@ -21,4 +22,5 @@ private:
     bool snapToGrid = false;
     bool showColliders = false;
     bool showSideMenu = true;
+    bool showPreviewCamera = false;
 };
