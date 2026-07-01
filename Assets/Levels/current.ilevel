@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<level version="1">
+    <entities count="22">
+        <entity id="81" guid="bdf4719b-395f-435d-8675-37e337bcecc4" name="EditorSprite_0" tag="EditorSprite" enabled="false" displayOrder="0">
+            <component type="TransformComponent" enabled="true" x="293" y="447" rotation="0"/>
+            <component type="SpriteComponent" enabled="true" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="32" sourceY="0" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+        </entity>
+        <entity id="82" guid="29265847-1a16-4aa0-af96-155521b97fe9" name="Brick" tag="Obstacle" enabled="true" displayOrder="1">
+            <component type="TransformComponent" enabled="true" x="529" y="374" rotation="0"/>
+            <component type="SpriteComponent" enabled="true" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="0" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            <component type="CollisionComponent" enabled="true" name="Collider" width="34.807739" height="34.826843" offsetX="0.80389404" offsetY="-0.58657837" bodyType="Dynamic" isSensor="false"/>
+        </entity>
+        <entity id="83" guid="1434d3a5-861c-4a64-8e0b-2ae045292828" name="EditorSprite_2" tag="EditorSprite" enabled="true" displayOrder="2">
+            <component type="TransformComponent" enabled="true" x="630" y="448" rotation="0"/>
+            <component type="SpriteComponent" enabled="true" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="32" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+        </entity>
+        <entity id="84" guid="5e1df4b3-d1e0-4ba3-b721-3617190df840" name="EditorAnimation_3" tag="EditorAnimation" enabled="true" displayOrder="3">
+            <component type="TransformComponent" enabled="true" x="667" y="344" rotation="0"/>
+            <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+            </component>
+        </entity>
+        <entity id="85" guid="d649b24c-44d7-428b-aca4-ef92f9b27f10" name="EditorAnimation_4" tag="EditorAnimation" enabled="true" displayOrder="4">
+            <component type="TransformComponent" enabled="true" x="698" y="344" rotation="0"/>
+            <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+            </component>
+        </entity>
+        <entity id="86" guid="309c0e13-ab05-49a3-a25f-a23888cfa940" name="EditorAnimation_5" tag="EditorAnimation" enabled="true" displayOrder="5">
+            <component type="TransformComponent" enabled="true" x="666" y="374" rotation="0"/>
+            <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+            </component>
+        </entity>
+        <entity id="87" guid="01580c4a-4818-4292-8605-a61cfa7ba23f" name="EditorAnimation_6" tag="EditorAnimation" enabled="true" displayOrder="6">
+            <component type="TransformComponent" enabled="true" x="698" y="374" rotation="0"/>
+            <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+            </component>
+        </entity>
+        <entity id="88" guid="5e31100f-6533-438b-9246-360ff84bcd8c" name="BulletManager" tag="Default" enabled="true" displayOrder="9">
+            <component type="TransformComponent" enabled="true" x="640" y="360" rotation="0"/>
+            <component type="ScriptComponent" enabled="true" path="Assets/Scripts/bullet_manager.lua">
+                <property name="bulletPrefab" type="prefab" value="Bullet"/>
+                <property name="poolSize" type="int" value="50"/>
+                <property name="spawnOffset" type="float" value="24"/>
+                <property name="debugBullets" type="bool" value="false"/>
+                <property name="debugAllBullets" type="bool" value="false"/>
+                <property name="debugBulletName" type="string" value="PooledBullet1"/>
+            </component>
+        </entity>
+        <entity id="89" guid="4bb3460f-31d4-48ba-b34f-3e9cec9d302a" name="EnemySpawner" tag="Default" enabled="false" displayOrder="10">
+            <component type="TransformComponent" enabled="true" x="640" y="360" rotation="0"/>
+            <component type="ScriptComponent" enabled="true" path="Assets/Scripts/enemy_spawner.lua">
+                <property name="SpawnRate" type="float" value="1"/>
+                <property name="MaxEnemies" type="int" value="6"/>
+                <property name="EnemyPrefabs" type="map" valueType="prefab">
+                    <entry key="Tank1" value="BotTankGreen"/>
+                    <entry key="Tank2" value="BotTankRed"/>
+                </property>
+                <property name="SpawnArea" type="array" elementType="entity">
+                    <item value="914f1540-32af-4a3e-a211-41601ef568da"/>
+                    <item value="d9b9bb67-7871-4cef-9c40-60a18290322b"/>
+                    <item value="61c68876-fad8-471b-b81a-db87e81afb03"/>
+                    <item value="67337491-3845-42d8-89af-f73adcccfd48"/>
+                </property>
+            </component>
+        </entity>
+        <entity id="90" guid="914f1540-32af-4a3e-a211-41601ef568da" name="SpawnPoint_0" tag="Default" enabled="true" displayOrder="12">
+            <component type="TransformComponent" enabled="true" x="922" y="109" rotation="0"/>
+        </entity>
+        <entity id="91" guid="d9b9bb67-7871-4cef-9c40-60a18290322b" name="SpawnPoint_1" tag="Default" enabled="true" displayOrder="13">
+            <component type="TransformComponent" enabled="true" x="926" y="592" rotation="0"/>
+        </entity>
+        <entity id="92" guid="61c68876-fad8-471b-b81a-db87e81afb03" name="SpawnPoint_2" tag="Default" enabled="true" displayOrder="14">
+            <component type="TransformComponent" enabled="true" x="221" y="93" rotation="0"/>
+        </entity>
+        <entity id="93" guid="67337491-3845-42d8-89af-f73adcccfd48" name="SpawnPoint_3" tag="Default" enabled="true" displayOrder="15">
+            <component type="TransformComponent" enabled="true" x="233" y="612" rotation="0"/>
+        </entity>
+        <entity id="94" guid="e8857580-9e49-477f-8242-965cc05fa69c" name="Player_Tank" tag="EditorAnimation" enabled="true" displayOrder="8">
+            <component type="TransformComponent" enabled="true" x="250" y="322" rotation="0"/>
+            <component type="AnimationComponent" enabled="true" frameDuration="0.079999998" playing="true" looping="true">
+                <frame duration="0.079999998" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="0" sourceY="112" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+                <frame duration="0.079999998" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="16" sourceY="112" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+            </component>
+            <component type="CollisionComponent" enabled="true" name="Collider" width="25.060211" height="30.771057" offsetX="-1.3011322" offsetY="-0.77108765" bodyType="Dynamic" isSensor="false"/>
+            <component type="ScriptComponent" enabled="true" path="Assets/Scripts/player_controller.lua">
+                <property name="speed" type="float" value="100"/>
+                <property name="obstacleTag" type="string" value="Obstacle"/>
+                <property name="obstacleRayDistance" type="float" value="32"/>
+                <property name="bulletManager" type="entity" value="5e31100f-6533-438b-9246-360ff84bcd8c"/>
+                <property name="turret" type="entity" value="7a0a9037-7180-4526-b471-55edc6cb0094"/>
+            </component>
+        </entity>
+        <entity id="95" guid="7a0a9037-7180-4526-b471-55edc6cb0094" name="Turret" tag="Default" enabled="true" displayOrder="0" parentId="94">
+            <component type="TransformComponent" enabled="true" x="-0.59767151" y="-15.833984" rotation="0"/>
+        </entity>
+        <entity id="96" guid="e663c370-c0de-4a3c-829a-7f7ee8c5c38b" name="BotTankGreen" tag="Enemy" enabled="false" displayOrder="96">
+            <component type="TransformComponent" enabled="true" x="244" y="463" rotation="0"/>
+            <component type="AnimationComponent" enabled="true" source="Assets/Animations/GreenTankMove.ianim" frameDuration="0.1" playing="true" looping="true">
+                <frame duration="0.1" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="0" sourceY="240" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                </frame>
+                <frame duration="0.1" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="16" sourceY="240" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                </frame>
+            </component>
+            <component type="CollisionComponent" enabled="true" name="Collider" width="28.839996" height="25.235046" offsetX="0.53105164" offsetY="-0.0010681152" bodyType="Static" isSensor="false"/>
+            <component type="ScriptComponent" enabled="true" path="Assets/Scripts/enemy_tank.lua">
+                <property name="speed" type="float" value="70"/>
+                <property name="life" type="float" value="3"/>
+                <property name="fireCooldown" type="float" value="10"/>
+                <property name="aiWaitTime" type="float" value="4"/>
+                <property name="alignmentTolerance" type="float" value="12"/>
+                <property name="viewportMargin" type="float" value="16"/>
+                <property name="obstacleTag" type="string" value="Obstacle"/>
+                <property name="obstacleRayDistance" type="float" value="48"/>
+                <property name="raycastStartOffset" type="float" value="18"/>
+                <property name="moveTimeMin" type="float" value="0.75"/>
+                <property name="moveTimeMax" type="float" value="2"/>
+                <property name="target" type="entity" value="e8857580-9e49-477f-8242-965cc05fa69c"/>
+                <property name="bulletManager" type="entity" value="5e31100f-6533-438b-9246-360ff84bcd8c"/>
+                <property name="turret" type="entity" value="0ad6609e-76b9-4b2b-873b-70216c5fc522"/>
+                <property name="destroyAnimationEntity" type="entity" value="1242d6f6-2e9d-416f-8184-6e21dfe662c1"/>
+                <property name="destroyDelay" type="float" value="0.6"/>
+            </component>
+        </entity>
+        <entity id="97" guid="0ad6609e-76b9-4b2b-873b-70216c5fc522" name="Turret" tag="Default" enabled="true" displayOrder="0" parentId="96">
+            <component type="TransformComponent" enabled="true" x="-0.52459717" y="-15.606567" rotation="0"/>
+        </entity>
+        <entity id="98" guid="264f16d8-9005-44fc-b7e8-a7316d73f854" name="BotTankRed" tag="Enemy" enabled="false" displayOrder="97">
+            <component type="TransformComponent" enabled="true" x="389" y="547" rotation="0"/>
+            <component type="AnimationComponent" enabled="true" source="Assets/Animations/RedTankMove.ianim" frameDuration="0.1" playing="true" looping="true">
+                <frame duration="0.1" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="128" sourceY="240" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                </frame>
+                <frame duration="0.1" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="144" sourceY="240" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                </frame>
+            </component>
+            <component type="CollisionComponent" enabled="true" name="Collider" width="28.839996" height="25.235046" offsetX="0.53105164" offsetY="-0.0010681152" bodyType="Static" isSensor="false"/>
+            <component type="ScriptComponent" enabled="true" path="Assets/Scripts/enemy_tank.lua">
+                <property name="speed" type="float" value="70"/>
+                <property name="life" type="float" value="3"/>
+                <property name="fireCooldown" type="float" value="10"/>
+                <property name="aiWaitTime" type="float" value="4"/>
+                <property name="alignmentTolerance" type="float" value="12"/>
+                <property name="viewportMargin" type="float" value="16"/>
+                <property name="obstacleTag" type="string" value="Obstacle"/>
+                <property name="obstacleRayDistance" type="float" value="48"/>
+                <property name="raycastStartOffset" type="float" value="18"/>
+                <property name="moveTimeMin" type="float" value="0.75"/>
+                <property name="moveTimeMax" type="float" value="2"/>
+                <property name="target" type="entity" value="e8857580-9e49-477f-8242-965cc05fa69c"/>
+                <property name="bulletManager" type="entity" value="5e31100f-6533-438b-9246-360ff84bcd8c"/>
+                <property name="turret" type="entity" value="17b99f7c-5c3f-44b3-9855-c1c560c30322"/>
+                <property name="destroyAnimationEntity" type="entity" value="3e7b68ed-56ca-448f-b737-fd0ced88e509"/>
+                <property name="destroyDelay" type="float" value="0.6"/>
+            </component>
+        </entity>
+        <entity id="99" guid="17b99f7c-5c3f-44b3-9855-c1c560c30322" name="Turret" tag="Default" enabled="true" displayOrder="0" parentId="98">
+            <component type="TransformComponent" enabled="true" x="-0.52459717" y="-15.606567" rotation="0"/>
+        </entity>
+        <entity id="100" guid="1242d6f6-2e9d-416f-8184-6e21dfe662c1" name="DEAnim" tag="EditorAnimation" enabled="false" displayOrder="1" parentId="96">
+            <component type="TransformComponent" enabled="true" x="0" y="0" rotation="0"/>
+            <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="288" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+            </component>
+            <component type="ScriptComponent" enabled="true" path="Assets/Scripts/destroy_entity.lua">
+                <property name="destroyChildren" type="bool" value="true"/>
+                <property name="fallbackDestroyDelay" type="float" value="0"/>
+            </component>
+        </entity>
+        <entity id="101" guid="3e7b68ed-56ca-448f-b737-fd0ced88e509" name="DestroyEntityAnimation_Copy" tag="EditorAnimation" enabled="false" displayOrder="1" parentId="98">
+            <component type="TransformComponent" enabled="true" x="0" y="0" rotation="0"/>
+            <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+                <frame duration="0.2" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="288" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
+                </frame>
+            </component>
+            <component type="ScriptComponent" enabled="true" path="Assets/Scripts/destroy_entity.lua">
+                <property name="destroyChildren" type="bool" value="true"/>
+                <property name="fallbackDestroyDelay" type="float" value="0"/>
+            </component>
+        </entity>
+        <entity id="102" guid="6d87a65b-b6b3-425d-9ae6-8decfa47bd63" name="SparkEffect" tag="Default" enabled="false" displayOrder="21">
+            <component type="TransformComponent" enabled="true" x="366" y="328" rotation="0"/>
+            <component type="AnimationComponent" enabled="false" source="Assets/Animations/Spark.ianim" frameDuration="0.1" playing="true" looping="true">
+                <frame duration="0.1" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                </frame>
+                <frame duration="0.1" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                </frame>
+                <frame duration="0.1" sizeX="32" sizeY="32">
+                    <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="288" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                </frame>
+            </component>
+            <component type="ScriptComponent" enabled="true" path="Assets/Scripts/effects.lua">
+                <property name="delaySeconds" type="float" value="1.5"/>
+            </component>
+        </entity>
+    </entities>
+</level>

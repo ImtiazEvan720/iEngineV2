@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prefab version="2" name="SparkEffect">
+    <entity prefabId="entity_0" name="SparkEffect" tag="Default" enabled="true" displayOrder="21">
+        <component type="TransformComponent" enabled="true" x="366" y="328" rotation="0"/>
+        <component type="AnimationComponent" enabled="false" source="Assets/Animations/Spark.ianim" frameDuration="0.1" playing="true" looping="true">
+            <frame duration="0.1" sizeX="32" sizeY="32">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+            </frame>
+            <frame duration="0.1" sizeX="32" sizeY="32">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+            </frame>
+            <frame duration="0.1" sizeX="32" sizeY="32">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="288" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+            </frame>
+        </component>
+        <component type="ScriptComponent" enabled="true" path="Assets/Scripts/effects.lua">
+            <property name="delaySeconds" type="float" value="0"/>
+        </component>
+    </entity>
+</prefab>

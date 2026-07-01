@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prefab version="2" name="PlayerTank">
+    <entity prefabId="entity_0" name="PlayerTank" tag="EditorAnimation" enabled="true" displayOrder="8">
+        <component type="TransformComponent" x="306" y="473" rotation="0"/>
+        <component type="AnimationComponent" frameDuration="0.198" playing="true">
+            <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="0" sourceY="112" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="16" sourceY="112" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+        </component>
+        <component type="CollisionComponent" name="Collider" width="27" height="27" offsetX="1.5" offsetY="-1.5" bodyType="Static" isSensor="false"/>
+        <component type="ScriptComponent" path="Assets/Scripts/player_controller.lua">
+            <property name="speed" type="float" value="100"/>
+            <property name="obstacleTag" type="string" value="Obstacle"/>
+            <property name="obstacleRayDistance" type="float" value="32"/>
+            <property name="bulletManager" type="entity" value="5e31100f-6533-438b-9246-360ff84bcd8c"/>
+            <property name="turret" type="entity" scope="PrefabLocal" value="entity_1"/>
+        </component>
+        <children>
+            <entity prefabId="entity_1" name="Turret" tag="Default" enabled="true" displayOrder="0">
+                <component type="TransformComponent" x="-0.21307373" y="-15.811554" rotation="0"/>
+            </entity>
+        </children>
+    </entity>
+</prefab>

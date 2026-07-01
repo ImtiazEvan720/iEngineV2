@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prefab version="2" name="DestroyEntityAnimation">
+    <entity prefabId="entity_0" name="DestroyEntityAnimation" tag="EditorAnimation" enabled="true" displayOrder="89">
+        <component type="TransformComponent" x="456" y="480" rotation="0"/>
+        <component type="AnimationComponent" source="Assets/Animations/Destroy.ianim" frameDuration="0.02" playing="true" looping="true">
+            <frame duration="0.02" sizeX="32" sizeY="32">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+            </frame>
+            <frame duration="0.05" sizeX="32" sizeY="32">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+            </frame>
+            <frame duration="0.08" sizeX="32" sizeY="32">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="288" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+            </frame>
+            <frame duration="0.1" sizeX="64" sizeY="64">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="304" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-32" localY="-32"/>
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="320" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="0" localY="-32"/>
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="304" sourceY="144" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-32" localY="0"/>
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="320" sourceY="144" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="0" localY="0"/>
+            </frame>
+            <frame duration="0.1" sizeX="64" sizeY="64">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="336" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-32" localY="-32"/>
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="352" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="0" localY="-32"/>
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="336" sourceY="144" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-32" localY="0"/>
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="352" sourceY="144" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="0" localY="0"/>
+            </frame>
+        </component>
+        <component type="ScriptComponent" path="Assets/Scripts/destroy_entity.lua">
+            <property name="destroyChildren" type="bool" value="true"/>
+            <property name="fallbackDestroyDelay" type="float" value="0"/>
+        </component>
+    </entity>
+</prefab>

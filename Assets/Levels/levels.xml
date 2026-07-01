@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<levels version="1" count="4">
+    <level fileName="current.ilevel" displayName="current" active="true">
+        <description>Current Level</description>
+    </level>
+    <level fileName="new_level.ilevel" displayName="new_level" active="true">
+        <description>New Level</description>
+    </level>
+    <level fileName="new_level_2.ilevel" displayName="new_level_2" active="true">
+        <description></description>
+    </level>
+    <level fileName="loader.ilevel" displayName="loader" active="true">
+        <description>Loader Level</description>
+    </level>
+    <initialLevel path="loader.ilevel"/>
+</levels>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prefab version="2" name="BotTankRed">
+    <entity prefabId="entity_0" name="BotTankRed" tag="Enemy" enabled="true" displayOrder="97">
+        <component type="TransformComponent" enabled="true" x="389" y="547" rotation="0"/>
+        <component type="AnimationComponent" enabled="true" source="Assets/Animations/RedTankMove.ianim" frameDuration="0.1" playing="true" looping="true">
+            <frame duration="0.1" sizeX="32" sizeY="32">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="128" sourceY="240" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+            </frame>
+            <frame duration="0.1" sizeX="32" sizeY="32">
+                <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="144" sourceY="240" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+            </frame>
+        </component>
+        <component type="CollisionComponent" enabled="true" name="Collider" width="28.839996" height="25.235046" offsetX="0.53105164" offsetY="-0.0010681152" bodyType="Static" isSensor="false"/>
+        <component type="ScriptComponent" enabled="true" path="Assets/Scripts/enemy_tank.lua">
+            <property name="speed" type="float" value="70"/>
+            <property name="life" type="float" value="3"/>
+            <property name="fireCooldown" type="float" value="10"/>
+            <property name="aiWaitTime" type="float" value="4"/>
+            <property name="alignmentTolerance" type="float" value="12"/>
+            <property name="viewportMargin" type="float" value="16"/>
+            <property name="obstacleTag" type="string" value="Obstacle"/>
+            <property name="obstacleRayDistance" type="float" value="48"/>
+            <property name="raycastStartOffset" type="float" value="18"/>
+            <property name="moveTimeMin" type="float" value="0.75"/>
+            <property name="moveTimeMax" type="float" value="2"/>
+            <property name="target" type="entity" value="e8857580-9e49-477f-8242-965cc05fa69c"/>
+            <property name="bulletManager" type="entity" value="5e31100f-6533-438b-9246-360ff84bcd8c"/>
+            <property name="turret" type="entity" scope="PrefabLocal" value="entity_1"/>
+            <property name="destroyAnimationEntity" type="entity" scope="PrefabLocal" value="entity_2"/>
+            <property name="destroyDelay" type="float" value="0.6"/>
+        </component>
+        <children>
+            <entity prefabId="entity_1" name="Turret" tag="Default" enabled="true" displayOrder="0">
+                <component type="TransformComponent" enabled="true" x="-0.52459717" y="-15.606567" rotation="0"/>
+            </entity>
+            <entity prefabId="entity_2" name="DestroyEntityAnimation_Copy" tag="EditorAnimation" enabled="false" displayOrder="1">
+                <component type="TransformComponent" enabled="true" x="0" y="0" rotation="0"/>
+                <component type="AnimationComponent" enabled="true" source="Assets/Animations/Destroy.ianim" frameDuration="0.02" playing="true" looping="true">
+                    <frame duration="0.02" sizeX="32" sizeY="32">
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                    </frame>
+                    <frame duration="0.05" sizeX="32" sizeY="32">
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                    </frame>
+                    <frame duration="0.08" sizeX="32" sizeY="32">
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="288" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
+                    </frame>
+                    <frame duration="0.1" sizeX="64" sizeY="64">
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="304" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-32" localY="-32"/>
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="320" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="0" localY="-32"/>
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="304" sourceY="144" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-32" localY="0"/>
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="320" sourceY="144" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="0" localY="0"/>
+                    </frame>
+                    <frame duration="0.1" sizeX="64" sizeY="64">
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="336" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-32" localY="-32"/>
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="352" sourceY="128" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="0" localY="-32"/>
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="336" sourceY="144" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-32" localY="0"/>
+                        <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="352" sourceY="144" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="0" localY="0"/>
+                    </frame>
+                </component>
+                <component type="ScriptComponent" enabled="true" path="Assets/Scripts/destroy_entity.lua">
+                    <property name="destroyChildren" type="bool" value="true"/>
+                    <property name="fallbackDestroyDelay" type="float" value="0"/>
+                </component>
+            </entity>
+        </children>
+    </entity>
+</prefab>

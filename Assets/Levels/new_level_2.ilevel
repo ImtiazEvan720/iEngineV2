@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<level version="1">
+    <entities count="11">
+        <entity id="7" name="EditorAnimation_0" tag="EditorAnimation">
+            <component type="TransformComponent" x="547" y="312" rotation="0"/>
+            <component type="AnimationComponent" frameDuration="0.2" playing="true">
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            </component>
+        </entity>
+        <entity id="8" name="EditorAnimation_1" tag="EditorAnimation">
+            <component type="TransformComponent" x="580" y="313" rotation="0"/>
+            <component type="AnimationComponent" frameDuration="0.2" playing="true">
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            </component>
+        </entity>
+        <entity id="9" name="EditorAnimation_2" tag="EditorAnimation">
+            <component type="TransformComponent" x="548" y="346" rotation="0"/>
+            <component type="AnimationComponent" frameDuration="0.2" playing="true">
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            </component>
+        </entity>
+        <entity id="10" name="EditorAnimation_3" tag="EditorAnimation">
+            <component type="TransformComponent" x="582" y="347" rotation="0"/>
+            <component type="AnimationComponent" frameDuration="0.2" playing="true">
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            </component>
+        </entity>
+        <entity id="11" name="EditorAnimation_4" tag="EditorAnimation">
+            <component type="TransformComponent" x="551" y="378" rotation="0"/>
+            <component type="AnimationComponent" frameDuration="0.2" playing="true">
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+                <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            </component>
+        </entity>
+        <entity id="12" name="EditorSprite_5" tag="EditorSprite">
+            <component type="TransformComponent" x="497" y="307" rotation="0"/>
+            <component type="SpriteComponent" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="32" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+        </entity>
+        <entity id="13" name="EditorSprite_6" tag="EditorSprite">
+            <component type="TransformComponent" x="497" y="343" rotation="0"/>
+            <component type="SpriteComponent" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="32" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+        </entity>
+        <entity id="14" name="EditorSprite_7" tag="EditorSprite">
+            <component type="TransformComponent" x="498" y="377" rotation="0"/>
+            <component type="SpriteComponent" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="272" sourceY="32" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+        </entity>
+        <entity id="15" name="LuaScriptTest" tag="Script">
+            <component type="TransformComponent" x="496.81155" y="210.27773" rotation="0"/>
+            <component type="SpriteComponent" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="32" sourceY="0" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            <component type="ScriptComponent" path="Assets/Scripts/test_transform.lua"/>
+        </entity>
+        <entity id="16" name="LuaScriptTest" tag="Script">
+            <component type="TransformComponent" x="454.85672" y="484.72791" rotation="0"/>
+            <component type="SpriteComponent" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="32" sourceY="0" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            <component type="ScriptComponent" path="Assets/Scripts/test_transform.lua"/>
+        </entity>
+        <entity id="17" name="PlayerTank" tag="EditorSprite">
+            <component type="TransformComponent" x="363" y="333" rotation="0"/>
+            <component type="SpriteComponent" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="0" sourceY="48" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
+            <component type="PlayerController"/>
+        </entity>
+    </entities>
+</level>

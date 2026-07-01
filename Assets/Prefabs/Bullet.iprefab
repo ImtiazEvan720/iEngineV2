@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<prefab version="1" name="Bullet">
-    <entity name="Bullet" tag="Bullet">
-        <component type="TransformComponent" x="0" y="0" rotation="0"/>
-        <component type="SpriteComponent" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="320" sourceY="96" sourceWidth="8" sourceHeight="16" sizeX="16" sizeY="32" originX="4" originY="8"/>
-        <component type="CollisionComponent" name="Bullet" width="16" height="32" offsetX="0" offsetY="0" bodyType="Dynamic" isSensor="true"/>
-        <component type="ScriptComponent" path="Assets/Scripts/bullet.lua"/>
+<prefab version="2" name="Bullet">
+    <entity prefabId="entity_0" name="Bullet" tag="Bullet" enabled="true" displayOrder="22">
+        <component type="TransformComponent" enabled="true" x="489.41919" y="224.97256" rotation="0"/>
+        <component type="SpriteComponent" enabled="true" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="320" sourceY="96" sourceWidth="8" sourceHeight="16" sizeX="16" sizeY="32" originX="4" originY="8"/>
+        <component type="CollisionComponent" enabled="true" name="Bullet" width="7.75" height="8.8083496" offsetX="1.1425781" offsetY="-0.45767212" bodyType="Dynamic" isSensor="true"/>
+        <component type="ScriptComponent" enabled="true" path="Assets/Scripts/bullet.lua">
+            <property name="SparkEffectPrefab" type="prefab" value="SparkEffect"/>
+            <property name="speed" type="float" value="300"/>
+            <property name="damage" type="float" value="1"/>
+            <property name="debugMovement" type="bool" value="false"/>
+            <property name="debugAllBullets" type="bool" value="false"/>
+            <property name="debugBulletName" type="string" value="PooledBullet1"/>
+            <property name="debugMoveLogInterval" type="float" value="0.25"/>
+        </component>
     </entity>
 </prefab>

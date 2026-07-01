@@ -12,6 +12,7 @@
 #include "math/Vector2F.h"
 #include "system/InputSystem.h"
 #include "system/ProjectManager.h"
+#include "system/Renderer.h"
 
 #include "imgui.h"
 
@@ -148,6 +149,30 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
                     false,
                     "Collider"
                 );
+            }
+        },
+        {
+            "SpriteComponent",
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
+                ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
+
+                const float renderScale = Renderer::getInstance().getRenderScale();
+                Sprite sprite(nullptr, RenderRect{0.0f, 0.0f, 16.0f, 16.0f});
+                sprite.setSize(Vector2F(16.0f * renderScale, 16.0f * renderScale));
+
+                return addComponentIfMissing<SpriteComponent>(entity, sprite);
+            }
+        },
+        {
+            "AnimationComponent",
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
+                ensureComponent<TransformComponent>(entity, Vector2F(0.0f, 0.0f), 0.0f);
+                Animation animation(0.1f);
+                return addComponentIfMissing<AnimationComponent>(entity, animation);
             }
         },
         {

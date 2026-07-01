@@ -1,142 +1,189 @@
 #include "components/AnimationComponent.h"
-
 #include "Entity.h"
 #include "components/SpriteComponent.h"
+#include "system/ScriptSystem.h"
 
 #include <stdexcept>
 
-AnimationComponent::AnimationComponent(const Animation& animation)
+AnimationComponent::AnimationComponent(const Animation &animation)
     : animation(animation) {}
 
-Animation& AnimationComponent::getAnimation() {
+Animation &AnimationComponent::getAnimation()
+{
     return animation;
 }
 
-const Animation& AnimationComponent::getAnimation() const {
+const Animation &AnimationComponent::getAnimation() const
+{
     return animation;
 }
 
-void AnimationComponent::setAnimation(const Animation& animation) {
+void AnimationComponent::setAnimation(const Animation &animation)
+{
     this->animation = animation;
     reset();
     playing = true;
 }
 
-void AnimationComponent::setAnimationSourcePath(const std::string& path) {
+void AnimationComponent::setAnimationSourcePath(const std::string &path)
+{
     animationSourcePath = path;
 }
 
-const std::string& AnimationComponent::getAnimationSourcePath() const {
+const std::string &AnimationComponent::getAnimationSourcePath() const
+{
     return animationSourcePath;
 }
 
-void AnimationComponent::play() {
-    if (finished) {
+void AnimationComponent::play()
+{
+    if (finished)
+    {
         reset();
     }
 
     playing = true;
 }
 
-void AnimationComponent::pause() {
+void AnimationComponent::pause()
+{
     playing = false;
 }
 
-void AnimationComponent::reset() {
+void AnimationComponent::reset()
+{
     currentFrameIndex = 0;
     elapsedTime = 0.0f;
     finished = false;
 }
 
-bool AnimationComponent::isPlaying() const {
+bool AnimationComponent::isPlaying() const
+{
     return playing;
 }
 
-bool AnimationComponent::isLooping() const {
+bool AnimationComponent::isLooping() const
+{
     return looping;
 }
 
-bool AnimationComponent::isFinished() const {
+bool AnimationComponent::isFinished() const
+{
     return finished;
 }
 
-std::size_t AnimationComponent::getCurrentFrameIndex() const {
+void AnimationComponent::notifyAnimationFinished()
+{
+
+    Entity *owner = getEntity();
+    if (owner == nullptr || owner->isDestroyed() || !owner->isEnabled())
+    {
+        return;
+    }
+
+    ScriptSystem::getInstance().callEntityAnimationFinishedFunction(*owner, "onAnimationFinished");
+}
+
+std::size_t AnimationComponent::getCurrentFrameIndex() const
+{
     return currentFrameIndex;
 }
 
-void AnimationComponent::setLooping(bool looping) {
+void AnimationComponent::setLooping(bool looping)
+{
     this->looping = looping;
 }
 
-const Sprite& AnimationComponent::getCurrentFrame() const {
-    if (!animation.hasFrames()) {
+const Sprite &AnimationComponent::getCurrentFrame() const
+{
+    if (!animation.hasFrames())
+    {
         throw std::runtime_error("AnimationComponent has no frames.");
     }
 
     return animation.getFrame(currentFrameIndex);
 }
 
-const AnimationRuntimeFrame& AnimationComponent::getCurrentRuntimeFrame() const {
-    if (!animation.hasFrames()) {
+const AnimationRuntimeFrame &AnimationComponent::getCurrentRuntimeFrame() const
+{
+    if (!animation.hasFrames())
+    {
         throw std::runtime_error("AnimationComponent has no frames.");
     }
 
     return animation.getRuntimeFrame(currentFrameIndex);
 }
 
-const std::vector<AnimationFrameSprite>& AnimationComponent::getCurrentFrameSprites() const {
+const std::vector<AnimationFrameSprite> &AnimationComponent::getCurrentFrameSprites() const
+{
     return getCurrentRuntimeFrame().sprites;
 }
 
-void AnimationComponent::onUpdate(float deltaTime) {
-    if (!animation.hasFrames() || !this->isEnabled()) {
+void AnimationComponent::onUpdate(float deltaTime)
+{
+    if (!animation.hasFrames() || !this->isEnabled())
+    {
         return;
     }
 
-    if (currentFrameIndex >= animation.getFrameCount()) {
+    if (currentFrameIndex >= animation.getFrameCount())
+    {
         currentFrameIndex = 0;
     }
 
-    if (playing && !finished && animation.getFrameDuration(currentFrameIndex) > 0.0f) {
+    if (playing && !finished && animation.getFrameDuration(currentFrameIndex) > 0.0f)
+    {
         elapsedTime += deltaTime;
 
-        while (elapsedTime >= animation.getFrameDuration(currentFrameIndex)) {
+        while (elapsedTime >= animation.getFrameDuration(currentFrameIndex))
+        {
             elapsedTime -= animation.getFrameDuration(currentFrameIndex);
 
-            if (currentFrameIndex + 1 < animation.getFrameCount()) {
+            if (currentFrameIndex + 1 < animation.getFrameCount())
+            {
                 ++currentFrameIndex;
-            } else if (looping) {
+            }
+            else if (looping)
+            {
                 currentFrameIndex = 0;
-            } else {
+            }
+            else
+            {
                 finished = true;
                 playing = false;
+                notifyAnimationFinished();
                 break;
             }
         }
     }
 
-    Entity* entity = getEntity();
-    if (entity == nullptr) {
+    Entity *entity = getEntity();
+    if (entity == nullptr)
+    {
         return;
     }
 
-    SpriteComponent* spriteComponent = entity->getComponent<SpriteComponent>();
-    if (spriteComponent == nullptr) {
+    SpriteComponent *spriteComponent = entity->getComponent<SpriteComponent>();
+    if (spriteComponent == nullptr)
+    {
         return;
     }
 
-    const std::vector<AnimationFrameSprite>& frameSprites = getCurrentFrameSprites();
-    if (!frameSprites.empty()) {
+    const std::vector<AnimationFrameSprite> &frameSprites = getCurrentFrameSprites();
+    if (!frameSprites.empty())
+    {
         spriteComponent->setSprite(frameSprites.front().sprite);
     }
 }
 
-std::unique_ptr<Component> AnimationComponent::clone() const {
+std::unique_ptr<Component> AnimationComponent::clone() const
+{
     auto copy = std::make_unique<AnimationComponent>(animation);
     copy->setAnimationSourcePath(animationSourcePath);
     copy->setLooping(looping);
 
-    if (!playing) {
+    if (!playing)
+    {
         copy->pause();
     }
 

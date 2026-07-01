@@ -1,3 +1,3 @@
 #!/bin/bash
-cd "$(dirname "$0")/build/bin" || exit 1
-./iEngineV2 --sdl "$@"
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+"$PROJECT_ROOT/build/bin/iEngineV2" --data-root "$PROJECT_ROOT" --sdl "$@"

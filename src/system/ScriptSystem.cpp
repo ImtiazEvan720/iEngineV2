@@ -682,6 +682,36 @@ bool ScriptSystem::tryCallEntitySensorFunction(
     return true;
 }
 
+bool ScriptSystem::callEntityAnimationFinishedFunction(Entity& entity, const std::string& functionName) {
+    if (!entity.isEnabled() || entity.isDestroyed()) {
+        return false;
+    }
+
+    ScriptComponent* scriptComponent = entity.getComponent<ScriptComponent>();
+    if (scriptComponent == nullptr) {
+        return false;
+    }
+
+    const auto scriptIterator = scripts.find(scriptComponent);
+    if (scriptIterator == scripts.end()) {
+        return false;
+    }
+
+    refreshScriptPropertyTables(scriptIterator->second, *scriptComponent);
+
+    sol::protected_function function =
+        scriptIterator->second.environment.get<sol::protected_function>(functionName);
+    if (!function.valid()) {
+        return false;
+    }
+
+    sol::protected_function_result result = function(entity);
+    if (!result.valid()) {
+        return reportScriptError(entity.getName() + "." + functionName, result);
+    }
+    
+    return true;
+}
 bool ScriptSystem::requestLevelLoad(const std::string& levelName) {
     if (levelName.empty()) {
         std::cerr << "[Lua] Cannot request level load with an empty level name." << std::endl;

@@ -22,7 +22,13 @@ ScriptProperties = {{
     name = "debugMoveLogInterval",
     type = "float",
     default = 0.25
-}}
+},
+{
+    name = "SparkEffectPrefab",
+    type = "prefab",
+    default = "SparkEffect"
+}
+}
 
 local Bullet = {}
 Bullet.__index = Bullet
@@ -38,7 +44,8 @@ function Bullet:new(entity)
         debugAllBullets = true,
         debugBulletName = "PooledBullet1",
         debugMoveLogInterval = 0.25,
-        debugMoveTimer = 0.0
+        debugMoveTimer = 0.0,
+        sparkEffectPrefab = "SparkEffect"
     }, Bullet)
 end
 
@@ -136,6 +143,7 @@ local function applyScriptProperties(bullet, script)
     bullet.debugAllBullets = script:getBool("debugAllBullets", bullet.debugAllBullets)
     bullet.debugBulletName = script:getString("debugBulletName", bullet.debugBulletName)
     bullet.debugMoveLogInterval = script:getFloat("debugMoveLogInterval", bullet.debugMoveLogInterval)
+    bullet.sparkEffectPrefab = script:getString("SparkEffectPrefab", bullet.sparkEffectPrefab)
 end
 
 function onStart(entity, script)
@@ -333,10 +341,10 @@ local function handleBulletHit(entity, otherEntity, selfCollider, otherCollider,
         local hitSide = getHitSide(boxNormal)
 
         if contactPoint ~= nil then
-            Engine.debugDrawPoint(contactPoint, 6.0, 255, 255, 0, 255, 0.25)
-            local effect = spawnPrefab("DestroyEntityAnimation", contactPoint, 0.0)
+            -- Engine.debugDrawPoint(contactPoint, 6.0, 255, 255, 0, 255, 0.25)
+            local effect = spawnPrefab(bullet.sparkEffectPrefab, contactPoint, 0.0)
             if effect == nil then
-                Engine.log("Failed to spawn DestroyEntityAnimation prefab.")
+                Engine.log("Failed to spawn " .. tostring(bullet.sparkEffectPrefab) .. " prefab.")
             end
         end
 

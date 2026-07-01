@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<itile version="1.0" name="BattleCityTileset" tileWidth="16" tileHeight="16" tileCount="400" columns="25">
+    <image source="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" transparency="000001" width="400" height="256"/>
+</itile>

@@ -78,6 +78,32 @@ std::string getBackendName(int argc, char* argv[]) {
     return backendName;
 }
 
+std::string getDataRootOverride(int argc, char* argv[]) {
+    std::string overrideValue;
+
+    for (int i = 1; i < argc; ++i) {
+        const std::string argument = argv[i];
+
+        if (argument == "--data-root" && i + 1 < argc) {
+            overrideValue = argv[i + 1];
+            ++i;
+        } else if (argument.rfind("--data-root=", 0) == 0) {
+            overrideValue = argument.substr(std::string("--data-root=").size());
+        }
+    }
+
+    if (overrideValue.empty()) {
+        return "";
+    }
+
+    std::filesystem::path dataRoot(overrideValue);
+    if (dataRoot.is_relative()) {
+        dataRoot = std::filesystem::absolute(dataRoot);
+    }
+
+    return dataRoot.lexically_normal().string();
+}
+
 bool runStartupChecks() {
     Vector2F vec1(3.0f, 4.0f);
     Vector2F vec2(1.0f, 2.0f);
@@ -117,6 +143,11 @@ bool runStartupChecks() {
 }
 
 std::string getRuntimeDataRoot(int argc, char* argv[]) {
+    const std::string dataRootOverride = getDataRootOverride(argc, argv);
+    if (!dataRootOverride.empty()) {
+        return dataRootOverride;
+    }
+
 #ifdef IENGINE_ANDROID
     const char* internalStoragePath = SDL_GetAndroidInternalStoragePath();
     if (internalStoragePath != nullptr && internalStoragePath[0] != '\0') {

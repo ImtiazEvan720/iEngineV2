@@ -25,6 +25,7 @@ public:
     bool isFinished() const;
     std::size_t getCurrentFrameIndex() const;
     void setLooping(bool looping);
+    void notifyAnimationFinished();
 
     const Sprite& getCurrentFrame() const;
     const AnimationRuntimeFrame& getCurrentRuntimeFrame() const;

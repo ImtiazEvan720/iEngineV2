@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<level version="1">
+    <entities count="1">
+        <entity id="9" name="Loader" tag="Default" enabled="true" displayOrder="9">
+            <component type="TransformComponent" x="640" y="360" rotation="0"/>
+            <component type="ScriptComponent" path="Assets/Scripts/persistent_level_cycler.lua"/>
+        </entity>
+    </entities>
+</level>

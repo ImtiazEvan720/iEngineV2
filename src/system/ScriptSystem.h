@@ -10,73 +10,71 @@ class ScriptComponent;
 class Vector2F;
 class CollisionComponent;
 
-class ScriptSystem {
+class ScriptSystem
+{
 public:
-    static ScriptSystem& getInstance();
+    static ScriptSystem &getInstance();
 
     void initialize();
-    bool loadScript(ScriptComponent& component);
-    void updateScript(ScriptComponent& component, float deltaTime);
-    void unloadScript(ScriptComponent& component);
-    bool callEntityScriptFunction(Entity& entity, const std::string& functionName);
-    bool callEntityScriptFunction(Entity& entity, const std::string& functionName, float argument);
-    bool callEntityScriptFunction(Entity& entity, const std::string& functionName, Entity& argument);
-    bool callEntityScriptFunctionWithSelf(Entity& entity, const std::string& functionName);
-    bool callEntityScriptFunctionWithSelf(Entity& entity, const std::string& functionName, Entity& argument);
-    bool callEntityScriptFunction(Entity& entity, const std::string& functionName, Entity& entityArgument, float floatArgument);
-    bool callEntityScriptFunction(Entity& entity, const std::string& functionName, const Vector2F& position, float rotation);
+    bool loadScript(ScriptComponent &component);
+    void updateScript(ScriptComponent &component, float deltaTime);
+    void unloadScript(ScriptComponent &component);
+    bool callEntityScriptFunction(Entity &entity, const std::string &functionName);
+    bool callEntityScriptFunction(Entity &entity, const std::string &functionName, float argument);
+    bool callEntityScriptFunction(Entity &entity, const std::string &functionName, Entity &argument);
+    bool callEntityScriptFunctionWithSelf(Entity &entity, const std::string &functionName);
+    bool callEntityScriptFunctionWithSelf(Entity &entity, const std::string &functionName, Entity &argument);
+    bool callEntityScriptFunction(Entity &entity, const std::string &functionName, Entity &entityArgument, float floatArgument);
+    bool callEntityScriptFunction(Entity &entity, const std::string &functionName, const Vector2F &position, float rotation);
     bool callEntityScriptFunction(
-        Entity& entity,
-        const std::string& functionName,
-        const Vector2F& position,
+        Entity &entity,
+        const std::string &functionName,
+        const Vector2F &position,
         float rotation,
-        Entity& argument
-    );
-    bool callEntityScriptEventFunction(Entity& entity, const std::string& eventType);
-    bool callEntityScriptEventFunction(Entity& entity, const std::string& eventType, sol::table eventData);
+        Entity &argument);
+    bool callEntityScriptEventFunction(Entity &entity, const std::string &eventType);
+    bool callEntityScriptEventFunction(Entity &entity, const std::string &eventType, sol::table eventData);
     bool callEntityCollisionFunction(
-        Entity& entity,
-        const std::string& functionName,
-        CollisionComponent& self,
-        CollisionComponent& other,
-        const Vector2F& normal,
-        const Vector2F& contactPoint
-    );
+        Entity &entity,
+        const std::string &functionName,
+        CollisionComponent &self,
+        CollisionComponent &other,
+        const Vector2F &normal,
+        const Vector2F &contactPoint);
     bool tryCallEntityCollisionFunction(
-        Entity& entity,
-        const std::string& functionName,
-        CollisionComponent& self,
-        CollisionComponent& other,
-        const Vector2F& normal,
-        const Vector2F& contactPoint
-    );
+        Entity &entity,
+        const std::string &functionName,
+        CollisionComponent &self,
+        CollisionComponent &other,
+        const Vector2F &normal,
+        const Vector2F &contactPoint);
     bool callEntitySensorFunction(
-        Entity& entity,
-        const std::string& functionName,
-        CollisionComponent& self,
-        CollisionComponent& other
-    );
+        Entity &entity,
+        const std::string &functionName,
+        CollisionComponent &self,
+        CollisionComponent &other);
     bool tryCallEntitySensorFunction(
-        Entity& entity,
-        const std::string& functionName,
-        CollisionComponent& self,
-        CollisionComponent& other
-    );
-    bool requestLevelLoad(const std::string& levelName);
-    bool consumePendingLevelLoad(std::string& levelName);
+        Entity &entity,
+        const std::string &functionName,
+        CollisionComponent &self,
+        CollisionComponent &other);
+    bool callEntityAnimationFinishedFunction(
+        Entity &entity,
+        const std::string &functionName);
+    bool requestLevelLoad(const std::string &levelName);
+    bool consumePendingLevelLoad(std::string &levelName);
     float callEntityScriptFloatFunction(
-        Entity& entity,
-        const std::string& functionName,
-        float fallback
-    );
+        Entity &entity,
+        const std::string &functionName,
+        float fallback);
     bool callEntityScriptBoolFunction(
-        Entity& entity,
-        const std::string& functionName,
-        bool fallback
-    );
+        Entity &entity,
+        const std::string &functionName,
+        bool fallback);
 
 private:
-    struct ScriptInstance {
+    struct ScriptInstance
+    {
         sol::environment environment;
         sol::protected_function onStart;
         sol::protected_function onUpdate;
@@ -85,14 +83,14 @@ private:
     ScriptSystem() = default;
 
     void bindEngineTypes();
-    void refreshScriptPropertyTables(ScriptInstance& script, const ScriptComponent& component);
-    bool getEntityScriptFunction(Entity& entity, const std::string& functionName, sol::protected_function& function);
-    bool callOnStart(ScriptInstance& script, Entity& entity);
-    bool callOnUpdate(ScriptInstance& script, Entity& entity, float deltaTime);
-    bool reportScriptError(const std::string& context, const sol::protected_function_result& result);
+    void refreshScriptPropertyTables(ScriptInstance &script, const ScriptComponent &component);
+    bool getEntityScriptFunction(Entity &entity, const std::string &functionName, sol::protected_function &function);
+    bool callOnStart(ScriptInstance &script, Entity &entity);
+    bool callOnUpdate(ScriptInstance &script, Entity &entity, float deltaTime);
+    bool reportScriptError(const std::string &context, const sol::protected_function_result &result);
 
     sol::state lua;
-    std::unordered_map<ScriptComponent*, ScriptInstance> scripts;
+    std::unordered_map<ScriptComponent *, ScriptInstance> scripts;
     std::string pendingLevelLoadName;
     bool initialized = false;
 };
