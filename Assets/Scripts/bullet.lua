@@ -89,22 +89,18 @@ function Bullet:update(deltaTime)
         return
     end
 
-    local position = transform:getPosition()
-    local direction = self:getForwardDirection(transform:getRotation())
-
-    position.x = position.x + direction.x * self.speed * deltaTime
-    position.y = position.y + direction.y * self.speed * deltaTime
-
-    transform:setPosition(position)
-
     if self:shouldDebug() then
         self.debugMoveTimer = self.debugMoveTimer - deltaTime
         if self.debugMoveTimer <= 0.0 then
             self.debugMoveTimer = self.debugMoveLogInterval
+            local position = transform:getPosition()
+            local collider = self.entity:getCollision()
+            local velocity = collider == nil and Vector2F.new(0.0, 0.0) or collider:getLinearVelocity()
             Engine.log("Bullet update " .. self:getDebugName() .. " pos=(" .. tostring(position.x) .. ", " ..
                            tostring(position.y) .. ") rot=" .. tostring(transform:getRotation()) .. " enabled=" ..
                            tostring(self.entity:isEnabled()) .. " active=" .. tostring(self.active) .. " speed=" ..
-                           tostring(self.speed) .. " dt=" .. tostring(deltaTime))
+                           tostring(self.speed) .. " velocity=(" .. tostring(velocity.x) .. ", " ..
+                           tostring(velocity.y) .. ") dt=" .. tostring(deltaTime))
         end
     end
 end
@@ -151,6 +147,12 @@ function onStart(entity, script)
     applyScriptProperties(bullet, script)
 
     entity:setTag("Bullet")
+
+    local collider = entity:getCollision()
+    if collider ~= nil then
+        collider:setFixedRotation(true)
+        collider:setLinearVelocity(Vector2F.new(0.0, 0.0))
+    end
 end
 
 function onUpdate(entity, deltaTime, script)
@@ -178,6 +180,52 @@ function setOwner(entity, ownerEntity)
     end
 end
 
+function fireBullet(entity, event)
+    local bullet = getBulletState(entity)
+    if bullet == nil or event == nil then
+        return false
+    end
+
+    if event.owner ~= nil then
+        bullet.owner = event.owner
+    else
+        bullet.owner = nil
+    end
+
+    bullet.active = true
+    bullet.debugMoveTimer = 0.0
+
+    local direction = event.direction
+    if direction == nil then
+        local rotation = event.rotation or 0.0
+        direction = bullet:getForwardDirection(rotation)
+    end
+
+    local collider = entity:getCollision()
+    if collider ~= nil then
+        collider:setFixedRotation(true)
+        collider:setLinearVelocity(Vector2F.new(
+            direction.x * bullet.speed,
+            direction.y * bullet.speed
+        ))
+    end
+
+    if bullet:shouldDebug() then
+        local ownerName = bullet.owner == nil and "nil" or bullet.owner:getName()
+        Engine.log("Bullet fired: "
+            .. bullet:getDebugName()
+            .. " owner="
+            .. tostring(ownerName)
+            .. " velocity=("
+            .. tostring(direction.x * bullet.speed)
+            .. ", "
+            .. tostring(direction.y * bullet.speed)
+            .. ")")
+    end
+
+    return true
+end
+
 function clearOwner(entity)
     local bullet = getBulletState(entity)
     if bullet ~= nil then
@@ -187,6 +235,11 @@ function clearOwner(entity)
 
         bullet.owner = nil
         bullet.active = false
+    end
+
+    local collider = entity:getCollision()
+    if collider ~= nil then
+        collider:setLinearVelocity(Vector2F.new(0.0, 0.0))
     end
 end
 
@@ -198,6 +251,10 @@ function onEvent(entity, event)
     if event.type == "SetOwner" then
         setOwner(entity, event.owner)
         return true
+    end
+
+    if event.type == "FireBullet" then
+        return fireBullet(entity, event)
     end
 
     if event.type == "ClearOwner" then

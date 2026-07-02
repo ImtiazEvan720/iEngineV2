@@ -72,6 +72,11 @@ function BulletManager:resetBulletEntity(bulletEntity)
         bulletEntity:sendEvent("ClearOwner")
     end
 
+    local collider = bulletEntity:getCollision()
+    if collider ~= nil then
+        collider:setLinearVelocity(Vector2F.new(0.0, 0.0))
+    end
+
     bulletEntity:setEnabled(false)
 
     if self.ownerEntity ~= nil then
@@ -162,10 +167,16 @@ function BulletManager:fire(position, rotation, ownerEntity)
 
     bulletEntity:setEnabled(true)
 
-    if ownerEntity ~= nil then
-        bulletEntity:sendEvent("SetOwner", { owner = ownerEntity })
-    else
-        bulletEntity:sendEvent("ClearOwner")
+    if not bulletEntity:sendEvent("FireBullet", {
+        owner = ownerEntity,
+        direction = direction,
+        rotation = rotation
+    }) then
+        if ownerEntity ~= nil then
+            bulletEntity:sendEvent("SetOwner", { owner = ownerEntity })
+        else
+            bulletEntity:sendEvent("ClearOwner")
+        end
     end
 
     return bulletEntity

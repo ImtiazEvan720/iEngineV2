@@ -74,6 +74,7 @@ void CollisionComponentSerializer::save(
     component->SetAttribute("offsetY", offset.y);
     component->SetAttribute("bodyType", bodyTypeToString(collisionComponent->getBodyType()));
     component->SetAttribute("isSensor", ComponentSerializationHelpers::boolText(collisionComponent->isSensor()));
+    component->SetAttribute("fixedRotation", ComponentSerializationHelpers::boolText(collisionComponent->isFixedRotation()));
 }
 
 bool CollisionComponentSerializer::load(
@@ -100,6 +101,9 @@ bool CollisionComponentSerializer::load(
         componentElement.FloatAttribute("offsetX", 0.0f),
         componentElement.FloatAttribute("offsetY", 0.0f)
     ));
+    collisionComponent.setFixedRotation(
+        ComponentSerializationHelpers::parseBool(componentElement.Attribute("fixedRotation"), false)
+    );
     ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, collisionComponent);
 
     return true;

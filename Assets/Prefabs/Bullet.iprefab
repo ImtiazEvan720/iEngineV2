@@ -3,7 +3,7 @@
     <entity prefabId="entity_0" name="Bullet" tag="Bullet" enabled="true" displayOrder="22">
         <component type="TransformComponent" enabled="true" x="489.41919" y="224.97256" rotation="0"/>
         <component type="SpriteComponent" enabled="true" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="320" sourceY="96" sourceWidth="8" sourceHeight="16" sizeX="16" sizeY="32" originX="4" originY="8"/>
-        <component type="CollisionComponent" enabled="true" name="Bullet" width="7.75" height="8.8083496" offsetX="1.1425781" offsetY="-0.45767212" bodyType="Dynamic" isSensor="true"/>
+        <component type="CollisionComponent" enabled="true" name="Bullet" width="7.75" height="8.8083496" offsetX="1.1425781" offsetY="-0.45767212" bodyType="Kinematic" isSensor="true" fixedRotation="true"/>
         <component type="ScriptComponent" enabled="true" path="Assets/Scripts/bullet.lua">
             <property name="SparkEffectPrefab" type="prefab" value="SparkEffect"/>
             <property name="speed" type="float" value="300"/>

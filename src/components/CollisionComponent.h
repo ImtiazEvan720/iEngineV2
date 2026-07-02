@@ -45,21 +45,26 @@ public:
     b2BodyId getBodyId() const;
     b2ShapeId getShapeId() const;
     Vector2F getWorldPosition() const;
+    Vector2F getLinearVelocity() const;
     const std::string &getName() const;
     const Vector2F &getOffset() const;
     float getWidth() const;
     float getHeight() const;
     BodyType getBodyType() const;
     bool isSensor() const;
+    bool isFixedRotation() const;
     void setName(const std::string &name);
     void setOffset(const Vector2F &offset);
     void setSize(float width, float height);
     void setBodyType(BodyType bodyType);
     void setSensor(bool sensor);
+    void setLinearVelocity(const Vector2F &velocity);
+    void setFixedRotation(bool value);
     void setListener(CollisionListener *listener);
     void notifyCollisionEnter(CollisionComponent &other, const Vector2F &normal, const Vector2F &contactPoint);
     void notifySensorEnter(CollisionComponent &other);
     void syncBodyToTransform();
+    void syncTransformToBody();
     std::unique_ptr<Component> clone() const override;
 
 private:
@@ -71,6 +76,7 @@ private:
     Vector2F offset;
     BodyType bodyType;
     bool sensor;
+    bool fixedRotation = false;
     std::string name;
     b2BodyId bodyId = b2_nullBodyId;
     b2ShapeId shapeId = b2_nullShapeId;

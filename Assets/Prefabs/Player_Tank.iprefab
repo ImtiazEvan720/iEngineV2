@@ -10,7 +10,7 @@
                 <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="16" sourceY="112" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
             </frame>
         </component>
-        <component type="CollisionComponent" enabled="true" name="Collider" width="25.060211" height="30.771057" offsetX="-1.3011322" offsetY="-0.77108765" bodyType="Dynamic" isSensor="false"/>
+        <component type="CollisionComponent" enabled="true" name="Collider" width="25.060211" height="30.771057" offsetX="-1.3011322" offsetY="-0.77108765" bodyType="Dynamic" isSensor="false" fixedRotation="true"/>
         <component type="ScriptComponent" enabled="true" path="Assets/Scripts/player_controller.lua">
             <property name="speed" type="float" value="100"/>
             <property name="obstacleTag" type="string" value="Obstacle"/>

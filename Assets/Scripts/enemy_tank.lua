@@ -466,6 +466,22 @@ function EnemyTank:resetAimWaitTimer()
     self.aiWaitTimer = self.aiWaitTime
 end
 
+function EnemyTank:setVelocity(x, y)
+    local collider = self.entity:getCollision()
+    if collider == nil then
+        return
+    end
+
+    local currentVelocity = collider:getLinearVelocity()
+    if currentVelocity ~= nil
+        and math.abs(currentVelocity.x - x) < 0.001
+        and math.abs(currentVelocity.y - y) < 0.001 then
+        return
+    end
+
+    collider:setLinearVelocity(Vector2F.new(x, y))
+end
+
 function EnemyTank:isBlockingHit(hit)
     if hit == nil or not hit.hit then
         return false
@@ -647,6 +663,7 @@ function EnemyTank:moveForward(transform, deltaTime)
     local worldPosition = transform:getWorldPosition()
 
     if not self:canMoveInDirection(transform, self.direction, distance) then
+        self:setVelocity(0.0, 0.0)
         self:chooseUnblockedDirection(transform)
         self.moveTimer = 0.1
         return false
@@ -656,28 +673,31 @@ function EnemyTank:moveForward(transform, deltaTime)
         worldPosition.y + self.direction.y * distance)
 
     if not Engine.isWorldPointInViewport(nextWorldPosition, self.viewportMargin) then
+        self:setVelocity(0.0, 0.0)
         self:chooseUnblockedDirection(transform)
         self.moveTimer = 0.1
         return false
     end
 
-    local position = transform:getPosition()
-    position.x = position.x + self.direction.x * distance
-    position.y = position.y + self.direction.y * distance
-    transform:setPosition(position)
     transform:setRotation(self.direction.rotation)
+    self:setVelocity(
+        self.direction.x * self.speed,
+        self.direction.y * self.speed
+    )
     return true
 end
 
 function EnemyTank:update(deltaTime)
     if self.destroyed then
         self:setMovingAnimation(false)
+        self:setVelocity(0.0, 0.0)
         return
     end
 
     deltaTime = clamp(deltaTime, 0.0, 0.25)
 
     if self.pendingDestroy then
+        self:setVelocity(0.0, 0.0)
         self:updatePendingDestroy(deltaTime)
         return
     end
@@ -685,6 +705,7 @@ function EnemyTank:update(deltaTime)
     local transform = self.entity:getTransform()
     if transform == nil then
         self:setMovingAnimation(false)
+        self:setVelocity(0.0, 0.0)
         self:reportMissingDependencies(deltaTime)
         return
     end
@@ -699,6 +720,7 @@ function EnemyTank:update(deltaTime)
         if self:hasClearShotToTarget(transform, aimDirection) then
             self.direction = aimDirection
             transform:setRotation(self.direction.rotation)
+            self:setVelocity(0.0, 0.0)
             self.aiWaitTimer = self.aiWaitTimer - deltaTime
 
             if self.fireTimer <= 0.0 and self.aiWaitTimer <= 0.0 then
@@ -783,6 +805,11 @@ function onStart(entity, script)
     end
 
     enemyTank:refreshProperties()
+    local collider = entity:getCollision()
+    if collider ~= nil then
+        collider:setFixedRotation(true)
+    end
+
     enemyTank:resetAimWaitTimer()
     enemyTank:resetAnimation()
     if isEntityReferenceValid(enemyTank.destroyAnimationEntity) then

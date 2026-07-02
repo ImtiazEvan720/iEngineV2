@@ -412,6 +412,11 @@ void EntityInspectorPanel::drawCollisionComponentFields(
         collisionComponent.setSensor(entityEditState.collisionSensor);
         statusMessage = "Updated CollisionComponent sensor.";
     }
+
+    if (ImGui::Checkbox("Fixed Rotation", &entityEditState.collisionFixedRotation)) {
+        collisionComponent.setFixedRotation(entityEditState.collisionFixedRotation);
+        statusMessage = "Updated CollisionComponent fixed rotation.";
+    }
 }
 
 void EntityInspectorPanel::drawPlayerCameraComponentFields(

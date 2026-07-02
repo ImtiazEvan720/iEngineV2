@@ -39,6 +39,7 @@ void CollisionComponent::onStart() {
     const Vector2F worldPosition = transform->getWorldPosition();
     bodyDef.position = {worldPosition.x + offset.x, worldPosition.y + offset.y};
     bodyDef.rotation = b2MakeRot(transform->getWorldRotation() * degreesToRadians);
+    bodyDef.fixedRotation = fixedRotation;
     bodyDef.userData = this;
 
     bodyId = b2CreateBody(physicsSystem.getWorldId(), &bodyDef);
@@ -68,7 +69,12 @@ void CollisionComponent::onUpdate(float deltaTime) {
     }
 
     (void)deltaTime;
-    syncBodyToTransform();
+    if (bodyType == BodyType::Static) {
+        syncBodyToTransform();
+        return;
+    }
+
+    syncTransformToBody();
 }
 
 void CollisionComponent::onEnable(bool value) {
@@ -120,6 +126,15 @@ Vector2F CollisionComponent::getWorldPosition() const {
     return transform->getWorldPosition() + offset;
 }
 
+Vector2F CollisionComponent::getLinearVelocity() const {
+    if (!b2Body_IsValid(bodyId)) {
+        return Vector2F::zero();
+    }
+
+    const b2Vec2 velocity = b2Body_GetLinearVelocity(bodyId);
+    return Vector2F(velocity.x, velocity.y);
+}
+
 const std::string& CollisionComponent::getName() const {
     return name;
 }
@@ -142,6 +157,10 @@ CollisionComponent::BodyType CollisionComponent::getBodyType() const {
 
 bool CollisionComponent::isSensor() const {
     return sensor;
+}
+
+bool CollisionComponent::isFixedRotation() const {
+    return fixedRotation;
 }
 
 void CollisionComponent::setName(const std::string& name) {
@@ -172,6 +191,24 @@ void CollisionComponent::setBodyType(BodyType bodyType) {
 void CollisionComponent::setSensor(bool sensor) {
     this->sensor = sensor;
     rebuildBody();
+}
+
+void CollisionComponent::setLinearVelocity(const Vector2F& velocity) {
+    if (!b2Body_IsValid(bodyId)) {
+        return;
+    }
+
+    b2Body_SetLinearVelocity(bodyId, b2Vec2{velocity.x, velocity.y});
+}
+
+void CollisionComponent::setFixedRotation(bool value) {
+    fixedRotation = value;
+
+    if (!b2Body_IsValid(bodyId)) {
+        return;
+    }
+
+    b2Body_SetFixedRotation(bodyId, value);
 }
 
 void CollisionComponent::setListener(CollisionListener* listener) {
@@ -236,6 +273,28 @@ void CollisionComponent::syncBodyToTransform() {
     );
 }
 
+void CollisionComponent::syncTransformToBody() {
+    if (!b2Body_IsValid(bodyId)) {
+        return;
+    }
+
+    Entity* entity = getEntity();
+    if (entity == nullptr) {
+        return;
+    }
+
+    TransformComponent* transform = entity->getComponent<TransformComponent>();
+    if (transform == nullptr) {
+        return;
+    }
+
+    const b2Vec2 bodyPosition = b2Body_GetPosition(bodyId);
+    transform->setWorldPosition(Vector2F(
+        bodyPosition.x - offset.x,
+        bodyPosition.y - offset.y
+    ));
+}
+
 std::unique_ptr<Component> CollisionComponent::clone() const {
     auto copy = std::make_unique<CollisionComponent>(
         width,
@@ -245,6 +304,7 @@ std::unique_ptr<Component> CollisionComponent::clone() const {
         name
     );
     copy->setOffset(offset);
+    copy->setFixedRotation(fixedRotation);
     copy->setEnabled(isEnabled());
     return copy;
 }

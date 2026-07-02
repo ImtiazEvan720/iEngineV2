@@ -56,6 +56,40 @@ void TransformComponent::setRotation(float rotation) {
     this->rotation = rotation;
 }
 
+void TransformComponent::setWorldPosition(const Vector2F& worldPosition) {
+    if (parent == nullptr) {
+        position = worldPosition;
+        return;
+    }
+
+    constexpr float degreesToRadians = 3.14159265358979323846f / 180.0f;
+
+    const Vector2F parentWorldPosition = parent->getWorldPosition();
+    const float parentWorldRotation = parent->getWorldRotation();
+    const float radians = parentWorldRotation * degreesToRadians;
+    const float cosAngle = std::cos(radians);
+    const float sinAngle = std::sin(radians);
+
+    const Vector2F delta(
+        worldPosition.x - parentWorldPosition.x,
+        worldPosition.y - parentWorldPosition.y
+    );
+
+    position = Vector2F(
+        delta.x * cosAngle + delta.y * sinAngle,
+        -delta.x * sinAngle + delta.y * cosAngle
+    );
+}
+
+void TransformComponent::setWorldRotation(float worldRotation) {
+    if (parent == nullptr) {
+        rotation = worldRotation;
+        return;
+    }
+
+    rotation = worldRotation - parent->getWorldRotation();
+}
+
 void TransformComponent::setParent(TransformComponent* parent) {
     this->parent = parent;
 }

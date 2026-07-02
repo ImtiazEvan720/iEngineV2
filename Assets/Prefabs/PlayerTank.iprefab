@@ -6,7 +6,7 @@
             <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="0" sourceY="112" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
             <frame texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="16" sourceY="112" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
         </component>
-        <component type="CollisionComponent" name="Collider" width="27" height="27" offsetX="1.5" offsetY="-1.5" bodyType="Static" isSensor="false"/>
+        <component type="CollisionComponent" name="Collider" width="27" height="27" offsetX="1.5" offsetY="-1.5" bodyType="Dynamic" isSensor="false" fixedRotation="true"/>
         <component type="ScriptComponent" path="Assets/Scripts/player_controller.lua">
             <property name="speed" type="float" value="100"/>
             <property name="obstacleTag" type="string" value="Obstacle"/>

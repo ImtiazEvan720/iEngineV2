@@ -931,7 +931,11 @@ void ScriptSystem::bindEngineTypes() {
         "getName", &CollisionComponent::getName,
         "getWidth", &CollisionComponent::getWidth,
         "getHeight", &CollisionComponent::getHeight,
-        "isSensor", &CollisionComponent::isSensor
+        "isSensor", &CollisionComponent::isSensor,
+        "getLinearVelocity", &CollisionComponent::getLinearVelocity,
+        "setLinearVelocity", &CollisionComponent::setLinearVelocity,
+        "isFixedRotation", &CollisionComponent::isFixedRotation,
+        "setFixedRotation", &CollisionComponent::setFixedRotation
     );
 
     lua.new_usertype<ScriptComponent>(
@@ -1000,6 +1004,9 @@ void ScriptSystem::bindEngineTypes() {
         },
         "getAnimation", [](Entity& entity) {
             return entity.getComponent<AnimationComponent>();
+        },
+        "getCollision", [](Entity& entity) {
+            return entity.getComponent<CollisionComponent>();
         },
         "isInViewport", [](Entity& entity) {
             return Renderer::getInstance().isEntityInViewport(entity);

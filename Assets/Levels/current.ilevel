@@ -8,7 +8,7 @@
         <entity id="82" guid="29265847-1a16-4aa0-af96-155521b97fe9" name="Brick" tag="Obstacle" enabled="true" displayOrder="1">
             <component type="TransformComponent" enabled="true" x="529" y="374" rotation="0"/>
             <component type="SpriteComponent" enabled="true" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="0" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
-            <component type="CollisionComponent" enabled="true" name="Collider" width="34.807739" height="34.826843" offsetX="0.80389404" offsetY="-0.58657837" bodyType="Dynamic" isSensor="false"/>
+            <component type="CollisionComponent" enabled="true" name="Collider" width="34.807739" height="34.826843" offsetX="0.80389404" offsetY="-0.58657837" bodyType="Static" isSensor="false"/>
         </entity>
         <entity id="83" guid="1434d3a5-861c-4a64-8e0b-2ae045292828" name="EditorSprite_2" tag="EditorSprite" enabled="true" displayOrder="2">
             <component type="TransformComponent" enabled="true" x="630" y="448" rotation="0"/>
@@ -108,7 +108,7 @@
                     <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="16" sourceY="112" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8" localX="0" localY="0"/>
                 </frame>
             </component>
-            <component type="CollisionComponent" enabled="true" name="Collider" width="25.060211" height="30.771057" offsetX="-1.3011322" offsetY="-0.77108765" bodyType="Dynamic" isSensor="false"/>
+            <component type="CollisionComponent" enabled="true" name="Collider" width="25.060211" height="30.771057" offsetX="-1.3011322" offsetY="-0.77108765" bodyType="Dynamic" isSensor="false" fixedRotation="true"/>
             <component type="ScriptComponent" enabled="true" path="Assets/Scripts/player_controller.lua">
                 <property name="speed" type="float" value="100"/>
                 <property name="obstacleTag" type="string" value="Obstacle"/>
@@ -130,7 +130,7 @@
                     <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="16" sourceY="240" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
                 </frame>
             </component>
-            <component type="CollisionComponent" enabled="true" name="Collider" width="28.839996" height="25.235046" offsetX="0.53105164" offsetY="-0.0010681152" bodyType="Static" isSensor="false"/>
+            <component type="CollisionComponent" enabled="true" name="Collider" width="28.839996" height="25.235046" offsetX="0.53105164" offsetY="-0.0010681152" bodyType="Dynamic" isSensor="false" fixedRotation="true"/>
             <component type="ScriptComponent" enabled="true" path="Assets/Scripts/enemy_tank.lua">
                 <property name="speed" type="float" value="70"/>
                 <property name="life" type="float" value="3"/>
@@ -163,7 +163,7 @@
                     <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="144" sourceY="240" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
                 </frame>
             </component>
-            <component type="CollisionComponent" enabled="true" name="Collider" width="28.839996" height="25.235046" offsetX="0.53105164" offsetY="-0.0010681152" bodyType="Static" isSensor="false"/>
+            <component type="CollisionComponent" enabled="true" name="Collider" width="28.839996" height="25.235046" offsetX="0.53105164" offsetY="-0.0010681152" bodyType="Dynamic" isSensor="false" fixedRotation="true"/>
             <component type="ScriptComponent" enabled="true" path="Assets/Scripts/enemy_tank.lua">
                 <property name="speed" type="float" value="70"/>
                 <property name="life" type="float" value="3"/>

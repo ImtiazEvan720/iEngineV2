@@ -361,6 +361,7 @@ namespace
         component->SetAttribute("offsetY", offset.y);
         component->SetAttribute("bodyType", bodyTypeToString(collisionComponent.getBodyType()));
         component->SetAttribute("isSensor", boolText(collisionComponent.isSensor()));
+        component->SetAttribute("fixedRotation", boolText(collisionComponent.isFixedRotation()));
     }
 
     void savePlayerCameraComponent(
@@ -766,6 +767,7 @@ namespace
             collisionComponent.setOffset(Vector2F(
                 component.FloatAttribute("offsetX", 0.0f),
                 component.FloatAttribute("offsetY", 0.0f)));
+            collisionComponent.setFixedRotation(parseBool(component.Attribute("fixedRotation"), false));
             applyComponentEnabledAttribute(component, collisionComponent);
             return true;
         }

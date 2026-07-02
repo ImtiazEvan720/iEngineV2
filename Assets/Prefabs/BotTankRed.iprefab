@@ -10,7 +10,7 @@
                 <sprite texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="144" sourceY="240" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="0" originY="0" localX="-16" localY="-16"/>
             </frame>
         </component>
-        <component type="CollisionComponent" enabled="true" name="Collider" width="28.839996" height="25.235046" offsetX="0.53105164" offsetY="-0.0010681152" bodyType="Static" isSensor="false"/>
+        <component type="CollisionComponent" enabled="true" name="Collider" width="28.839996" height="25.235046" offsetX="0.53105164" offsetY="-0.0010681152" bodyType="Dynamic" isSensor="false" fixedRotation="true"/>
         <component type="ScriptComponent" enabled="true" path="Assets/Scripts/enemy_tank.lua">
             <property name="speed" type="float" value="70"/>
             <property name="life" type="float" value="3"/>

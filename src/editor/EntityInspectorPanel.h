@@ -45,6 +45,7 @@ private:
         float collisionSize[2] = {0.0f, 0.0f};
         int collisionBodyType = 0;
         bool collisionSensor = false;
+        bool collisionFixedRotation = false;
         std::string collisionName;
         float cameraZoom = 1.0f;
         float cameraViewportSize[2] = {1280.0f, 720.0f};

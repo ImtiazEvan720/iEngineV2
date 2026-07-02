@@ -1,36 +1,25 @@
-ScriptProperties = {
-    { name = "speed", type = "float", default = 100.0 },
-    { name = "obstacleTag", type = "string", default = "Obstacle" },
-    { name = "obstacleRayDistance", type = "float", default = 32.0 },
-    { name = "bulletManager", type = "entity", default = "" },
-    { name = "turret", type = "entity", default = "" },
-}
+ScriptProperties = {{
+    name = "speed",
+    type = "float",
+    default = 100.0
+}, {
+    name = "bulletManager",
+    type = "entity",
+    default = ""
+}, {
+    name = "turret",
+    type = "entity",
+    default = ""
+}}
 
 local speed = 100.0
-local obstacleTag = "Obstacle"
-local obstacleRayDistance = 32.0
 local bulletManagerName = "BulletManager"
 local bulletManager = nil
 local turret = nil
 
-local blockingTags = {
-    obstacle = true,
-    tank = true,
-    player = true,
-    enemy = true,
-}
-
 local function refreshScriptProperties(script)
     if Props ~= nil and Props.speed ~= nil then
         speed = Props.speed
-    end
-
-    if Props ~= nil and Props.obstacleTag ~= nil then
-        obstacleTag = Props.obstacleTag
-    end
-
-    if Props ~= nil and Props.obstacleRayDistance ~= nil then
-        obstacleRayDistance = Props.obstacleRayDistance
     end
 
     if Refs ~= nil and Refs.bulletManager ~= nil then
@@ -47,14 +36,6 @@ local function refreshScriptProperties(script)
 
     if Props == nil or Props.speed == nil then
         speed = script:getFloat("speed", speed)
-    end
-
-    if Props == nil or Props.obstacleTag == nil then
-        obstacleTag = script:getString("obstacleTag", obstacleTag)
-    end
-
-    if Props == nil or Props.obstacleRayDistance == nil then
-        obstacleRayDistance = script:getFloat("obstacleRayDistance", obstacleRayDistance)
     end
 
     if bulletManager == nil then
@@ -89,31 +70,17 @@ local function fire(entity, transform)
     end
 end
 
-local function isBlockingHit(entity, hit)
-    if hit == nil or not hit.hit then
-        return false
+local function setColliderVelocity(collider, x, y)
+    if collider == nil then
+        return
     end
 
-    if hit.entity ~= nil and hit.entity:getId() == entity:getId() then
-        return false
+    local currentVelocity = collider:getLinearVelocity()
+    if currentVelocity ~= nil and math.abs(currentVelocity.x - x) < 0.001 and math.abs(currentVelocity.y - y) < 0.001 then
+        return
     end
 
-    local tag = string.lower(hit.tag or "")
-    local configuredObstacleTag = string.lower(obstacleTag or "Obstacle")
-
-    return tag == configuredObstacleTag or blockingTags[tag] == true
-end
-
-local function isBlocked(entity, transform, moveX, moveY, moveDistance)
-    local worldPosition = transform:getWorldPosition()
-    local rayDistance = moveDistance + obstacleRayDistance
-    local rayEnd = Vector2F.new(
-        worldPosition.x + moveX * rayDistance,
-        worldPosition.y + moveY * rayDistance
-    )
-
-    local hit = Engine.raycast(worldPosition, rayEnd)
-    return isBlockingHit(entity, hit)
+    collider:setLinearVelocity(Vector2F.new(x, y))
 end
 
 function onStart(entity, script)
@@ -124,14 +91,16 @@ function onStart(entity, script)
         bulletManager = Engine.findEntityByName(bulletManagerName)
     end
 
-    engineLog("PlayerControllerLua started: "
-        .. entity:getName()
-        .. ", tag: "
-        .. entity:getTag())
+    local collider = entity:getCollision()
+    if collider ~= nil then
+        collider:setFixedRotation(true)
+    end
+
+    engineLog("PlayerControllerLua started: " .. entity:getName() .. ", tag: " .. entity:getTag())
 
     local animation = entity:getAnimation()
     if animation ~= nil then
-       engineLog("PlayerControllerLua found animation: ")
+        engineLog("PlayerControllerLua found animation: ")
     else
         engineLog("PlayerControllerLua found no animation.")
     end
@@ -149,7 +118,6 @@ function onUpdate(entity, deltaTime, script)
         fire(entity, transform)
     end
 
-    local position = transform:getPosition()
     local rotation = transform:getRotation()
     local moveX = 0.0
     local moveY = 0.0
@@ -173,29 +141,19 @@ function onUpdate(entity, deltaTime, script)
         moving = true
     end
 
+    local collider = entity:getCollision()
     local animation = entity:getAnimation()
     if moving then
-        local moveDistance = speed * deltaTime
-        if isBlocked(entity, transform, moveX, moveY, moveDistance) then
-            transform:setRotation(rotation)
-
-            if animation ~= nil then
-                animation:pause()
-            end
-
-            return
-        end
-
-        position.x = position.x + moveX * moveDistance
-        position.y = position.y + moveY * moveDistance
-
         transform:setRotation(rotation)
-        transform:setPosition(position)
-
+        setColliderVelocity(collider, moveX * speed, moveY * speed)
         if animation ~= nil then
             animation:play()
         end
-    elseif animation ~= nil then
-        animation:pause()
+    else
+        setColliderVelocity(collider, 0.0, 0.0)
+
+        if animation ~= nil then
+            animation:pause()
+        end
     end
 end

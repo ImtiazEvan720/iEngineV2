@@ -771,6 +771,7 @@ void EntityInspectorPanel::syncEditStateFromEntity(Entity& entity, bool force) {
         entityEditState.collisionSize[1] = collisionComponent->getHeight();
         entityEditState.collisionBodyType = bodyTypeToIndex(collisionComponent->getBodyType());
         entityEditState.collisionSensor = collisionComponent->isSensor();
+        entityEditState.collisionFixedRotation = collisionComponent->isFixedRotation();
         entityEditState.collisionName = collisionComponent->getName();
     }
 
