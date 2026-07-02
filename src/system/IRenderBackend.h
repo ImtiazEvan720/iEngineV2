@@ -3,6 +3,7 @@
 #include "imgui.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 struct RenderColor
@@ -58,6 +59,13 @@ public:
     virtual void drawPoint(
         const RenderVector2 &position,
         float radius,
+        RenderColor color) = 0;
+
+    virtual void drawText(
+        const std::string &text,
+        const std::string &fontPath,
+        const RenderVector2 &position,
+        unsigned int characterSize,
         RenderColor color) = 0;
 
     virtual void clear(RenderColor color) = 0;

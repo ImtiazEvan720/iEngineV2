@@ -13,6 +13,7 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Do not update FetchContent 
 set(IMGUI_GIT_TAG v1.91.9b CACHE STRING "Dear ImGui git tag, branch, or commit to fetch" FORCE)
 set(LUA_VERSION 5.4.8 CACHE STRING "Lua version to embed" FORCE)
 set(SOL2_GIT_TAG v3.5.0 CACHE STRING "sol2 git tag, branch, or commit to fetch" FORCE)
+set(SDL3_TTF_GIT_TAG release-3.2.2 CACHE STRING "SDL3_ttf git tag, branch, or commit to fetch" FORCE)
 
 set(BOX2D_BUILD_DOCS OFF CACHE BOOL "Build Box2D documentation" FORCE)
 set(BOX2D_BUILD_SAMPLES OFF CACHE BOOL "Build Box2D samples" FORCE)
@@ -41,6 +42,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR EMSCRIPTEN OR IENGINE_TARGET_IOS OR IE
     set(IENGINE_WITH_EDITOR_DEFAULT OFF)
 endif()
 option(IENGINE_WITH_EDITOR "Build iEngine editor UI and tooling" ${IENGINE_WITH_EDITOR_DEFAULT})
+option(IENGINE_USE_SDL_TTF "Build/link SDL_ttf for SDL text rendering" ON)
 
 set(IENGINE_EMBED_LUA_SCRIPTS_DEFAULT OFF)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -113,6 +115,19 @@ if(NOT EMSCRIPTEN)
     set(SDL_SENSOR OFF CACHE BOOL "Build SDL sensor subsystem" FORCE)
     set(SDL_TRAY OFF CACHE BOOL "Build SDL tray subsystem" FORCE)
 
+    if(IENGINE_USE_SDL_TTF)
+        set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build dependencies as static libraries" FORCE)
+        if(IENGINE_SDL_ONLY)
+            set(SDLTTF_VENDORED ON CACHE BOOL "Use SDL3_ttf vendored dependencies" FORCE)
+        else()
+            set(SDLTTF_VENDORED OFF CACHE BOOL "Use SDL3_ttf vendored dependencies" FORCE)
+        endif()
+        set(SDLTTF_INSTALL OFF CACHE BOOL "Disable SDL3_ttf install rules" FORCE)
+        set(SDLTTF_SAMPLES OFF CACHE BOOL "Disable SDL3_ttf samples" FORCE)
+        set(SDLTTF_HARFBUZZ OFF CACHE BOOL "Disable SDL3_ttf HarfBuzz shaping for now" FORCE)
+        set(SDLTTF_PLUTOSVG OFF CACHE BOOL "Disable SDL3_ttf SVG emoji support for now" FORCE)
+    endif()
+
     if(NOT IENGINE_SDL_ONLY)
         FetchContent_Declare(SFML
             GIT_REPOSITORY https://github.com/SFML/SFML.git
@@ -140,6 +155,16 @@ if(NOT EMSCRIPTEN)
         EXCLUDE_FROM_ALL
         SYSTEM
     )
+
+    if(IENGINE_USE_SDL_TTF)
+        FetchContent_Declare(SDL3_ttf
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+            GIT_TAG ${SDL3_TTF_GIT_TAG}
+            GIT_SHALLOW ON
+            EXCLUDE_FROM_ALL
+            SYSTEM
+        )
+    endif()
 endif()
 
 function(use_existing_fetchcontent_source dependency source_directory_name)
@@ -165,6 +190,9 @@ if(NOT EMSCRIPTEN)
         use_existing_fetchcontent_source(imgui-sfml imgui-sfml)
     endif()
     use_existing_fetchcontent_source(SDL3 sdl3)
+    if(IENGINE_USE_SDL_TTF)
+        use_existing_fetchcontent_source(SDL3_ttf sdl3_ttf)
+    endif()
 endif()
 
 FetchContent_MakeAvailable(imgui)
@@ -182,6 +210,9 @@ if(NOT EMSCRIPTEN)
         FetchContent_MakeAvailable(imgui-sfml)
     endif()
     FetchContent_MakeAvailable(SDL3)
+    if(IENGINE_USE_SDL_TTF)
+        FetchContent_MakeAvailable(SDL3_ttf)
+    endif()
 endif()
 
 FetchContent_MakeAvailable(box2d)
@@ -434,6 +465,10 @@ endif()
 if(EMSCRIPTEN)
     target_compile_definitions(iEngineV2 PRIVATE IENGINE_WEB IENGINE_SDL_ONLY)
     target_compile_options(iEngineV2 PRIVATE "-sUSE_SDL=3")
+    if(IENGINE_USE_SDL_TTF)
+        target_compile_definitions(iEngineV2 PRIVATE IENGINE_USE_SDL_TTF)
+        target_compile_options(iEngineV2 PRIVATE "-sUSE_SDL_TTF=3")
+    endif()
     target_link_options(iEngineV2 PRIVATE
         "-sUSE_SDL=3"
         "-sALLOW_MEMORY_GROWTH=1"
@@ -441,10 +476,17 @@ if(EMSCRIPTEN)
         "--preload-file=${CMAKE_CURRENT_SOURCE_DIR}/config.xml@/config.xml"
         "--preload-file=${CMAKE_CURRENT_SOURCE_DIR}/project.iengine@/project.iengine"
     )
+    if(IENGINE_USE_SDL_TTF)
+        target_link_options(iEngineV2 PRIVATE "-sUSE_SDL_TTF=3")
+    endif()
     set_target_properties(iEngineV2 PROPERTIES SUFFIX ".html")
 elseif(IENGINE_TARGET_IOS)
     target_compile_definitions(iEngineV2 PRIVATE IENGINE_IOS IENGINE_SDL_ONLY)
     target_link_libraries(iEngineV2 PRIVATE SDL3::SDL3)
+    if(IENGINE_USE_SDL_TTF)
+        target_compile_definitions(iEngineV2 PRIVATE IENGINE_USE_SDL_TTF)
+        target_link_libraries(iEngineV2 PRIVATE SDL3_ttf::SDL3_ttf)
+    endif()
 
     set_target_properties(iEngineV2 PROPERTIES
         MACOSX_BUNDLE TRUE
@@ -486,6 +528,10 @@ elseif(IENGINE_TARGET_IOS)
 elseif(IENGINE_TARGET_ANDROID)
     target_compile_definitions(iEngineV2 PRIVATE IENGINE_ANDROID IENGINE_SDL_ONLY)
     target_link_libraries(iEngineV2 PRIVATE SDL3::SDL3)
+    if(IENGINE_USE_SDL_TTF)
+        target_compile_definitions(iEngineV2 PRIVATE IENGINE_USE_SDL_TTF)
+        target_link_libraries(iEngineV2 PRIVATE SDL3_ttf::SDL3_ttf)
+    endif()
 else()
     target_link_libraries(iEngineV2 PRIVATE
         SFML::Graphics
@@ -493,6 +539,11 @@ else()
         ImGui-SFML::ImGui-SFML
         SDL3::SDL3
     )
+
+    if(IENGINE_USE_SDL_TTF)
+        target_compile_definitions(iEngineV2 PRIVATE IENGINE_USE_SDL_TTF)
+        target_link_libraries(iEngineV2 PRIVATE SDL3_ttf::SDL3_ttf)
+    endif()
 
     if(IENGINE_EMBED_LUA_SCRIPTS)
         add_custom_command(TARGET iEngineV2 POST_BUILD

@@ -3,21 +3,26 @@
 #include "system/sfml/SfmlWindowBackend.h"
 
 #include <SFML/Graphics/CircleShape.hpp>
+#include <SFML/Graphics/Font.hpp>
 #include <SFML/Graphics/PrimitiveType.hpp>
 #include <SFML/Graphics/RenderStates.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
 #include <SFML/Graphics/RenderTexture.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Sprite.hpp>
+#include <SFML/Graphics/Text.hpp>
 #include <SFML/Graphics/Texture.hpp>
 #include <SFML/Graphics/Vertex.hpp>
 
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <vector>
 
 SfmlRenderBackend::SfmlRenderBackend(SfmlWindowBackend& windowBackend)
     : windowBackend(windowBackend) {}
+
+SfmlRenderBackend::~SfmlRenderBackend() = default;
 
 sf::RenderTarget& SfmlRenderBackend::getCurrentTarget() {
     if (activeRenderTarget != nullptr) {
@@ -25,6 +30,32 @@ sf::RenderTarget& SfmlRenderBackend::getCurrentTarget() {
     }
 
     return windowBackend.getWindow();
+}
+
+sf::Font* SfmlRenderBackend::getFont(const std::string& fontPath) {
+    if (fontPath.empty()) {
+        return nullptr;
+    }
+
+    const auto fontIterator = fonts.find(fontPath);
+    if (fontIterator != fonts.end()) {
+        return fontIterator->second.get();
+    }
+
+    if (failedFontPaths.find(fontPath) != failedFontPaths.end()) {
+        return nullptr;
+    }
+
+    auto font = std::make_unique<sf::Font>();
+    if (!font->openFromFile(fontPath)) {
+        failedFontPaths.insert(fontPath);
+        std::cerr << "Failed to load SFML font: " << fontPath << std::endl;
+        return nullptr;
+    }
+
+    sf::Font* fontPointer = font.get();
+    fonts.emplace(fontPath, std::move(font));
+    return fontPointer;
 }
 
 void SfmlRenderBackend::drawTexture(
@@ -98,6 +129,28 @@ void SfmlRenderBackend::drawPoint(
     point.setPosition({position.x, position.y});
     point.setFillColor(sf::Color(color.r, color.g, color.b, color.a));
     getCurrentTarget().draw(point);
+}
+
+void SfmlRenderBackend::drawText(
+    const std::string& text,
+    const std::string& fontPath,
+    const RenderVector2& position,
+    unsigned int characterSize,
+    RenderColor color
+) {
+    if (text.empty() || characterSize == 0) {
+        return;
+    }
+
+    sf::Font* font = getFont(fontPath);
+    if (font == nullptr) {
+        return;
+    }
+
+    sf::Text drawableText(*font, text, characterSize);
+    drawableText.setPosition({position.x, position.y});
+    drawableText.setFillColor(sf::Color(color.r, color.g, color.b, color.a));
+    getCurrentTarget().draw(drawableText);
 }
 
 void SfmlRenderBackend::clear(RenderColor color) {

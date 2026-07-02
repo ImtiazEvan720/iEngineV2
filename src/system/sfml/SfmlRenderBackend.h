@@ -2,7 +2,13 @@
 
 #include "system/IRenderBackend.h"
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+
 namespace sf {
+class Font;
 class RenderTarget;
 class RenderTexture;
 }
@@ -12,6 +18,7 @@ class SfmlWindowBackend;
 class SfmlRenderBackend : public IRenderBackend {
 public:
     explicit SfmlRenderBackend(SfmlWindowBackend& windowBackend);
+    ~SfmlRenderBackend() override;
 
     void drawTexture(
         RenderTextureHandle texture,
@@ -29,6 +36,13 @@ public:
         float radius,
         RenderColor color
     ) override;
+    void drawText(
+        const std::string& text,
+        const std::string& fontPath,
+        const RenderVector2& position,
+        unsigned int characterSize,
+        RenderColor color
+    ) override;
 
     void clear(RenderColor color) override;
     RenderTargetHandle createRenderTarget(int width, int height) override;
@@ -40,7 +54,10 @@ public:
 
 private:
     sf::RenderTarget& getCurrentTarget();
+    sf::Font* getFont(const std::string& fontPath);
 
     SfmlWindowBackend& windowBackend;
     sf::RenderTexture* activeRenderTarget = nullptr;
+    std::unordered_map<std::string, std::unique_ptr<sf::Font>> fonts;
+    std::unordered_set<std::string> failedFontPaths;
 };

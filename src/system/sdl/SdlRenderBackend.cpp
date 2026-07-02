@@ -3,9 +3,14 @@
 #include "system/sdl/SdlWindowBackend.h"
 
 #include <SDL3/SDL.h>
+#ifdef IENGINE_USE_SDL_TTF
+#include <SDL3_ttf/SDL_ttf.h>
+#endif
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
+#include <string>
 #include <vector>
 
 namespace {
@@ -16,10 +21,91 @@ SDL_Texture* toSdlTexture(RenderTextureHandle texture) {
 float colorToFloat(std::uint8_t value) {
     return static_cast<float>(value) / 255.0f;
 }
+
+std::string makeFontKey(const std::string& fontPath, unsigned int characterSize) {
+    return fontPath + "#" + std::to_string(characterSize);
+}
 }
 
 SdlRenderBackend::SdlRenderBackend(SdlWindowBackend& windowBackend)
-    : windowBackend(windowBackend) {}
+    : windowBackend(windowBackend) {
+    initializeTtf();
+}
+
+SdlRenderBackend::~SdlRenderBackend() {
+    clearFonts();
+
+#ifdef IENGINE_USE_SDL_TTF
+    if (ttfInitialized) {
+        TTF_Quit();
+    }
+#endif
+}
+
+bool SdlRenderBackend::initializeTtf() {
+#ifdef IENGINE_USE_SDL_TTF
+    if (ttfInitialized) {
+        return true;
+    }
+
+    ttfInitialized = TTF_Init();
+    if (!ttfInitialized) {
+        std::cerr << "Failed to initialize SDL_ttf: " << SDL_GetError() << std::endl;
+    }
+
+    return ttfInitialized;
+#else
+    return false;
+#endif
+}
+
+TTF_Font* SdlRenderBackend::getFont(
+    const std::string& fontPath,
+    unsigned int characterSize
+) {
+#ifdef IENGINE_USE_SDL_TTF
+    if (fontPath.empty() || characterSize == 0 || !initializeTtf()) {
+        return nullptr;
+    }
+
+    const std::string fontKey = makeFontKey(fontPath, characterSize);
+    const auto fontIterator = fonts.find(fontKey);
+    if (fontIterator != fonts.end()) {
+        return fontIterator->second;
+    }
+
+    if (failedFontKeys.find(fontKey) != failedFontKeys.end()) {
+        return nullptr;
+    }
+
+    TTF_Font* font = TTF_OpenFont(fontPath.c_str(), static_cast<float>(characterSize));
+    if (font == nullptr) {
+        failedFontKeys.insert(fontKey);
+        std::cerr << "Failed to load SDL_ttf font: " << fontPath
+                  << " size=" << characterSize
+                  << " error=" << SDL_GetError() << std::endl;
+        return nullptr;
+    }
+
+    fonts.emplace(fontKey, font);
+    return font;
+#else
+    (void)fontPath;
+    (void)characterSize;
+    return nullptr;
+#endif
+}
+
+void SdlRenderBackend::clearFonts() {
+#ifdef IENGINE_USE_SDL_TTF
+    for (auto& fontEntry : fonts) {
+        TTF_CloseFont(fontEntry.second);
+    }
+#endif
+
+    fonts.clear();
+    failedFontKeys.clear();
+}
 
 void SdlRenderBackend::drawTexture(
     RenderTextureHandle texture,
@@ -132,6 +218,57 @@ void SdlRenderBackend::drawPoint(
             position.y + yOffset
         );
     }
+}
+
+void SdlRenderBackend::drawText(
+    const std::string& text,
+    const std::string& fontPath,
+    const RenderVector2& position,
+    unsigned int characterSize,
+    RenderColor color
+) {
+#ifdef IENGINE_USE_SDL_TTF
+    SDL_Renderer* renderer = windowBackend.getRenderer();
+    if (renderer == nullptr || text.empty() || characterSize == 0) {
+        return;
+    }
+
+    TTF_Font* font = getFont(fontPath, characterSize);
+    if (font == nullptr) {
+        return;
+    }
+
+    const SDL_Color textColor{color.r, color.g, color.b, color.a};
+    SDL_Surface* textSurface = TTF_RenderText_Blended(font, text.c_str(), 0, textColor);
+    if (textSurface == nullptr) {
+        std::cerr << "Failed to render SDL_ttf text: " << SDL_GetError() << std::endl;
+        return;
+    }
+
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    const SDL_FRect destinationRect{
+        position.x,
+        position.y,
+        static_cast<float>(textSurface->w),
+        static_cast<float>(textSurface->h)
+    };
+    SDL_DestroySurface(textSurface);
+
+    if (textTexture == nullptr) {
+        std::cerr << "Failed to create SDL text texture: " << SDL_GetError() << std::endl;
+        return;
+    }
+
+    SDL_SetTextureBlendMode(textTexture, SDL_BLENDMODE_BLEND);
+    SDL_RenderTexture(renderer, textTexture, nullptr, &destinationRect);
+    SDL_DestroyTexture(textTexture);
+#else
+    (void)text;
+    (void)fontPath;
+    (void)position;
+    (void)characterSize;
+    (void)color;
+#endif
 }
 
 void SdlRenderBackend::clear(RenderColor color) {
