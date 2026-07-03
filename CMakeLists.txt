@@ -241,7 +241,9 @@ set(IENGINE_SOURCES
     src/components/AnimationComponent.cpp
     src/components/CollisionComponent.cpp
     src/components/Component.cpp
+    src/components/CanvasComponent.cpp
     src/components/PlayerCameraComponent.cpp
+    src/components/RectTransformComponent.cpp
     src/components/ScriptComponent.cpp
     src/components/SpriteComponent.cpp
     src/components/TransformComponent.cpp
@@ -290,12 +292,24 @@ set(IENGINE_SOURCES
 if(IENGINE_WITH_EDITOR)
     list(APPEND IENGINE_SOURCES
         src/editor/BuildSystem.cpp
+        src/editor/components/AnimationComponentDrawer.cpp
+        src/editor/components/CanvasComponentDrawer.cpp
+        src/editor/components/CollisionComponentDrawer.cpp
+        src/editor/components/ComponentDrawerRegistry.cpp
+        src/editor/components/PlayerCameraComponentDrawer.cpp
+        src/editor/components/PlayerControllerComponentDrawer.cpp
+        src/editor/components/RectTransformComponentDrawer.cpp
+        src/editor/components/ScriptComponentDrawer.cpp
+        src/editor/components/SpriteComponentDrawer.cpp
+        src/editor/components/TransformComponentDrawer.cpp
         src/editor/ColliderGizmo.cpp
         src/editor/EditorCamera.cpp
         src/editor/EditorCollectionViews.cpp
         src/editor/EditorPlayCameraPreviewPanel.cpp
+        src/editor/EntityComponentList.cpp
+        src/editor/EntityIdentityDrawer.cpp
+        src/editor/EntityTreePanel.cpp
         src/editor/EntityInspectorComponentActions.cpp
-        src/editor/EntityInspectorComponentEditors.cpp
         src/editor/EntityInspectorPanel.cpp
         src/editor/EntityInspectorPrefabActions.cpp
         src/editor/LevelEditor.cpp

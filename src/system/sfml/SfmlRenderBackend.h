@@ -43,6 +43,10 @@ public:
         unsigned int characterSize,
         RenderColor color
     ) override;
+    void drawRect(
+        const RenderRect& rect,
+        RenderColor color
+    ) override;
 
     void clear(RenderColor color) override;
     RenderTargetHandle createRenderTarget(int width, int height) override;
@@ -51,6 +55,7 @@ public:
     void endRenderTarget() override;
     RenderTextureHandle getRenderTargetTexture(RenderTargetHandle target) override;
     ImTextureID getImGuiTextureId(RenderTextureHandle texture) override;
+    bool readScreenPixel(int x, int y, RenderColor& outColor) override;
 
 private:
     sf::RenderTarget& getCurrentTarget();

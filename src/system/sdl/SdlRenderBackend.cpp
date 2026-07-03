@@ -271,6 +271,27 @@ void SdlRenderBackend::drawText(
 #endif
 }
 
+void SdlRenderBackend::drawRect(
+    const RenderRect& rect,
+    RenderColor color
+) {
+    SDL_Renderer* renderer = windowBackend.getRenderer();
+    if (renderer == nullptr || rect.width <= 0.0f || rect.height <= 0.0f) {
+        return;
+    }
+
+    const SDL_FRect destinationRect{
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height
+    };
+
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+    SDL_RenderFillRect(renderer, &destinationRect);
+}
+
 void SdlRenderBackend::clear(RenderColor color) {
     SDL_Renderer* renderer = windowBackend.getRenderer();
     if (renderer == nullptr) {
@@ -331,4 +352,24 @@ RenderTextureHandle SdlRenderBackend::getRenderTargetTexture(RenderTargetHandle 
 
 ImTextureID SdlRenderBackend::getImGuiTextureId(RenderTextureHandle texture) {
     return reinterpret_cast<ImTextureID>(const_cast<void*>(texture));
+}
+
+bool SdlRenderBackend::readScreenPixel(int x, int y, RenderColor& outColor) {
+    SDL_Surface* surface = SDL_RenderReadPixels(windowBackend.getRenderer(), nullptr);
+    if (surface == nullptr) {
+        return false;
+    }
+
+    if (x < 0 || y < 0 || x >= surface->w || y >= surface->h) {
+        SDL_DestroySurface(surface);
+        return false;
+    }
+
+    const std::uint8_t* pixels = static_cast<const std::uint8_t*>(surface->pixels);
+    const std::uint8_t* pixel = pixels + (y * surface->pitch) + (x * 4);
+
+    outColor = RenderColor{pixel[0], pixel[1], pixel[2], pixel[3]};
+
+    SDL_DestroySurface(surface);
+    return true;
 }

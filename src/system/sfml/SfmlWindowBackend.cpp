@@ -200,6 +200,8 @@ void SfmlWindowBackend::beginFrame(const RenderColor& clearColor) {
         return;
     }
 
+    window->resetGLStates();
+    window->setView(window->getDefaultView());
     window->clear(sf::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a));
 }
 
@@ -214,15 +216,13 @@ RenderRect SfmlWindowBackend::getViewport() const {
         return RenderRect{};
     }
 
-    const sf::View& view = window->getView();
-    const sf::Vector2f center = view.getCenter();
-    const sf::Vector2f size = view.getSize();
+    const sf::Vector2u size = window->getSize();
 
     return RenderRect{
-        center.x - size.x / 2.0f,
-        center.y - size.y / 2.0f,
-        size.x,
-        size.y
+        0.0f,
+        0.0f,
+        static_cast<float>(size.x),
+        static_cast<float>(size.y)
     };
 }
 

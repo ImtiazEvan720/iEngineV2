@@ -3,8 +3,10 @@
 #include "Entity.h"
 #include "components/CollisionComponent.h"
 #include "components/AnimationComponent.h"
+#include "components/CanvasComponent.h"
 #include "components/PlayerCameraComponent.h"
 #include "components/PlayerController.h"
+#include "components/RectTransformComponent.h"
 #include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
@@ -194,6 +196,23 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
             }
         },
         {
+            "CanvasComponent",
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
+                ensureComponent<RectTransformComponent>(entity);
+                return addComponentIfMissing<CanvasComponent>(entity);
+            }
+        },
+        {
+            "RectTransformComponent",
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
+                return addComponentIfMissing<RectTransformComponent>(entity);
+            }
+        },
+        {
             "PlayerController",
             false,
             [](Entity& entity, const std::string& scriptPath) {
@@ -256,6 +275,25 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
             "PlayerCameraComponent",
             [](Entity& target) {
                 return target.removeComponent<PlayerCameraComponent>();
+            }
+        });
+    }
+
+    if (entity.getComponent<CanvasComponent>() != nullptr) {
+        entries.push_back({
+            "CanvasComponent",
+            [](Entity& target) {
+                return target.removeComponent<CanvasComponent>();
+            }
+        });
+    }
+
+    if (entity.getComponent<RectTransformComponent>() != nullptr) {
+        entries.push_back({
+            "RectTransformComponent",
+            [](Entity& target) {
+                removeDependencyIfPresent<CanvasComponent>(target);
+                return target.removeComponent<RectTransformComponent>();
             }
         });
     }

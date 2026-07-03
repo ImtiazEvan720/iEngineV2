@@ -68,6 +68,11 @@ public:
         unsigned int characterSize,
         RenderColor color) = 0;
 
+    virtual void drawRect(
+        const RenderRect &rect,
+        RenderColor color
+    ) = 0;
+
     virtual void clear(RenderColor color) = 0;
     virtual RenderTargetHandle createRenderTarget(int width, int height) = 0;
     virtual void destroyRenderTarget(RenderTargetHandle target) = 0;
@@ -75,4 +80,5 @@ public:
     virtual void endRenderTarget() = 0;
     virtual RenderTextureHandle getRenderTargetTexture(RenderTargetHandle target) = 0;
     virtual ImTextureID getImGuiTextureId(RenderTextureHandle texture) = 0;
+    virtual bool readScreenPixel(int x, int y, RenderColor& outColor) = 0;
 };

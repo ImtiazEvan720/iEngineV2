@@ -5,6 +5,7 @@
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/Font.hpp>
 #include <SFML/Graphics/PrimitiveType.hpp>
+#include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderStates.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
 #include <SFML/Graphics/RenderTexture.hpp>
@@ -13,6 +14,7 @@
 #include <SFML/Graphics/Text.hpp>
 #include <SFML/Graphics/Texture.hpp>
 #include <SFML/Graphics/Vertex.hpp>
+#include <SFML/Graphics/Image.hpp>
 
 #include <cstring>
 #include <iostream>
@@ -87,7 +89,9 @@ void SfmlRenderBackend::drawTexture(
         });
     }
 
-    target.draw(sprite);
+    sf::RenderStates states;
+    states.blendMode = sf::BlendAlpha;
+    target.draw(sprite, states);
 }
 
 void SfmlRenderBackend::drawGeometry(
@@ -111,6 +115,7 @@ void SfmlRenderBackend::drawGeometry(
     }
 
     sf::RenderStates states;
+    states.blendMode = sf::BlendAlpha;
     states.texture = static_cast<const sf::Texture*>(texture);
     target.draw(sfmlVertices.data(), sfmlVertices.size(), sf::PrimitiveType::Triangles, states);
 }
@@ -128,7 +133,10 @@ void SfmlRenderBackend::drawPoint(
     point.setOrigin({radius, radius});
     point.setPosition({position.x, position.y});
     point.setFillColor(sf::Color(color.r, color.g, color.b, color.a));
-    getCurrentTarget().draw(point);
+    sf::RenderTarget& target = getCurrentTarget();
+    sf::RenderStates states;
+    states.blendMode = sf::BlendAlpha;
+    target.draw(point, states);
 }
 
 void SfmlRenderBackend::drawText(
@@ -150,7 +158,27 @@ void SfmlRenderBackend::drawText(
     sf::Text drawableText(*font, text, characterSize);
     drawableText.setPosition({position.x, position.y});
     drawableText.setFillColor(sf::Color(color.r, color.g, color.b, color.a));
-    getCurrentTarget().draw(drawableText);
+    sf::RenderTarget& target = getCurrentTarget();
+    sf::RenderStates states;
+    states.blendMode = sf::BlendAlpha;
+    target.draw(drawableText, states);
+}
+
+void SfmlRenderBackend::drawRect(
+    const RenderRect& rect,
+    RenderColor color
+) {
+    if (rect.width <= 0.0f || rect.height <= 0.0f) {
+        return;
+    }
+
+    sf::RectangleShape rectangle({rect.width, rect.height});
+    rectangle.setPosition({rect.x, rect.y});
+    rectangle.setFillColor(sf::Color(color.r, color.g, color.b, color.a));
+    sf::RenderTarget& target = getCurrentTarget();
+    sf::RenderStates states;
+    states.blendMode = sf::BlendAlpha;
+    target.draw(rectangle, states);
 }
 
 void SfmlRenderBackend::clear(RenderColor color) {
@@ -182,6 +210,10 @@ void SfmlRenderBackend::destroyRenderTarget(RenderTargetHandle target) {
 
 void SfmlRenderBackend::beginRenderTarget(RenderTargetHandle target) {
     activeRenderTarget = static_cast<sf::RenderTexture*>(target);
+    if (activeRenderTarget != nullptr) {
+        activeRenderTarget->resetGLStates();
+        activeRenderTarget->setView(activeRenderTarget->getDefaultView());
+    }
 }
 
 void SfmlRenderBackend::endRenderTarget() {
@@ -212,4 +244,52 @@ ImTextureID SfmlRenderBackend::getImGuiTextureId(RenderTextureHandle texture) {
                   "ImTextureID is not large enough for an SFML texture handle.");
     std::memcpy(&textureId, &nativeHandle, sizeof(nativeHandle));
     return textureId;
+}
+
+bool SfmlRenderBackend::readScreenPixel(int x, int y, RenderColor& outColor) {
+    if (activeRenderTarget != nullptr) {
+        const sf::Vector2u size = activeRenderTarget->getSize();
+
+        if (x < 0 || y < 0 ||
+            x >= static_cast<int>(size.x) ||
+            y >= static_cast<int>(size.y)) {
+            return false;
+        }
+
+        activeRenderTarget->display();
+
+        const sf::Image screenshot = activeRenderTarget->getTexture().copyToImage();
+        const sf::Color pixelColor = screenshot.getPixel({
+            static_cast<unsigned int>(x),
+            static_cast<unsigned int>(y)
+        });
+
+        outColor = RenderColor{pixelColor.r, pixelColor.g, pixelColor.b, pixelColor.a};
+        return true;
+    }
+
+    sf::RenderWindow& window = windowBackend.getWindow();
+    const sf::Vector2u size = window.getSize();
+
+    if (x < 0 || y < 0 ||
+        x >= static_cast<int>(size.x) ||
+        y >= static_cast<int>(size.y)) {
+        return false;
+    }
+
+    sf::Texture screenshotTexture;
+    if (!screenshotTexture.resize(size)) {
+        return false;
+    }
+
+    screenshotTexture.update(window);
+
+    const sf::Image screenshot = screenshotTexture.copyToImage();
+    const sf::Color pixelColor = screenshot.getPixel({
+        static_cast<unsigned int>(x),
+        static_cast<unsigned int>(y)
+    });
+
+    outColor = RenderColor{pixelColor.r, pixelColor.g, pixelColor.b, pixelColor.a};
+    return true;
 }

@@ -1,6 +1,8 @@
 #include "editor/LevelEditor.h"
 
 #include "components/TransformComponent.h"
+#include "components/RectTransformComponent.h"
+#include "components/CanvasComponent.h"
 #include "editor/BuildSystem.h"
 #include "math/Vector2F.h"
 #include "misc/Camera2D.h"
@@ -113,6 +115,26 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
                 entity.addComponent<TransformComponent>(position, 0.0f);
                 entityInspector.selectEntity(entity, true);
                 statusMessage = "Created empty entity " + std::to_string(entity.getId()) + ".";
+            }
+
+            if (ImGui::BeginMenu("UI")) {
+                if (ImGui::MenuItem("Canvas")) {
+                    const RenderRect viewport = Renderer::getInstance().getViewport();
+                    Vector2F position(
+                        viewport.x + (viewport.width * 0.5f),
+                        viewport.y + (viewport.height * 0.5f)
+                    );
+
+                    Entity& entity = Level::getCurrentLevel().createEntity();
+                    entity.setName("Canvas");
+                    entity.setTag("UI");
+                    entity.addComponent<RectTransformComponent>(position, Vector2F(640.0f, 320.0f), Vector2F(0.5f, 0.5f), 0.0f);
+                    entity.addComponent<CanvasComponent>();
+                    entityInspector.selectEntity(entity, true);
+                    statusMessage = "Created Canvas entity " + std::to_string(entity.getId()) + ".";
+                }
+
+                ImGui::EndMenu();
             }
 
             const bool hasSelectedEntity = entityInspector.getSelectedEntityId() >= 0;

@@ -45,6 +45,8 @@ public:
         int height
     );
 
+    bool pickScreenColor(int x, int y, RenderColor& outColor);
+
     Renderer(const Renderer& other) = delete;
     Renderer& operator=(const Renderer& other) = delete;
     Renderer(Renderer&& other) = delete;
@@ -72,6 +74,7 @@ private:
     void renderWorld(const Camera2D& renderCamera, const RenderRect& viewport);
     void renderDebugPoints(const Camera2D& renderCamera, const RenderRect& viewport);
     void updateDebugPoints();
+    void renderUI();
 
     IRenderBackend* renderBackend = nullptr;
     IWindowBackend* windowBackend = nullptr;
