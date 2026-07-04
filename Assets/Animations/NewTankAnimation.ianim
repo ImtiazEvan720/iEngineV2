@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ianim version="1.0" name="NewTankAnimation" tileset="BattleCityTileset.itile">
+    <frame duration="100" width="1" height="1">
+        <tile id="350" x="0" y="0"/>
+    </frame>
+    <frame duration="100" width="1" height="1">
+        <tile id="351" x="0" y="0"/>
+    </frame>
+</ianim>

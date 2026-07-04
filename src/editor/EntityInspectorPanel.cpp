@@ -128,7 +128,22 @@ void EntityInspectorPanel::drawEntityDetails(Entity& entity, std::string& status
     ImGui::Text("State: %s", entity.isDestroyed() ? "Destroyed" : "Active");
     ImGui::Text("Enabled: %s", entity.isEnabled() ? "Yes" : "No");
 
-    if (selectedEntityId == entity.getId()) {
+    const bool isLocked = lockedEntityIndex == entity.getId();
+    const char* buttonText = isLocked ? "Unlock Entity" : "Lock Entity";
+
+    if (entity.getParent() == nullptr) {
+        if (ImGui::Button(buttonText)) {
+            if (isLocked) {
+                lockedEntityIndex = -1;
+                statusMessage = "Unlocked entity " + std::to_string(entity.getId()) + ".";
+            } else {
+                lockedEntityIndex = entity.getId();
+                statusMessage = "Locked entity " + std::to_string(entity.getId()) + ".";
+            }
+        }
+    }
+
+    if (selectedEntityId == entity.getId() || lockedEntityIndex == entity.getId()) {
         syncEditStateFromEntity(entity);
         identityDrawer.draw(entity, statusMessage);
     } else {
@@ -138,7 +153,7 @@ void EntityInspectorPanel::drawEntityDetails(Entity& entity, std::string& status
 
     componentList.draw(
         entity,
-        selectedEntityId == entity.getId(),
+        selectedEntityId == entity.getId() || lockedEntityIndex == entity.getId(),
         [this](Entity& target, std::string& message) {
             drawAddComponentCombo(target, message);
         },

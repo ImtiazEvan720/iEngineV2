@@ -31,6 +31,7 @@ private:
     int pendingDeleteEntityId = -1;
     int selectedAddComponentIndex = 0;
     int selectedScriptIndex = 0;
+    int lockedEntityIndex = -1;
     std::string prefabName;
     EntityIdentityDrawer identityDrawer;
     EntityComponentList componentList;
