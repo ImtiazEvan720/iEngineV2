@@ -1,5 +1,6 @@
 #pragma once
 
+#include "editor/RectGizmo.h"
 #include "math/Vector2F.h"
 #include "system/IRenderBackend.h"
 
@@ -9,6 +10,8 @@ class EditorCamera;
 class Entity;
 class EntityInspectorPanel;
 class ViewportGrid;
+class CollisionComponent;
+class TransformComponent;
 
 class ColliderGizmo {
 public:
@@ -25,37 +28,16 @@ public:
     );
 
 private:
-    enum class EditMode {
-        None,
-        Move,
-        ResizeLeft,
-        ResizeRight,
-        ResizeTop,
-        ResizeBottom,
-        ResizeTopLeft,
-        ResizeTopRight,
-        ResizeBottomLeft,
-        ResizeBottomRight
-    };
-
-    EditMode hitTestSelectedHandle(
-        const EntityInspectorPanel& entityInspector,
-        const Vector2F& screenMousePosition,
-        const RenderRect& viewport
-    ) const;
-    void moveSelectedCollider(
-        EntityInspectorPanel& entityInspector,
-        const ViewportGrid& viewportGrid,
-        const Vector2F& worldMousePosition
-    );
-    void resizeSelectedCollider(
-        EntityInspectorPanel& entityInspector,
-        const ViewportGrid& viewportGrid,
-        const Vector2F& worldMousePosition
-    );
     Entity* findEntityById(int id) const;
+    RectGizmo::Rect buildColliderRect(
+        const TransformComponent& transform,
+        const CollisionComponent& collider
+    ) const;
+    void applyColliderRect(
+        const TransformComponent& transform,
+        CollisionComponent& collider,
+        const RectGizmo::Rect& rect
+    ) const;
 
-    int editingEntityId = -1;
-    EditMode editMode = EditMode::None;
-    float dragOffset[2] = {0.0f, 0.0f};
+    RectGizmo rectGizmo;
 };

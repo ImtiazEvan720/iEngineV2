@@ -318,6 +318,7 @@ if(IENGINE_WITH_EDITOR)
         src/editor/LevelEditorViewport.cpp
         src/editor/LevelManagerPanel.cpp
         src/editor/PrefabPanel.cpp
+        src/editor/RectGizmo.cpp
         src/editor/ScriptPropertyInspector.cpp
         src/editor/ScriptPropertyParser.cpp
         src/editor/SpritePalettePanel.cpp
