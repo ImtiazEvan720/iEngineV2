@@ -21,16 +21,6 @@ namespace {
 constexpr const char* EntityParentDragPayloadType = "IENGINE_ENTITY_PARENT";
 constexpr const char* EntityReorderDragPayloadType = "IENGINE_ENTITY_REORDER";
 
-Entity* findEntityById(Level& level, int entityId) {
-    for (Entity& entity : level.getEntities()) {
-        if (entity.getId() == entityId && !entity.isDestroyed()) {
-            return &entity;
-        }
-    }
-
-    return nullptr;
-}
-
 std::vector<std::string> getPrefabAssetNames() {
     std::vector<std::string> prefabNames;
     const std::vector<PrefabAsset*> prefabAssets = AssetManager::getInstance().getPrefabAssets();
@@ -85,7 +75,7 @@ bool acceptEntityReferenceDrop(std::string& value, std::string& statusMessage) {
     bool accepted = false;
     if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(int)) {
         const int draggedEntityId = *static_cast<const int*>(payload->Data);
-        Entity* draggedEntity = findEntityById(Level::getCurrentLevel(), draggedEntityId);
+        Entity* draggedEntity = Level::getCurrentLevel().findEntityById(draggedEntityId);
         if (draggedEntity != nullptr) {
             value = draggedEntity->getGuid();
             statusMessage = "Updated script entity property: " + draggedEntity->getName() + ".";

@@ -3,6 +3,7 @@
 #include "Entity.h"
 #include "components/AnimationComponent.h"
 #include "components/CollisionComponent.h"
+#include "components/RectTransformComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "editor/EditorCamera.h"
@@ -18,6 +19,7 @@
 #include "system/EngineState.h"
 
 #include "imgui.h"
+#include <cstddef>
 
 bool LevelEditorViewport::draw(
     bool enabled,
@@ -50,6 +52,11 @@ bool LevelEditorViewport::draw(
 
     if (activeEditorViewport && viewportGrid.shouldShowColliders()) {
         colliderGizmo.draw(entityInspector, camera);
+    }
+
+    if(activeEditorViewport && transformHandlesVisible && !isGamePlaying)
+    {
+        rectTransformGizmo.draw(entityInspector,camera);
     }
 
     const bool moveToolRequested = handleEntityInteraction(
@@ -104,10 +111,11 @@ bool LevelEditorViewport::handleEntityInteraction(
     }
 
     const ImVec2 mousePosition = ImGui::GetMousePos();
+    const Vector2F screenMousePosition(mousePosition.x, mousePosition.y);
     const RenderRect viewport = camera.getViewport();
     Camera2D& sceneCamera = Renderer::getInstance().getCamera();
     const Vector2F worldMousePosition = sceneCamera.screenToWorld(
-        Vector2F(mousePosition.x, mousePosition.y),
+        screenMousePosition,
         viewport
     );
 
@@ -125,13 +133,20 @@ bool LevelEditorViewport::handleEntityInteraction(
     bool moveToolRequested = false;
 
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !io.WantCaptureMouse) {
-        Entity* entity = findEntityAt(worldMousePosition.x, worldMousePosition.y, camera, viewportGrid);
+        Entity* entity = findEntityAt(screenMousePosition, camera, viewportGrid);
         if (entity != nullptr) {
             entityInspector.selectEntity(*entity, true);
             draggingEntityId = entity->getId();
             moveToolRequested = true;
 
-            if (TransformComponent* transform = entity->getComponent<TransformComponent>()) {
+            if(RectTransformComponent* rectTransform = entity->getComponent<RectTransformComponent>())
+            {
+                const Vector2F& position = rectTransform->getAnchoredPosition();
+                dragOffset[0] = screenMousePosition.x - position.x;
+                dragOffset[1] = screenMousePosition.y - position.y;
+
+            }
+            else if (TransformComponent* transform = entity->getComponent<TransformComponent>()) {
                 const Vector2F& position = transform->getPosition();
                 dragOffset[0] = worldMousePosition.x - position.x;
                 dragOffset[1] = worldMousePosition.y - position.y;
@@ -148,32 +163,50 @@ bool LevelEditorViewport::handleEntityInteraction(
     }
 
     if (draggingEntityId >= 0 && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-        Entity* entity = findEntityById(draggingEntityId);
+        Entity* entity = Level::getCurrentLevel().findEntityById(draggingEntityId);
         if (entity == nullptr) {
             draggingEntityId = -1;
             return moveToolRequested;
         }
 
+        RectTransformComponent* rectTransform = entity->getComponent<RectTransformComponent>();
         TransformComponent* transform = entity->getComponent<TransformComponent>();
-        if (transform == nullptr) {
+
+        if (transform == nullptr && rectTransform == nullptr) {
             draggingEntityId = -1;
             return moveToolRequested;
         }
 
-        Vector2F newPosition(
-            worldMousePosition.x - dragOffset[0],
-            worldMousePosition.y - dragOffset[1]
-        );
-        if (viewportGrid.shouldSnapToGrid()) {
-            newPosition = viewportGrid.snapPosition(newPosition);
+        Vector2F newPosition = Vector2F::zero();
+
+        if (rectTransform != nullptr) {
+            newPosition = Vector2F(
+                screenMousePosition.x - dragOffset[0],
+                screenMousePosition.y - dragOffset[1]
+            );
+
+            if (viewportGrid.shouldSnapToGrid()) {
+                newPosition = viewportGrid.snapPosition(newPosition);
+            }
+
+            rectTransform->setAnchoredPosition(newPosition);
+        } else if (transform != nullptr) {
+            newPosition = Vector2F(
+                worldMousePosition.x - dragOffset[0],
+                worldMousePosition.y - dragOffset[1]
+            );
+            if (viewportGrid.shouldSnapToGrid()) {
+                newPosition = viewportGrid.snapPosition(newPosition);
+            }
+
+            transform->setWorldPosition(newPosition);
         }
 
-        transform->setPosition(newPosition);
         entityInspector.syncEditStateFromEntity(*entity, true);
     }
 
     if (draggingEntityId >= 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-        Entity* entity = findEntityById(draggingEntityId);
+        Entity* entity = Level::getCurrentLevel().findEntityById(draggingEntityId);
         if (entity != nullptr) {
             entityInspector.syncEditStateFromEntity(*entity, true);
             statusMessage = "Moved entity " + std::to_string(entity->getId()) + ".";
@@ -186,11 +219,30 @@ bool LevelEditorViewport::handleEntityInteraction(
 }
 
 Entity* LevelEditorViewport::findEntityAt(
-    float x,
-    float y,
+    const Vector2F& screenMousePosition,
     const EditorCamera& camera,
     const ViewportGrid& viewportGrid
-) {
+) const {
+    auto* uiEntity = findUiEntityAt(screenMousePosition);
+
+    if (uiEntity != nullptr) {
+        return uiEntity;
+    }
+
+    const RenderRect viewport = camera.getViewport();
+    const Vector2F worldMousePosition = Renderer::getInstance().getCamera().screenToWorld(
+        screenMousePosition,
+        viewport
+    );
+
+    return findWorldspaceEntityAt(worldMousePosition, camera, viewportGrid);
+}
+
+Entity* LevelEditorViewport::findWorldspaceEntityAt(
+    const Vector2F& worldSpace,
+    const EditorCamera& camera,
+    const ViewportGrid& viewportGrid
+) const {
     auto& entities = Level::getCurrentLevel().getEntities();
 
     for (auto iterator = entities.rbegin(); iterator != entities.rend(); ++iterator) {
@@ -198,7 +250,7 @@ Entity* LevelEditorViewport::findEntityAt(
             continue;
         }
 
-        if (entityContainsPoint(*iterator, x, y, camera, viewportGrid)) {
+        if (entityContainsPoint(*iterator, worldSpace, camera, viewportGrid)) {
             return &*iterator;
         }
     }
@@ -206,11 +258,21 @@ Entity* LevelEditorViewport::findEntityAt(
     return nullptr;
 }
 
-Entity* LevelEditorViewport::findEntityById(int id) const {
-    for (Entity& entity : Level::getCurrentLevel().getEntities()) {
-        if (entity.getId() == id && !entity.isDestroyed()) {
+
+Entity* LevelEditorViewport::findUiEntityAt(const Vector2F& screenSpace) const {
+    auto& entities = Level::getCurrentLevel().getEntities();
+
+    for (auto iterator = entities.begin(); iterator != entities.end(); ++iterator) {
+        Entity& entity = *iterator;
+
+        if (entity.isDestroyed() || !entity.isEnabled()) {
+            continue;
+        }
+
+        if (uiEntityContainsPoint(entity, screenSpace)) {
             return &entity;
         }
+
     }
 
     return nullptr;
@@ -218,8 +280,7 @@ Entity* LevelEditorViewport::findEntityById(int id) const {
 
 bool LevelEditorViewport::entityContainsPoint(
     Entity& entity,
-    float x,
-    float y,
+    const Vector2F& worldSpacePosition,
     const EditorCamera& camera,
     const ViewportGrid& viewportGrid
 ) const {
@@ -228,7 +289,7 @@ bool LevelEditorViewport::entityContainsPoint(
         return false;
     }
 
-    if (transformGizmo.contains(entity, x, y, camera)) {
+    if (transformGizmo.contains(entity, worldSpacePosition.x, worldSpacePosition.y, camera)) {
         return true;
     }
 
@@ -245,7 +306,10 @@ bool LevelEditorViewport::entityContainsPoint(
             const float top = worldPosition.y - halfHeight;
             const float bottom = worldPosition.y + halfHeight;
 
-            if (x >= left && x <= right && y >= top && y <= bottom) {
+            if (worldSpacePosition.x >= left
+                && worldSpacePosition.x <= right
+                && worldSpacePosition.y >= top
+                && worldSpacePosition.y <= bottom) {
                 return true;
             }
         }
@@ -272,5 +336,32 @@ bool LevelEditorViewport::entityContainsPoint(
     const float right = left + size.x;
     const float bottom = top + size.y;
 
-    return x >= left && x <= right && y >= top && y <= bottom;
+    return worldSpacePosition.x >= left
+        && worldSpacePosition.x <= right
+        && worldSpacePosition.y >= top
+        && worldSpacePosition.y <= bottom;
+}
+
+bool LevelEditorViewport::uiEntityContainsPoint(
+    const Entity& entity,
+    const Vector2F& screenSpacePosition
+) const {
+    auto* rect = entity.getComponent<RectTransformComponent>();
+    if (rect == nullptr) {
+        return false;
+    }
+
+    const Vector2F& center = rect->getAnchoredPosition();
+    const Vector2F& size = rect->getSize();
+    const Vector2F& pivot = rect->getPivot();
+
+    const float left = center.x - (size.x * pivot.x);
+    const float top = center.y - (size.y * pivot.y);
+    const float right = left + size.x;
+    const float bottom = top + size.y;
+
+    return screenSpacePosition.x >= left
+        && screenSpacePosition.x <= right
+        && screenSpacePosition.y >= top
+        && screenSpacePosition.y <= bottom;
 }

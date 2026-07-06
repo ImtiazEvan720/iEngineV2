@@ -45,6 +45,8 @@ public:
 
     Entity *getEntity(std::size_t index);
     const Entity *getEntity(std::size_t index) const;
+    Entity *findEntityById(int id);
+    const Entity *findEntityById(int id) const;
     Entity *getEntityByGuid(const std::string &guid);
     const Entity *getEntityByGuid(const std::string &guid) const;
 

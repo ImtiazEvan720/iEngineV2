@@ -51,7 +51,7 @@ void ColliderGizmo::draw(
         return;
     }
 
-    Entity* entity = findEntityById(selectedEntityId);
+    Entity* entity = Level::getCurrentLevel().findEntityById(selectedEntityId);
     if (entity == nullptr) {
         return;
     }
@@ -90,7 +90,7 @@ bool ColliderGizmo::handleInteraction(
         return false;
     }
 
-    Entity* entity = findEntityById(entityInspector.getSelectedEntityId());
+    Entity* entity = Level::getCurrentLevel().findEntityById(entityInspector.getSelectedEntityId());
     if (entity == nullptr) {
         return false;
     }
@@ -135,14 +135,4 @@ bool ColliderGizmo::handleInteraction(
     }
 
     return true;
-}
-
-Entity* ColliderGizmo::findEntityById(int id) const {
-    for (Entity& entity : Level::getCurrentLevel().getEntities()) {
-        if (entity.getId() == id && !entity.isDestroyed()) {
-            return &entity;
-        }
-    }
-
-    return nullptr;
 }

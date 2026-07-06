@@ -13,16 +13,6 @@ namespace {
 constexpr const char* EntityParentDragPayloadType = "IENGINE_ENTITY_PARENT";
 constexpr const char* EntityReorderDragPayloadType = "IENGINE_ENTITY_REORDER";
 
-Entity* findEntityById(Level& level, int entityId) {
-    for (Entity& entity : level.getEntities()) {
-        if (entity.getId() == entityId && !entity.isDestroyed()) {
-            return &entity;
-        }
-    }
-
-    return nullptr;
-}
-
 bool compareEntityDisplayOrder(const Entity* left, const Entity* right) {
     if (left == nullptr || right == nullptr) {
         return left != nullptr;
@@ -159,7 +149,7 @@ void EntityTreePanel::draw(
             const ImGuiPayload* reorderPayload = ImGui::AcceptDragDropPayload(EntityReorderDragPayloadType);
             if (reorderPayload != nullptr && reorderPayload->IsDelivery() && reorderPayload->DataSize == sizeof(int)) {
                 const int draggedEntityId = *static_cast<const int*>(reorderPayload->Data);
-                Entity* draggedEntity = findEntityById(level, draggedEntityId);
+                Entity* draggedEntity = level.findEntityById(draggedEntityId);
                 if (draggedEntity != nullptr) {
                     moveEntityToRootEnd(level, *draggedEntity);
                     syncEntityCallback(*draggedEntity, true);
@@ -169,7 +159,7 @@ void EntityTreePanel::draw(
                 const ImGuiPayload* parentPayload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
                 if (parentPayload != nullptr && parentPayload->IsDelivery() && parentPayload->DataSize == sizeof(int)) {
                     const int draggedEntityId = *static_cast<const int*>(parentPayload->Data);
-                    Entity* draggedEntity = findEntityById(level, draggedEntityId);
+                    Entity* draggedEntity = level.findEntityById(draggedEntityId);
                     if (draggedEntity != nullptr) {
                         draggedEntity->clearParent();
                         moveEntityToSiblingEnd(level, *draggedEntity);
@@ -267,7 +257,7 @@ void EntityTreePanel::drawEntityTreeNode(
         const ImGuiPayload* reorderPayload = ImGui::AcceptDragDropPayload(EntityReorderDragPayloadType);
         if (reorderPayload != nullptr && reorderPayload->IsDelivery() && reorderPayload->DataSize == sizeof(int)) {
             const int draggedEntityId = *static_cast<const int*>(reorderPayload->Data);
-            Entity* draggedEntity = findEntityById(level, draggedEntityId);
+            Entity* draggedEntity = level.findEntityById(draggedEntityId);
             if (draggedEntity != nullptr && draggedEntity != &entity) {
                 const ImVec2 itemMin = ImGui::GetItemRectMin();
                 const ImVec2 itemMax = ImGui::GetItemRectMax();
@@ -286,7 +276,7 @@ void EntityTreePanel::drawEntityTreeNode(
             const ImGuiPayload* parentPayload = ImGui::AcceptDragDropPayload(EntityParentDragPayloadType);
             if (parentPayload != nullptr && parentPayload->IsDelivery() && parentPayload->DataSize == sizeof(int)) {
                 const int draggedEntityId = *static_cast<const int*>(parentPayload->Data);
-                Entity* draggedEntity = findEntityById(level, draggedEntityId);
+                Entity* draggedEntity = level.findEntityById(draggedEntityId);
                 if (draggedEntity != nullptr && draggedEntity != &entity) {
                     if (draggedEntity->setParent(&entity)) {
                         moveEntityToSiblingEnd(level, *draggedEntity);

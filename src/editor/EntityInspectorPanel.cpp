@@ -9,16 +9,6 @@
 #include <string>
 
 namespace {
-Entity* findEntityById(Level& level, int entityId) {
-    for (Entity& entity : level.getEntities()) {
-        if (entity.getId() == entityId && !entity.isDestroyed()) {
-            return &entity;
-        }
-    }
-
-    return nullptr;
-}
-
 std::string sanitizePrefabName(const std::string& value) {
     std::string sanitized;
     sanitized.reserve(value.size());
@@ -169,13 +159,7 @@ Entity* EntityInspectorPanel::findSelectedEntity(Level& level) const {
         return nullptr;
     }
 
-    for (Entity& entity : level.getEntities()) {
-        if (entity.getId() == selectedEntityId && !entity.isDestroyed()) {
-            return &entity;
-        }
-    }
-
-    return nullptr;
+    return level.findEntityById(selectedEntityId);
 }
 
 void EntityInspectorPanel::processPendingDelete(Level& level, std::string& statusMessage) {
@@ -193,7 +177,7 @@ void EntityInspectorPanel::processPendingDelete(Level& level, std::string& statu
 
     level.cleanupDestroyedEntities();
 
-    if (selectedEntityId >= 0 && findEntityById(level, selectedEntityId) == nullptr) {
+    if (selectedEntityId >= 0 && level.findEntityById(selectedEntityId) == nullptr) {
         clearSelection();
     }
 

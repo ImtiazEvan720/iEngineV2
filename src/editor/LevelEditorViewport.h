@@ -1,7 +1,9 @@
 #pragma once
 
 #include "editor/ColliderGizmo.h"
+#include "editor/RectTransformGizmo.h"
 #include "editor/TransformGizmo.h"
+#include "math/Vector2F.h"
 
 #include <string>
 
@@ -13,6 +15,7 @@ class SpritePalettePanel;
 class ViewportGrid;
 class ColliderGizmo;
 class TransformGizmo;
+class RectTransformGizmo;
 
 class LevelEditorViewport {
 public:
@@ -35,18 +38,38 @@ private:
         EntityInspectorPanel& entityInspector,
         std::string& statusMessage
     );
-    Entity* findEntityAt(float x, float y, const EditorCamera& camera, const ViewportGrid& viewportGrid);
-    Entity* findEntityById(int id) const;
-    bool entityContainsPoint(
-        Entity& entity,
-        float x,
-        float y,
+    Entity* findEntityAt(
+        const Vector2F& screenMousePosition,
         const EditorCamera& camera,
         const ViewportGrid& viewportGrid
     ) const;
+
+    bool entityContainsPoint(
+        Entity& entity,
+        const Vector2F& worldSpacePosition,
+        const EditorCamera& camera,
+        const ViewportGrid& viewportGrid
+    ) const;
+
+    bool uiEntityContainsPoint(
+        const Entity& entity,
+        const Vector2F& screenSpacePosition
+    ) const;
+
+    Entity* findWorldspaceEntityAt(
+        const Vector2F& worldSpace,
+        const EditorCamera& camera,
+        const ViewportGrid& viewportGrid
+    ) const;
+
+    Entity* findUiEntityAt(
+        const Vector2F& screenSpace
+    ) const;
+
 
     int draggingEntityId = -1;
     float dragOffset[2] = {0.0f, 0.0f};
     ColliderGizmo colliderGizmo;
     TransformGizmo transformGizmo;
+    RectTransformGizmo rectTransformGizmo;
 };

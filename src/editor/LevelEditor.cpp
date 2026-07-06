@@ -52,15 +52,6 @@ std::string getBuildScriptCommand(const std::string& scriptName) {
     return "./" + scriptName;
 }
 
-Entity* findEntityById(Level& level, int entityId) {
-    for (Entity& entity : level.getEntities()) {
-        if (entity.getId() == entityId && !entity.isDestroyed()) {
-            return &entity;
-        }
-    }
-
-    return nullptr;
-}
 }
 
 void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
@@ -276,7 +267,7 @@ void LevelEditor::updateEditorOnly(float deltaTime) {
 
 void LevelEditor::duplicateSelectedEntity() {
     Level& level = Level::getCurrentLevel();
-    Entity* selectedEntity = findEntityById(level, entityInspector.getSelectedEntityId());
+    Entity* selectedEntity = level.findEntityById(entityInspector.getSelectedEntityId());
     if (selectedEntity == nullptr) {
         statusMessage = "No entity selected.";
         return;

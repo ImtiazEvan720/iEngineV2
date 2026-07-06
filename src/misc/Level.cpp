@@ -1,9 +1,11 @@
 #include "misc/Level.h"
 
 #include "components/AnimationComponent.h"
+#include "components/CanvasComponent.h"
 #include "components/CollisionComponent.h"
 #include "components/PlayerCameraComponent.h"
 #include "components/PlayerController.h"
+#include "components/RectTransformComponent.h"
 #include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
@@ -19,6 +21,7 @@
 #include "tinyxml2.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -62,6 +65,17 @@ namespace
     const char *boolText(bool value)
     {
         return value ? "true" : "false";
+    }
+
+    std::uint8_t readColorAttribute(
+        const tinyxml2::XMLElement &element,
+        const char *name,
+        std::uint8_t fallback)
+    {
+        return static_cast<std::uint8_t>(std::clamp(
+            element.IntAttribute(name, static_cast<int>(fallback)),
+            0,
+            255));
     }
 
     const char *bodyTypeToString(CollisionComponent::BodyType bodyType)
@@ -297,6 +311,49 @@ namespace
         component->SetAttribute("x", position.x);
         component->SetAttribute("y", position.y);
         component->SetAttribute("rotation", transform.getRotation());
+    }
+
+    void saveRectTransformComponent(
+        tinyxml2::XMLDocument &document,
+        tinyxml2::XMLElement &entityElement,
+        const RectTransformComponent &rectTransform)
+    {
+        tinyxml2::XMLElement *component = addComponentElement(document, entityElement, "RectTransformComponent");
+        setComponentEnabledAttribute(*component, rectTransform);
+
+        const Vector2F &position = rectTransform.getAnchoredPosition();
+        const Vector2F &size = rectTransform.getSize();
+        const Vector2F &pivot = rectTransform.getPivot();
+
+        component->SetAttribute("anchoredX", position.x);
+        component->SetAttribute("anchoredY", position.y);
+        component->SetAttribute("sizeX", size.x);
+        component->SetAttribute("sizeY", size.y);
+        component->SetAttribute("pivotX", pivot.x);
+        component->SetAttribute("pivotY", pivot.y);
+        component->SetAttribute("rotation", rectTransform.getRotation());
+    }
+
+    void saveCanvasComponent(
+        tinyxml2::XMLDocument &document,
+        tinyxml2::XMLElement &entityElement,
+        const CanvasComponent &canvas)
+    {
+        tinyxml2::XMLElement *component = addComponentElement(document, entityElement, "CanvasComponent");
+        setComponentEnabledAttribute(*component, canvas);
+
+        const Vector2F &referenceResolution = canvas.getReferenceResolution();
+        const RenderColor &canvasColor = canvas.getCanvasColor();
+
+        component->SetAttribute("referenceWidth", referenceResolution.x);
+        component->SetAttribute("referenceHeight", referenceResolution.y);
+        component->SetAttribute("sortingOrder", canvas.getSortingOrder());
+        component->SetAttribute("opacity", canvas.getOpacity());
+        component->SetAttribute("scale", canvas.getScale());
+        component->SetAttribute("colorR", static_cast<int>(canvasColor.r));
+        component->SetAttribute("colorG", static_cast<int>(canvasColor.g));
+        component->SetAttribute("colorB", static_cast<int>(canvasColor.b));
+        component->SetAttribute("colorA", static_cast<int>(canvasColor.a));
     }
 
     void saveSpriteComponent(
@@ -746,6 +803,76 @@ namespace
             return true;
         }
 
+        if (componentType == "RectTransformComponent")
+        {
+            RectTransformComponent *rectTransform = entity.getComponent<RectTransformComponent>();
+            if (rectTransform == nullptr)
+            {
+                rectTransform = &entity.addComponent<RectTransformComponent>(
+                    Vector2F(
+                        component.FloatAttribute("anchoredX", 0.0f),
+                        component.FloatAttribute("anchoredY", 0.0f)),
+                    Vector2F(
+                        component.FloatAttribute("sizeX", 0.0f),
+                        component.FloatAttribute("sizeY", 0.0f)),
+                    Vector2F(
+                        component.FloatAttribute("pivotX", 0.0f),
+                        component.FloatAttribute("pivotY", 0.0f)),
+                    component.FloatAttribute("rotation", 0.0f));
+            }
+            else
+            {
+                rectTransform->setAnchoredPosition(Vector2F(
+                    component.FloatAttribute("anchoredX", 0.0f),
+                    component.FloatAttribute("anchoredY", 0.0f)));
+                rectTransform->setSize(Vector2F(
+                    component.FloatAttribute("sizeX", 0.0f),
+                    component.FloatAttribute("sizeY", 0.0f)));
+                rectTransform->setPivot(Vector2F(
+                    component.FloatAttribute("pivotX", 0.0f),
+                    component.FloatAttribute("pivotY", 0.0f)));
+                rectTransform->setRotation(component.FloatAttribute("rotation", 0.0f));
+            }
+
+            applyComponentEnabledAttribute(component, *rectTransform);
+            return true;
+        }
+
+        if (componentType == "CanvasComponent")
+        {
+            CanvasComponent *canvasComponent = entity.getComponent<CanvasComponent>();
+            if (canvasComponent == nullptr)
+            {
+                canvasComponent = &entity.addComponent<CanvasComponent>();
+            }
+
+            canvasComponent->setReferenceResolution(Vector2F(
+                component.FloatAttribute("referenceWidth", 640.0f),
+                component.FloatAttribute("referenceHeight", 320.0f)));
+            canvasComponent->setSortingOrder(component.IntAttribute("sortingOrder", 0));
+            canvasComponent->setOpacity(component.FloatAttribute("opacity", 1.0f));
+            canvasComponent->setScale(component.FloatAttribute("scale", 1.0f));
+
+            RenderColor canvasColor = canvasComponent->getCanvasColor();
+            canvasColor.r = readColorAttribute(component, "colorR", canvasColor.r);
+            canvasColor.g = readColorAttribute(component, "colorG", canvasColor.g);
+            canvasColor.b = readColorAttribute(component, "colorB", canvasColor.b);
+            canvasColor.a = readColorAttribute(component, "colorA", canvasColor.a);
+            canvasComponent->setCanvasColor(canvasColor);
+
+            if (entity.getComponent<RectTransformComponent>() == nullptr)
+            {
+                entity.addComponent<RectTransformComponent>(
+                    Vector2F::zero(),
+                    canvasComponent->getReferenceResolution(),
+                    Vector2F(0.5f, 0.5f),
+                    0.0f);
+            }
+
+            applyComponentEnabledAttribute(component, *canvasComponent);
+            return true;
+        }
+
         if (componentType == "SpriteComponent")
         {
             return addSpriteComponentFromElement(component, entity, errorMessage);
@@ -889,6 +1016,16 @@ bool Level::saveCurrentLevel(const std::string &path, std::string &errorMessage)
         if (const TransformComponent *transform = entity.getComponent<TransformComponent>())
         {
             saveTransformComponent(document, *entityElement, *transform);
+        }
+
+        if (const RectTransformComponent *rectTransform = entity.getComponent<RectTransformComponent>())
+        {
+            saveRectTransformComponent(document, *entityElement, *rectTransform);
+        }
+
+        if (const CanvasComponent *canvasComponent = entity.getComponent<CanvasComponent>())
+        {
+            saveCanvasComponent(document, *entityElement, *canvasComponent);
         }
 
         if (const SpriteComponent *spriteComponent = entity.getComponent<SpriteComponent>())
@@ -1339,6 +1476,32 @@ const Entity *Level::getEntity(std::size_t index) const
     }
 
     return &entities[index];
+}
+
+Entity *Level::findEntityById(int id)
+{
+    for (Entity &entity : entities)
+    {
+        if (entity.getId() == id && !entity.isDestroyed())
+        {
+            return &entity;
+        }
+    }
+
+    return nullptr;
+}
+
+const Entity *Level::findEntityById(int id) const
+{
+    for (const Entity &entity : entities)
+    {
+        if (entity.getId() == id && !entity.isDestroyed())
+        {
+            return &entity;
+        }
+    }
+
+    return nullptr;
 }
 
 std::deque<Entity> &Level::getEntities()

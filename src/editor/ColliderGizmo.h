@@ -7,7 +7,6 @@
 #include <string>
 
 class EditorCamera;
-class Entity;
 class EntityInspectorPanel;
 class ViewportGrid;
 class CollisionComponent;
@@ -28,7 +27,6 @@ public:
     );
 
 private:
-    Entity* findEntityById(int id) const;
     RectGizmo::Rect buildColliderRect(
         const TransformComponent& transform,
         const CollisionComponent& collider

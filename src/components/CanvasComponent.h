@@ -3,6 +3,9 @@
 #include "math/Vector2F.h"
 #include "system/IRenderBackend.h"
 
+namespace {
+constexpr RenderColor DEFAULT_CANVAS_COLOR = {180, 180, 180, 220};
+}
 class CanvasComponent: public Component {
 public:
     CanvasComponent() = default;
@@ -26,5 +29,5 @@ private:
     int SortingOrder = 0;
     float Opacity = 1.0f;
     float Scale = 1.0f;
-    RenderColor CanvasColor = {0, 0, 0, 255};
+    RenderColor CanvasColor = DEFAULT_CANVAS_COLOR;
 };

@@ -303,6 +303,7 @@ if(IENGINE_WITH_EDITOR)
         src/editor/components/SpriteComponentDrawer.cpp
         src/editor/components/TransformComponentDrawer.cpp
         src/editor/ColliderGizmo.cpp
+        src/editor/RectTransformGizmo.cpp
         src/editor/EditorCamera.cpp
         src/editor/EditorCollectionViews.cpp
         src/editor/EditorPlayCameraPreviewPanel.cpp
