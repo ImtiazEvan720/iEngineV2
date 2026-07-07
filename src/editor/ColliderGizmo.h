@@ -19,7 +19,6 @@ public:
     bool handleInteraction(
         EntityInspectorPanel& entityInspector,
         const ViewportGrid& viewportGrid,
-        const EditorCamera& camera,
         const Vector2F& worldMousePosition,
         const RenderRect& viewport,
         int& draggingEntityId,

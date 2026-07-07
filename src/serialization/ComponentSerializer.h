@@ -11,9 +11,16 @@ class XMLDocument;
 class XMLElement;
 }
 
+enum class ComponentSerializationPlacement {
+    None,
+    World,
+    Screen
+};
+
 struct ComponentSerializationContext {
     bool isRootEntity = false;
     Vector2F rootPosition = Vector2F::zero();
+    ComponentSerializationPlacement placement = ComponentSerializationPlacement::World;
 };
 
 class IComponentSerializer {
@@ -32,4 +39,5 @@ public:
 
     virtual bool loadBeforeOtherComponents() const;
     virtual bool requiresTransformBeforeLoad() const;
+    virtual bool requiresRectTransformBeforeLoad() const;
 };

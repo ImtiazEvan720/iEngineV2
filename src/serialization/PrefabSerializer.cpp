@@ -163,6 +163,7 @@ Entity* instantiateEntityRecursive(
     Entity* parent,
     const Vector2F& rootPosition,
     bool isRootEntity,
+    ComponentSerializationPlacement placement,
     std::vector<Entity*>& createdEntities,
     PrefabIdEntityMap& prefabIdToEntity,
     std::string& errorMessage
@@ -189,6 +190,7 @@ Entity* instantiateEntityRecursive(
     ComponentSerializationContext context;
     context.isRootEntity = isRootEntity;
     context.rootPosition = rootPosition;
+    context.placement = placement;
 
     if (!ComponentSerializerRegistry::getInstance().loadComponents(entityElement, entity, context, errorMessage)) {
         return nullptr;
@@ -205,6 +207,7 @@ Entity* instantiateEntityRecursive(
             &entity,
             rootPosition,
             false,
+            placement,
             createdEntities,
             prefabIdToEntity,
             errorMessage
@@ -274,7 +277,8 @@ Entity* PrefabSerializer::instantiate(
     const std::string& path,
     Level& level,
     const Vector2F& position,
-    std::string& errorMessage
+    std::string& errorMessage,
+    ComponentSerializationPlacement placement
 ) {
     tinyxml2::XMLDocument document;
     if (document.LoadFile(path.c_str()) != tinyxml2::XML_SUCCESS) {
@@ -297,6 +301,7 @@ Entity* PrefabSerializer::instantiate(
         nullptr,
         position,
         true,
+        placement,
         createdEntities,
         prefabIdToEntity,
         errorMessage

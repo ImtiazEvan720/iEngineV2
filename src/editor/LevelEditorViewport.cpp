@@ -95,6 +95,7 @@ bool LevelEditorViewport::handleEntityInteraction(
     if (!enabled) {
         draggingEntityId = -1;
         colliderGizmo.cancel();
+        rectTransformGizmo.cancel();
         return false;
     }
 
@@ -107,6 +108,7 @@ bool LevelEditorViewport::handleEntityInteraction(
     if (camera.isPanActive()) {
         draggingEntityId = -1;
         colliderGizmo.cancel();
+        rectTransformGizmo.cancel();
         return false;
     }
 
@@ -119,10 +121,20 @@ bool LevelEditorViewport::handleEntityInteraction(
         viewport
     );
 
+    if (!EngineState::getInstance().isPlaying()
+        && rectTransformGizmo.handleInteraction(
+            entityInspector,
+            viewportGrid,
+            screenMousePosition,
+            viewport,
+            draggingEntityId,
+            statusMessage)) {
+        return true;
+    }
+
     if (colliderGizmo.handleInteraction(
             entityInspector,
             viewportGrid,
-            camera,
             worldMousePosition,
             viewport,
             draggingEntityId,

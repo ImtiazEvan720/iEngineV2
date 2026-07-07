@@ -77,13 +77,11 @@ void ColliderGizmo::draw(
 bool ColliderGizmo::handleInteraction(
     EntityInspectorPanel& entityInspector,
     const ViewportGrid& viewportGrid,
-    const EditorCamera& camera,
     const Vector2F& worldMousePosition,
     const RenderRect& viewport,
     int& draggingEntityId,
     std::string& statusMessage
 ) {
-    (void)camera;
 
     if (!viewportGrid.shouldShowColliders()) {
         cancel();
@@ -101,6 +99,10 @@ bool ColliderGizmo::handleInteraction(
         return false;
     }
 
+    RectGizmo::Options options;
+    options.allowMove = true;
+    options.allowResize = true;
+
     const RectGizmo::EditResult result = rectGizmo.handleInteraction(
         entity->getId(),
         this->buildColliderRect(*transform, *collider),
@@ -108,7 +110,8 @@ bool ColliderGizmo::handleInteraction(
         viewport,
         worldMousePosition,
         viewportGrid.shouldSnapToGrid(),
-        Vector2F(viewportGrid.getGridSize(), viewportGrid.getGridSize())
+        Vector2F(viewportGrid.getGridSize(), viewportGrid.getGridSize()),
+        options
     );
 
     if (!result.active && !result.changed && !result.finished) {

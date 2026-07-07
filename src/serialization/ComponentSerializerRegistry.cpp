@@ -1,11 +1,14 @@
 #include "serialization/ComponentSerializerRegistry.h"
 
 #include "Entity.h"
+#include "components/RectTransformComponent.h"
 #include "components/TransformComponent.h"
 #include "serialization/components/AnimationComponentSerializer.h"
+#include "serialization/components/CanvasComponentSerializer.h"
 #include "serialization/components/CollisionComponentSerializer.h"
 #include "serialization/components/GameComponentSerializers.h"
 #include "serialization/components/PlayerCameraComponentSerializer.h"
+#include "serialization/components/RectTransformComponentSerializer.h"
 #include "serialization/components/ScriptComponentSerializer.h"
 #include "serialization/components/SpriteComponentSerializer.h"
 #include "serialization/components/TransformComponentSerializer.h"
@@ -21,6 +24,8 @@ ComponentSerializerRegistry& ComponentSerializerRegistry::getInstance() {
 
 ComponentSerializerRegistry::ComponentSerializerRegistry() {
     registerSerializer(std::make_unique<TransformComponentSerializer>());
+    registerSerializer(std::make_unique<RectTransformComponentSerializer>());
+    registerSerializer(std::make_unique<CanvasComponentSerializer>());
     registerSerializer(std::make_unique<SpriteComponentSerializer>());
     registerSerializer(std::make_unique<AnimationComponentSerializer>());
     registerSerializer(std::make_unique<CollisionComponentSerializer>());
@@ -61,10 +66,27 @@ bool ComponentSerializerRegistry::loadComponents(
     const ComponentSerializationContext& context,
     std::string& errorMessage
 ) const {
+    const bool needsWorldRootTransform =
+        context.isRootEntity && context.placement == ComponentSerializationPlacement::World;
+    const bool needsRequiredComponentTransform = serializedComponentsRequireTransform(entityElement);
+    const bool needsScreenRootRectTransform =
+        context.isRootEntity && context.placement == ComponentSerializationPlacement::Screen;
+    const bool needsRequiredComponentRectTransform = serializedComponentsRequireRectTransform(entityElement);
+
     if (!hasSerializedComponent(entityElement, "TransformComponent")
-        && (context.isRootEntity || serializedComponentsRequireTransform(entityElement))) {
+        && (needsWorldRootTransform || needsRequiredComponentTransform)) {
         entity.addComponent<TransformComponent>(
-            context.isRootEntity ? context.rootPosition : Vector2F::zero(),
+            needsWorldRootTransform ? context.rootPosition : Vector2F::zero(),
+            0.0f
+        );
+    }
+
+    if (!hasSerializedComponent(entityElement, "RectTransformComponent")
+        && (needsScreenRootRectTransform || needsRequiredComponentRectTransform)) {
+        entity.addComponent<RectTransformComponent>(
+            needsScreenRootRectTransform ? context.rootPosition : Vector2F::zero(),
+            Vector2F(100.0f, 100.0f),
+            Vector2F(0.5f, 0.5f),
             0.0f
         );
     }
@@ -80,7 +102,7 @@ bool ComponentSerializerRegistry::loadComponents(
 
             const IComponentSerializer* serializer = findSerializer(type);
             if (serializer == nullptr) {
-                std::cerr << "Unknown prefab component: " << type << std::endl;
+                std::cerr << "Unknown serialized component: " << type << std::endl;
                 continue;
             }
 
@@ -126,6 +148,26 @@ bool ComponentSerializerRegistry::serializedComponentsRequireTransform(
 
         const IComponentSerializer* serializer = findSerializer(type);
         if (serializer != nullptr && serializer->requiresTransformBeforeLoad()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ComponentSerializerRegistry::serializedComponentsRequireRectTransform(
+    const tinyxml2::XMLElement& entityElement
+) const {
+    for (const tinyxml2::XMLElement* component = entityElement.FirstChildElement("component");
+         component != nullptr;
+         component = component->NextSiblingElement("component")) {
+        const char* type = component->Attribute("type");
+        if (type == nullptr) {
+            continue;
+        }
+
+        const IComponentSerializer* serializer = findSerializer(type);
+        if (serializer != nullptr && serializer->requiresRectTransformBeforeLoad()) {
             return true;
         }
     }

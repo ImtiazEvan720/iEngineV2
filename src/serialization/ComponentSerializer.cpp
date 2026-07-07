@@ -7,3 +7,7 @@ bool IComponentSerializer::loadBeforeOtherComponents() const {
 bool IComponentSerializer::requiresTransformBeforeLoad() const {
     return false;
 }
+
+bool IComponentSerializer::requiresRectTransformBeforeLoad() const {
+    return false;
+}

@@ -264,9 +264,11 @@ set(IENGINE_SOURCES
     src/serialization/ComponentSerializer.cpp
     src/serialization/ComponentSerializerRegistry.cpp
     src/serialization/components/AnimationComponentSerializer.cpp
+    src/serialization/components/CanvasComponentSerializer.cpp
     src/serialization/components/CollisionComponentSerializer.cpp
     src/serialization/components/GameComponentSerializers.cpp
     src/serialization/components/PlayerCameraComponentSerializer.cpp
+    src/serialization/components/RectTransformComponentSerializer.cpp
     src/serialization/components/ScriptComponentSerializer.cpp
     src/serialization/components/SpriteComponentSerializer.cpp
     src/serialization/components/TransformComponentSerializer.cpp

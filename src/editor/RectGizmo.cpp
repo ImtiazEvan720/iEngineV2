@@ -91,6 +91,27 @@ bool buildScreenRect(
     return true;
 }
 
+bool buildScreenRectScreenSpace(
+    const RectGizmo::Rect& rect,
+    const RenderRect& viewport,
+    ScreenRect& screenRect
+) {
+    if (rect.width <= 0.0f || rect.height <= 0.0f) {
+        return false;
+    }
+
+    if (viewport.width <= 0.0f || viewport.height <= 0.0f) {
+        return false;
+    }
+
+    const Vector2F halfSize(rect.width * 0.5f, rect.height * 0.5f);
+    screenRect.left = rect.center.x - halfSize.x;
+    screenRect.right = rect.center.x + halfSize.x;
+    screenRect.top = rect.center.y - halfSize.y;
+    screenRect.bottom = rect.center.y + halfSize.y;
+    return true;
+}
+
 bool isResizeLeftHandle(RectGizmo::Handle handle) {
     return handle == RectGizmo::Handle::ResizeLeft
         || handle == RectGizmo::Handle::ResizeTopLeft
@@ -113,6 +134,23 @@ bool isResizeBottomHandle(RectGizmo::Handle handle) {
     return handle == RectGizmo::Handle::ResizeBottom
         || handle == RectGizmo::Handle::ResizeBottomLeft
         || handle == RectGizmo::Handle::ResizeBottomRight;
+}
+
+bool isResizeHandle(RectGizmo::Handle handle) {
+    return handle != RectGizmo::Handle::None
+        && handle != RectGizmo::Handle::Move;
+}
+
+bool isHandleAllowed(RectGizmo::Handle handle, const RectGizmo::Options& options) {
+    if (handle == RectGizmo::Handle::Move) {
+        return options.allowMove;
+    }
+
+    if (isResizeHandle(handle)) {
+        return options.allowResize;
+    }
+
+    return false;
 }
 
 RectGizmo::Rect moveRect(
@@ -200,6 +238,7 @@ void addRectHandles(
     float top,
     float right,
     float bottom,
+    bool drawCenter,
     ImU32 fillColor,
     ImU32 centerFillColor,
     ImU32 outlineColor
@@ -217,21 +256,16 @@ void addRectHandles(
     addHandle(drawList, ImVec2(left, bottom), fillColor, outlineColor);
     addHandle(drawList, ImVec2(centerX, bottom), fillColor, outlineColor);
     addHandle(drawList, ImVec2(right, bottom), fillColor, outlineColor);
-
-    addHandle(drawList, ImVec2(centerX, centerY), centerFillColor, outlineColor);
-}
-}
-
-void RectGizmo::drawHandles(
-    const Rect& rect,
-    const Camera2D& camera,
-    const RenderRect& viewport
-) const {
-    ScreenRect screenRect;
-    if (!buildScreenRect(rect, camera, viewport, screenRect)) {
-        return;
+    if (drawCenter) {
+        addHandle(drawList, ImVec2(centerX, centerY), centerFillColor, outlineColor);
     }
+}
 
+void drawHandlesFromScreenRect(
+    const ScreenRect& screenRect,
+    const RenderRect& viewport,
+    bool showCenter
+) {
     ImDrawList* drawList = ImGui::GetBackgroundDrawList();
     if (drawList == nullptr) {
         return;
@@ -268,12 +302,181 @@ void RectGizmo::drawHandles(
         screenRect.top,
         screenRect.right,
         screenRect.bottom,
+        showCenter,
         fillColor,
         centerFillColor,
         outlineColor
     );
 
     drawList->PopClipRect();
+}
+
+RectGizmo::Handle hitTestScreenRect(
+    const ScreenRect& screenRect,
+    const Vector2F& screenMousePosition,
+    bool showCenterHandle
+) {
+    if(showCenterHandle)
+    {
+        if (pointInHandle(screenMousePosition, ImVec2(screenRect.centerX(), screenRect.centerY()))) {
+           return RectGizmo::Handle::Move;
+        }
+    }
+
+    if (pointInHandle(screenMousePosition, ImVec2(screenRect.left, screenRect.top))) {
+        return RectGizmo::Handle::ResizeTopLeft;
+    }
+
+    if (pointInHandle(screenMousePosition, ImVec2(screenRect.right, screenRect.top))) {
+        return RectGizmo::Handle::ResizeTopRight;
+    }
+
+    if (pointInHandle(screenMousePosition, ImVec2(screenRect.left, screenRect.bottom))) {
+        return RectGizmo::Handle::ResizeBottomLeft;
+    }
+
+    if (pointInHandle(screenMousePosition, ImVec2(screenRect.right, screenRect.bottom))) {
+        return RectGizmo::Handle::ResizeBottomRight;
+    }
+
+    if (pointInHandle(screenMousePosition, ImVec2(screenRect.centerX(), screenRect.top))) {
+        return RectGizmo::Handle::ResizeTop;
+    }
+
+    if (pointInHandle(screenMousePosition, ImVec2(screenRect.centerX(), screenRect.bottom))) {
+        return RectGizmo::Handle::ResizeBottom;
+    }
+
+    if (pointInHandle(screenMousePosition, ImVec2(screenRect.left, screenRect.centerY()))) {
+        return RectGizmo::Handle::ResizeLeft;
+    }
+
+    if (pointInHandle(screenMousePosition, ImVec2(screenRect.right, screenRect.centerY()))) {
+        return RectGizmo::Handle::ResizeRight;
+    }
+
+    return RectGizmo::Handle::None;
+}
+
+RectGizmo::EditResult handleRectInteraction(
+    int id,
+    const RectGizmo::Rect& rect,
+    RectGizmo::Handle hitHandle,
+    const Vector2F& mousePosition,
+    bool snapToGrid,
+    const Vector2F& gridSize,
+    const RectGizmo::Options& options,
+    int& editingId,
+    RectGizmo::Handle& activeHandle,
+    Vector2F& dragOffset
+) {
+    RectGizmo::EditResult result;
+    result.rect = rect;
+    result.handle = activeHandle;
+
+    const ImGuiIO& io = ImGui::GetIO();
+
+    if (activeHandle != RectGizmo::Handle::None) {
+        if (editingId != id) {
+            editingId = -1;
+            activeHandle = RectGizmo::Handle::None;
+            dragOffset = Vector2F::zero();
+            return result;
+        }
+
+        if (!isHandleAllowed(activeHandle, options)) {
+            editingId = -1;
+            activeHandle = RectGizmo::Handle::None;
+            dragOffset = Vector2F::zero();
+            return result;
+        }
+
+        result.active = true;
+        result.handle = activeHandle;
+
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+            if (activeHandle == RectGizmo::Handle::Move) {
+                result.rect = moveRect(
+                    rect,
+                    mousePosition,
+                    dragOffset,
+                    snapToGrid,
+                    gridSize
+                );
+            } else {
+                result.rect = resizeRect(
+                    rect,
+                    activeHandle,
+                    mousePosition,
+                    snapToGrid,
+                    gridSize
+                );
+            }
+
+            result.changed = true;
+            return result;
+        }
+
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+            result.finished = true;
+            editingId = -1;
+            activeHandle = RectGizmo::Handle::None;
+            dragOffset = Vector2F::zero();
+            return result;
+        }
+
+        return result;
+    }
+
+    if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left) || io.WantCaptureMouse) {
+        return result;
+    }
+
+    if (!isHandleAllowed(hitHandle, options)) {
+        return result;
+    }
+
+    editingId = id;
+    activeHandle = hitHandle;
+    result.active = true;
+    result.handle = hitHandle;
+
+    if (hitHandle == RectGizmo::Handle::Move) {
+        dragOffset = Vector2F(
+            mousePosition.x - rect.center.x,
+            mousePosition.y - rect.center.y
+        );
+    } else {
+        dragOffset = Vector2F::zero();
+    }
+
+    return result;
+}
+}
+
+void RectGizmo::drawHandles(
+    const Rect& rect,
+    const Camera2D& camera,
+    const RenderRect& viewport
+) const {
+    ScreenRect screenRect;
+    if (!buildScreenRect(rect, camera, viewport, screenRect)) {
+        return;
+    }
+
+    drawHandlesFromScreenRect(screenRect, viewport,true);
+}
+
+void RectGizmo::drawHandlesScreenSpace(
+    const Rect& rect,
+    const RenderRect& viewport
+) const {
+    ScreenRect screenRect;
+    if (!buildScreenRectScreenSpace(rect, viewport, screenRect)) {
+        return;
+    }
+
+    drawHandlesFromScreenRect(screenRect, viewport,false);
 }
 
 RectGizmo::Handle RectGizmo::hitTest(
@@ -287,43 +490,20 @@ RectGizmo::Handle RectGizmo::hitTest(
         return Handle::None;
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.centerX(), screenRect.centerY()))) {
-        return Handle::Move;
+    return hitTestScreenRect(screenRect, screenMousePosition,true);
+}
+
+RectGizmo::Handle RectGizmo::hitTestScreenSpace(
+    const Rect& rect,
+    const RenderRect& viewport,
+    const Vector2F& screenMousePosition
+) const {
+    ScreenRect screenRect;
+    if (!buildScreenRectScreenSpace(rect, viewport, screenRect)) {
+        return Handle::None;
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.left, screenRect.top))) {
-        return Handle::ResizeTopLeft;
-    }
-
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.right, screenRect.top))) {
-        return Handle::ResizeTopRight;
-    }
-
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.left, screenRect.bottom))) {
-        return Handle::ResizeBottomLeft;
-    }
-
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.right, screenRect.bottom))) {
-        return Handle::ResizeBottomRight;
-    }
-
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.centerX(), screenRect.top))) {
-        return Handle::ResizeTop;
-    }
-
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.centerX(), screenRect.bottom))) {
-        return Handle::ResizeBottom;
-    }
-
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.left, screenRect.centerY()))) {
-        return Handle::ResizeLeft;
-    }
-
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.right, screenRect.centerY()))) {
-        return Handle::ResizeRight;
-    }
-
-    return Handle::None;
+    return hitTestScreenRect(screenRect, screenMousePosition,false);
 }
 
 void RectGizmo::cancel() {
@@ -339,79 +519,47 @@ RectGizmo::EditResult RectGizmo::handleInteraction(
     const RenderRect& viewport,
     const Vector2F& worldMousePosition,
     bool snapToGrid,
-    const Vector2F& gridSize
+    const Vector2F& gridSize,
+    const Options& options
 ) {
-    EditResult result;
-    result.rect = rect;
-    result.handle = activeHandle;
-
-    const ImGuiIO& io = ImGui::GetIO();
     const ImVec2 mousePosition = ImGui::GetMousePos();
     const Vector2F screenMousePosition(mousePosition.x, mousePosition.y);
 
-    if (activeHandle != Handle::None) {
-        if (editingId != id) {
-            cancel();
-            return result;
-        }
-
-        result.active = true;
-        result.handle = activeHandle;
-
-        if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-            if (activeHandle == Handle::Move) {
-                result.rect = moveRect(
-                    rect,
-                    worldMousePosition,
-                    dragOffset,
-                    snapToGrid,
-                    gridSize
-                );
-            } else {
-                result.rect = resizeRect(
-                    rect,
-                    activeHandle,
-                    worldMousePosition,
-                    snapToGrid,
-                    gridSize
-                );
-            }
-
-            result.changed = true;
-            return result;
-        }
-
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            result.finished = true;
-            cancel();
-            return result;
-        }
-
-        return result;
-    }
-
-    if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left) || io.WantCaptureMouse) {
-        return result;
-    }
-
     const Handle hitHandle = hitTest(rect, camera, viewport, screenMousePosition);
-    if (hitHandle == Handle::None) {
-        return result;
-    }
+    return handleRectInteraction(
+        id,
+        rect,
+        hitHandle,
+        worldMousePosition,
+        snapToGrid,
+        gridSize,
+        options,
+        editingId,
+        activeHandle,
+        dragOffset
+    );
+}
 
-    editingId = id;
-    activeHandle = hitHandle;
-    result.active = true;
-    result.handle = hitHandle;
-
-    if (hitHandle == Handle::Move) {
-        dragOffset = Vector2F(
-            worldMousePosition.x - rect.center.x,
-            worldMousePosition.y - rect.center.y
-        );
-    } else {
-        dragOffset = Vector2F::zero();
-    }
-
-    return result;
+RectGizmo::EditResult RectGizmo::handleInteractionScreenSpace(
+    int id,
+    const Rect& rect,
+    const RenderRect& viewport,
+    const Vector2F& screenMousePosition,
+    bool snapToGrid,
+    const Vector2F& gridSize,
+    const Options& options
+) {
+    const Handle hitHandle = hitTestScreenSpace(rect, viewport, screenMousePosition);
+    return handleRectInteraction(
+        id,
+        rect,
+        hitHandle,
+        screenMousePosition,
+        snapToGrid,
+        gridSize,
+        options,
+        editingId,
+        activeHandle,
+        dragOffset
+    );
 }

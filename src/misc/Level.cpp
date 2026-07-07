@@ -14,6 +14,7 @@
 #include "misc/Guid.h"
 #include "misc/Sprite.h"
 #include "misc/TextureAsset.h"
+#include "serialization/ComponentSerializerRegistry.h"
 #include "system/AssetManager.h"
 #include "system/EngineState.h"
 #include "system/InputSystem.h"
@@ -1006,6 +1007,7 @@ bool Level::saveCurrentLevel(const std::string &path, std::string &errorMessage)
         entityElement->SetAttribute("name", entity.getName().c_str());
         entityElement->SetAttribute("tag", entity.getTag().c_str());
         entityElement->SetAttribute("enabled", entity.isEnabled());
+        entityElement->SetAttribute("persistent", entity.isPersistent());
         entityElement->SetAttribute("displayOrder", entity.getDisplayOrder());
         if (const Entity *parent = entity.getParent())
         {
@@ -1013,50 +1015,7 @@ bool Level::saveCurrentLevel(const std::string &path, std::string &errorMessage)
         }
         entitiesElement->InsertEndChild(entityElement);
 
-        if (const TransformComponent *transform = entity.getComponent<TransformComponent>())
-        {
-            saveTransformComponent(document, *entityElement, *transform);
-        }
-
-        if (const RectTransformComponent *rectTransform = entity.getComponent<RectTransformComponent>())
-        {
-            saveRectTransformComponent(document, *entityElement, *rectTransform);
-        }
-
-        if (const CanvasComponent *canvasComponent = entity.getComponent<CanvasComponent>())
-        {
-            saveCanvasComponent(document, *entityElement, *canvasComponent);
-        }
-
-        if (const SpriteComponent *spriteComponent = entity.getComponent<SpriteComponent>())
-        {
-            saveSpriteComponent(document, *entityElement, *spriteComponent);
-        }
-
-        if (const AnimationComponent *animationComponent = entity.getComponent<AnimationComponent>())
-        {
-            saveAnimationComponent(document, *entityElement, *animationComponent);
-        }
-
-        if (const CollisionComponent *collisionComponent = entity.getComponent<CollisionComponent>())
-        {
-            saveCollisionComponent(document, *entityElement, *collisionComponent);
-        }
-
-        if (const PlayerCameraComponent *cameraComponent = entity.getComponent<PlayerCameraComponent>())
-        {
-            savePlayerCameraComponent(document, *entityElement, *cameraComponent);
-        }
-
-        if (const ScriptComponent *scriptComponent = entity.getComponent<ScriptComponent>())
-        {
-            saveScriptComponent(document, *entityElement, *scriptComponent);
-        }
-
-        if (const PlayerController *playerController = entity.getComponent<PlayerController>())
-        {
-            addMarkerComponent(document, *entityElement, "PlayerController", *playerController);
-        }
+        ComponentSerializerRegistry::getInstance().saveComponents(document, *entityElement, entity);
 
         ++savedEntityCount;
     }
@@ -1132,6 +1091,7 @@ bool Level::loadFromFile(const std::string &path, Level &level, std::string &err
         entity.setName(entityElement->Attribute("name") == nullptr ? "Entity" : entityElement->Attribute("name"));
         entity.setTag(entityElement->Attribute("tag") == nullptr ? "Default" : entityElement->Attribute("tag"));
         entity.setEnabled(entityElement->BoolAttribute("enabled", true));
+        entity.setPersistent(entityElement->BoolAttribute("persistent", false));
         entity.setDisplayOrder(entityElement->IntAttribute("displayOrder", defaultDisplayOrder));
         ++defaultDisplayOrder;
 
@@ -1147,51 +1107,17 @@ bool Level::loadFromFile(const std::string &path, Level &level, std::string &err
             pendingParentLinks.push_back(PendingParentLink{&entity, parentId});
         }
 
-        const tinyxml2::XMLElement *transformElement = nullptr;
-        const tinyxml2::XMLElement *collisionElement = nullptr;
-        for (const tinyxml2::XMLElement *component = entityElement->FirstChildElement("component");
-             component != nullptr;
-             component = component->NextSiblingElement("component"))
-        {
-            const char *type = component->Attribute("type");
-            if (type == nullptr)
-            {
-                continue;
-            }
+        ComponentSerializationContext context;
+        context.isRootEntity = false;
+        context.placement = ComponentSerializationPlacement::None;
 
-            const std::string componentType(type);
-            if (componentType == "TransformComponent")
-            {
-                transformElement = component;
-            }
-            else if (componentType == "CollisionComponent")
-            {
-                collisionElement = component;
-            }
-        }
-
-        if (transformElement != nullptr)
+        if (!ComponentSerializerRegistry::getInstance().loadComponents(
+                *entityElement,
+                entity,
+                context,
+                errorMessage))
         {
-            TransformComponent &transformComponent = entity.addComponent<TransformComponent>(
-                Vector2F(
-                    transformElement->FloatAttribute("x", 0.0f),
-                    transformElement->FloatAttribute("y", 0.0f)),
-                transformElement->FloatAttribute("rotation", 0.0f));
-            applyComponentEnabledAttribute(*transformElement, transformComponent);
-        }
-        else if (collisionElement != nullptr)
-        {
-            entity.addComponent<TransformComponent>(Vector2F(0.0f, 0.0f), 0.0f);
-        }
-
-        for (const tinyxml2::XMLElement *component = entityElement->FirstChildElement("component");
-             component != nullptr;
-             component = component->NextSiblingElement("component"))
-        {
-            if (!addComponentFromElement(*component, entity, errorMessage))
-            {
-                return false;
-            }
+            return false;
         }
     }
 

@@ -30,6 +30,7 @@ private:
     const IComponentSerializer* findSerializer(const std::string& typeName) const;
     bool hasSerializedComponent(const tinyxml2::XMLElement& entityElement, const char* typeName) const;
     bool serializedComponentsRequireTransform(const tinyxml2::XMLElement& entityElement) const;
+    bool serializedComponentsRequireRectTransform(const tinyxml2::XMLElement& entityElement) const;
 
     std::vector<std::unique_ptr<IComponentSerializer>> serializers;
 };

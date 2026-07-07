@@ -41,12 +41,12 @@ bool TransformComponentSerializer::load(
 ) const {
     (void)errorMessage;
 
-    Vector2F position = context.rootPosition;
-    if (!context.isRootEntity) {
-        position = Vector2F(
-            componentElement.FloatAttribute("x", 0.0f),
-            componentElement.FloatAttribute("y", 0.0f)
-        );
+    Vector2F position(
+        componentElement.FloatAttribute("x", 0.0f),
+        componentElement.FloatAttribute("y", 0.0f)
+    );
+    if (context.isRootEntity && context.placement == ComponentSerializationPlacement::World) {
+        position = context.rootPosition;
     }
 
     const float rotation = componentElement.FloatAttribute("rotation", 0.0f);

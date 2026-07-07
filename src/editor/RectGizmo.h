@@ -37,6 +37,11 @@ public:
         Handle handle = Handle::None;
     };
 
+    struct Options {
+        bool allowMove = true;
+        bool allowResize = true;
+    };
+
     void cancel();
 
     void drawHandles(
@@ -44,10 +49,19 @@ public:
         const Camera2D& camera,
         const RenderRect& viewport
     ) const;
+    void drawHandlesScreenSpace(
+        const Rect& rect,
+        const RenderRect& viewport
+    ) const;
 
     Handle hitTest(
         const Rect& rect,
         const Camera2D& camera,
+        const RenderRect& viewport,
+        const Vector2F& screenMousePosition
+    ) const;
+    Handle hitTestScreenSpace(
+        const Rect& rect,
         const RenderRect& viewport,
         const Vector2F& screenMousePosition
     ) const;
@@ -59,7 +73,17 @@ public:
         const RenderRect& viewport,
         const Vector2F& worldMousePosition,
         bool snapToGrid,
-        const Vector2F& gridSize
+        const Vector2F& gridSize,
+        const Options& options
+    );
+    EditResult handleInteractionScreenSpace(
+        int id,
+        const Rect& rect,
+        const RenderRect& viewport,
+        const Vector2F& screenMousePosition,
+        bool snapToGrid,
+        const Vector2F& gridSize,
+        const Options& options
     );
 
 private:
