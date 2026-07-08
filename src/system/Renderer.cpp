@@ -7,6 +7,7 @@
 #include "components/TransformComponent.h"
 #include "components/CanvasComponent.h"
 #include "components/RectTransformComponent.h"
+#include "components/UILabelComponent.h"
 #include "misc/Level.h"
 #include "misc/RenderConstants.h"
 #include "system/EngineState.h"
@@ -105,6 +106,102 @@ namespace
                 0.0f,
                 255.0f));
         return color;
+    }
+
+    RenderRect buildUiRect(const RectTransformComponent &rectTransformComponent, float scale)
+    {
+        const Vector2F &screenPosition = rectTransformComponent.getAnchoredPosition();
+        const Vector2F &size = rectTransformComponent.getSize();
+        const Vector2F &pivot = rectTransformComponent.getPivot();
+        const float clampedScale = std::isfinite(scale) ? std::max(0.0f, scale) : 1.0f;
+        const float width = size.x * clampedScale;
+        const float height = size.y * clampedScale;
+
+        if (!std::isfinite(width) || !std::isfinite(height) || width <= 0.0f || height <= 0.0f)
+        {
+            return RenderRect{};
+        }
+
+        return RenderRect{
+            screenPosition.x - (width * pivot.x),
+            screenPosition.y - (height * pivot.y),
+            width,
+            height};
+    }
+
+    const CanvasComponent *getParentCanvas(const Entity &entity)
+    {
+        const Entity *parent = entity.getParent();
+        return parent == nullptr ? nullptr : parent->getComponent<CanvasComponent>();
+    }
+
+    int getUiSortingOrder(const Entity &entity)
+    {
+        const CanvasComponent *canvas = entity.getComponent<CanvasComponent>();
+        if (canvas != nullptr)
+        {
+            return canvas->getSortingOrder();
+        }
+
+        const CanvasComponent *parentCanvas = getParentCanvas(entity);
+        return parentCanvas == nullptr ? 0 : parentCanvas->getSortingOrder();
+    }
+
+    float getUiScale(const Entity &entity)
+    {
+        const CanvasComponent *canvas = entity.getComponent<CanvasComponent>();
+        if (canvas != nullptr)
+        {
+            return canvas->getScale();
+        }
+
+        const CanvasComponent *parentCanvas = getParentCanvas(entity);
+        return parentCanvas == nullptr ? 1.0f : parentCanvas->getScale();
+    }
+
+    bool parentCanvasAllowsRender(const Entity &entity)
+    {
+        const Entity *parent = entity.getParent();
+        if (parent == nullptr)
+        {
+            return true;
+        }
+
+        const CanvasComponent *parentCanvas = parent->getComponent<CanvasComponent>();
+        return parentCanvas == nullptr || (parent->isEnabled() && parentCanvas->isEnabled());
+    }
+
+    RenderVector2 getAlignedTextPosition(
+        const RenderRect &rect,
+        const UILabelComponent &label,
+        unsigned int characterSize
+    )
+    {
+        const float estimatedTextWidth =
+            static_cast<float>(label.getText().size()) * static_cast<float>(characterSize) * 0.55f;
+        const float estimatedTextHeight = static_cast<float>(characterSize);
+
+        float x = rect.x;
+        if (label.getHorizontalTextAlign() == HorizontalTextAlign::center)
+        {
+            x += std::max(0.0f, (rect.width - estimatedTextWidth) * 0.5f);
+        }
+        else if (label.getHorizontalTextAlign() == HorizontalTextAlign::right)
+        {
+            x += std::max(0.0f, rect.width - estimatedTextWidth);
+        }
+
+        float y = rect.y;
+        if (label.getVerticalTextAlign() == VerticalTextAlign::center)
+        {
+            y += std::max(0.0f, (rect.height - estimatedTextHeight) * 0.5f);
+        }
+        else if (label.getVerticalTextAlign() == VerticalTextAlign::bottom)
+        {
+            y += std::max(0.0f, rect.height - estimatedTextHeight);
+        }
+
+        return RenderVector2{x, y};
     }
 
     void drawSprite(
@@ -547,11 +644,17 @@ void Renderer::renderUI()
         }
 
         const CanvasComponent *canvasComponent = entity.getComponent<CanvasComponent>();
+        const UILabelComponent *labelComponent = entity.getComponent<UILabelComponent>();
         const RectTransformComponent *rectTransformComponent = entity.getComponent<RectTransformComponent>();
-        if (canvasComponent != nullptr &&
-            rectTransformComponent != nullptr &&
-            canvasComponent->isEnabled() &&
-            rectTransformComponent->isEnabled())
+        const bool hasRenderableCanvas = canvasComponent != nullptr && canvasComponent->isEnabled();
+        const bool hasRenderableLabel =
+            labelComponent != nullptr &&
+            labelComponent->isEnabled() &&
+            parentCanvasAllowsRender(entity);
+
+        if (rectTransformComponent != nullptr &&
+            rectTransformComponent->isEnabled() &&
+            (hasRenderableCanvas || hasRenderableLabel))
         {
             UIEntities.push_back(&entity);
         }
@@ -562,11 +665,16 @@ void Renderer::renderUI()
         UIEntities.end(),
         [](const Entity *left, const Entity *right)
         {
-            const int leftOrder = left->getComponent<CanvasComponent>()->getSortingOrder();
-            const int rightOrder = right->getComponent<CanvasComponent>()->getSortingOrder();
+            const int leftOrder = getUiSortingOrder(*left);
+            const int rightOrder = getUiSortingOrder(*right);
             if (leftOrder != rightOrder)
             {
                 return leftOrder < rightOrder;
+            }
+
+            if (left->getDisplayOrder() != right->getDisplayOrder())
+            {
+                return left->getDisplayOrder() < right->getDisplayOrder();
             }
 
             return left->getId() < right->getId();
@@ -576,39 +684,44 @@ void Renderer::renderUI()
     {
         const RectTransformComponent *rectTransformComponent = entity->getComponent<RectTransformComponent>();
         const CanvasComponent *canvasComponent = entity->getComponent<CanvasComponent>();
-        const Vector2F &screenPosition = rectTransformComponent->getAnchoredPosition();
-        const Vector2F &size = rectTransformComponent->getSize();
-        const Vector2F &pivot = rectTransformComponent->getPivot();
-        const float scale = std::isfinite(canvasComponent->getScale())
-            ? std::max(0.0f, canvasComponent->getScale())
-            : 1.0f;
-        const float width = size.x * scale;
-        const float height = size.y * scale;
-        if (!std::isfinite(width) || !std::isfinite(height) || width <= 0.0f || height <= 0.0f)
+        const UILabelComponent *labelComponent = entity->getComponent<UILabelComponent>();
+        const RenderRect unclippedRect = buildUiRect(*rectTransformComponent, getUiScale(*entity));
+        if (unclippedRect.width <= 0.0f || unclippedRect.height <= 0.0f)
         {
             continue;
         }
 
-        const RenderRect unclippedRect{
-            screenPosition.x - (width * pivot.x),
-            screenPosition.y - (height * pivot.y),
-            width,
-            height};
         const RenderRect clippedRect = clipRectToViewport(unclippedRect, viewport);
         if (clippedRect.width <= 0.0f || clippedRect.height <= 0.0f)
         {
             continue;
         }
 
-        const RenderColor color = applyOpacity(
-            canvasComponent->getCanvasColor(),
-            canvasComponent->getOpacity());
-        if (color.a == 0)
+        if (canvasComponent != nullptr && canvasComponent->isEnabled())
         {
-            continue;
+            const RenderColor color = applyOpacity(
+                canvasComponent->getCanvasColor(),
+                canvasComponent->getOpacity());
+            if (color.a != 0)
+            {
+                renderBackend->drawRect(clippedRect, color);
+            }
         }
 
-        renderBackend->drawRect(clippedRect, color);
+        if (labelComponent != nullptr &&
+            labelComponent->isEnabled() &&
+            !labelComponent->getText().empty())
+        {
+            const int fontSize = std::max(1, labelComponent->getFontSize());
+            const unsigned int characterSize = static_cast<unsigned int>(fontSize);
+            const std::string &fontName = labelComponent->getFontName();
+            renderBackend->drawText(
+                labelComponent->getText(),
+                fontName.empty() ? "Assets/Fonts/default.ttf" : fontName,
+                getAlignedTextPosition(clippedRect, *labelComponent, characterSize),
+                characterSize,
+                labelComponent->getFontColor());
+        }
     }
 }
 

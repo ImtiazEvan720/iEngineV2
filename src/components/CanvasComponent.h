@@ -10,6 +10,7 @@ class CanvasComponent: public Component {
 public:
     CanvasComponent() = default;
     ~CanvasComponent() = default;
+    std::unique_ptr<Component> clone() const override;
 
     void setReferenceResolution(const Vector2F& resolution);
     void setSortingOrder(int order);

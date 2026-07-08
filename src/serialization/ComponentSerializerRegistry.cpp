@@ -12,6 +12,7 @@
 #include "serialization/components/ScriptComponentSerializer.h"
 #include "serialization/components/SpriteComponentSerializer.h"
 #include "serialization/components/TransformComponentSerializer.h"
+#include "serialization/components/UILabelComponentSerializer.h"
 
 #include "tinyxml2.h"
 
@@ -26,6 +27,7 @@ ComponentSerializerRegistry::ComponentSerializerRegistry() {
     registerSerializer(std::make_unique<TransformComponentSerializer>());
     registerSerializer(std::make_unique<RectTransformComponentSerializer>());
     registerSerializer(std::make_unique<CanvasComponentSerializer>());
+    registerSerializer(std::make_unique<UILabelComponentSerializer>());
     registerSerializer(std::make_unique<SpriteComponentSerializer>());
     registerSerializer(std::make_unique<AnimationComponentSerializer>());
     registerSerializer(std::make_unique<CollisionComponentSerializer>());

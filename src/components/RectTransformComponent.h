@@ -8,6 +8,8 @@ public:
     RectTransformComponent(const Vector2F& anchorPos, const Vector2F& sizeVal, const Vector2F& pivotVal, float rotationVal);
 
     ~RectTransformComponent() = default;
+    std::unique_ptr<Component> clone() const override;
+
     void setAnchoredPosition(const Vector2F anchorPos);
     void setSize(const Vector2F sizeVal);
     void setPivot(const Vector2F pivotVal);

@@ -247,6 +247,7 @@ set(IENGINE_SOURCES
     src/components/ScriptComponent.cpp
     src/components/SpriteComponent.cpp
     src/components/TransformComponent.cpp
+    src/components/UILabelComponent.cpp
     src/components/PlayerController.cpp
     src/math/Vector2F.cpp
     src/misc/Asset.cpp
@@ -272,6 +273,7 @@ set(IENGINE_SOURCES
     src/serialization/components/ScriptComponentSerializer.cpp
     src/serialization/components/SpriteComponentSerializer.cpp
     src/serialization/components/TransformComponentSerializer.cpp
+    src/serialization/components/UILabelComponentSerializer.cpp
     src/serialization/PrefabSerializer.cpp
     src/misc/TextureAsset.cpp
     src/system/AssetManager.cpp
@@ -304,6 +306,7 @@ if(IENGINE_WITH_EDITOR)
         src/editor/components/ScriptComponentDrawer.cpp
         src/editor/components/SpriteComponentDrawer.cpp
         src/editor/components/TransformComponentDrawer.cpp
+        src/editor/components/UILabelComponentDrawer.cpp
         src/editor/ColliderGizmo.cpp
         src/editor/RectTransformGizmo.cpp
         src/editor/EditorCamera.cpp
@@ -576,6 +579,9 @@ else()
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "${IENGINE_RUNTIME_ASSETS_SOURCE}"
                 "$<TARGET_FILE_DIR:iEngineV2>/Assets"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/Templates"
+                "$<TARGET_FILE_DIR:iEngineV2>/Templates"
         )
     else()
         add_custom_command(TARGET iEngineV2 POST_BUILD
@@ -588,6 +594,9 @@ else()
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "${IENGINE_RUNTIME_ASSETS_SOURCE}"
                 "$<TARGET_FILE_DIR:iEngineV2>/Assets"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/Templates"
+                "$<TARGET_FILE_DIR:iEngineV2>/Templates"
         )
     endif()
 endif()

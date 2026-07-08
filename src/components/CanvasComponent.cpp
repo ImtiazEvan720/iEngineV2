@@ -1,5 +1,7 @@
 #include "components/CanvasComponent.h"
 
+#include <memory>
+
 void CanvasComponent::setReferenceResolution(const Vector2F& resolution) {
     ReferenceResolution = resolution;
 }
@@ -38,4 +40,15 @@ float CanvasComponent::getScale() const {
 
 const RenderColor& CanvasComponent::getCanvasColor() const {
     return CanvasColor;
+}
+
+std::unique_ptr<Component> CanvasComponent::clone() const {
+    auto copy = std::make_unique<CanvasComponent>();
+    copy->setReferenceResolution(ReferenceResolution);
+    copy->setSortingOrder(SortingOrder);
+    copy->setOpacity(Opacity);
+    copy->setScale(Scale);
+    copy->setCanvasColor(CanvasColor);
+    copy->setEnabled(isEnabled());
+    return copy;
 }

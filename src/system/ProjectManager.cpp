@@ -185,6 +185,33 @@ bool writeEmptyLevel(const std::filesystem::path& levelPath, std::string& errorM
 
     return saveXmlDocument(document, levelPath, errorMessage);
 }
+
+bool copyDefaultProjectTemplate(
+    const std::filesystem::path& templateRoot,
+    const std::filesystem::path& projectRoot,
+    std::string& errorMessage
+) {
+    namespace fs = std::filesystem;
+
+    if (templateRoot.empty() || !fs::exists(templateRoot)) {
+        errorMessage = "Default project template does not exist: " + templateRoot.string();
+        return false;
+    }
+
+    std::error_code errorCode;
+    fs::copy(
+        templateRoot,
+        projectRoot,
+        fs::copy_options::recursive | fs::copy_options::skip_existing,
+        errorCode
+    );
+    if (errorCode) {
+        errorMessage = "Failed to copy default project template: " + errorCode.message();
+        return false;
+    }
+
+    return true;
+}
 }
 
 ProjectManager& ProjectManager::getInstance() {
@@ -198,6 +225,7 @@ void ProjectManager::setDefaultProjectRoot(const std::filesystem::path& projectR
         : projectRoot;
     root = normalizePath(root);
 
+    engineRoot = root;
     currentProject.projectRoot = root;
     currentProject.projectFilePath = root / "project.iengine";
     currentProject.name = root.filename().empty() ? "iEngine Project" : root.filename().string();
@@ -258,6 +286,10 @@ bool ProjectManager::createProject(
     fs::create_directories(projectRoot / "Assets" / "Scripts", errorCode);
     if (errorCode) {
         errorMessage = "Failed to create project scripts directory: " + errorCode.message();
+        return false;
+    }
+
+    if (!copyDefaultProjectTemplate(engineRoot / "Templates" / "DefaultProject", projectRoot, errorMessage)) {
         return false;
     }
 

@@ -281,6 +281,14 @@ Entity* LevelEditorViewport::findUiEntityAt(const Vector2F& screenSpace) const {
             continue;
         }
 
+        for (Entity* child : entity.getChildren()) {
+            if (child != nullptr && !child->isDestroyed() && child->isEnabled()) {
+                if (uiEntityContainsPoint(*child, screenSpace)) {
+                    return child;
+                }
+            }
+        }
+
         if (uiEntityContainsPoint(entity, screenSpace)) {
             return &entity;
         }

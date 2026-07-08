@@ -1,5 +1,7 @@
 #include "components/RectTransformComponent.h"
 
+#include <memory>
+
 RectTransformComponent::RectTransformComponent()
     : anchorPosition(Vector2F::zero()), size(Vector2F::zero()), pivot(Vector2F::zero()), rotation(0.0f)
 {
@@ -40,4 +42,15 @@ const Vector2F& RectTransformComponent::getPivot() const {
 
 float RectTransformComponent::getRotation() const {
     return rotation;
+}
+
+std::unique_ptr<Component> RectTransformComponent::clone() const {
+    auto copy = std::make_unique<RectTransformComponent>(
+        anchorPosition,
+        size,
+        pivot,
+        rotation
+    );
+    copy->setEnabled(isEnabled());
+    return copy;
 }

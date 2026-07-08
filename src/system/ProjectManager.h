@@ -49,5 +49,6 @@ private:
         std::string& errorMessage
     );
 
+    std::filesystem::path engineRoot;
     ProjectInfo currentProject;
 };

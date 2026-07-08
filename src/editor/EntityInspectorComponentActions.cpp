@@ -10,9 +10,11 @@
 #include "components/ScriptComponent.h"
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
+#include "components/UILabelComponent.h"
 #include "editor/EditorCollectionViews.h"
 #include "editor/ScriptPropertyParser.h"
 #include "math/Vector2F.h"
+#include "misc/Level.h"
 #include "system/InputSystem.h"
 #include "system/ProjectManager.h"
 #include "system/Renderer.h"
@@ -58,6 +60,52 @@ bool addScriptComponentWithDefaults(Entity& entity, const std::string& scriptPat
 
     entity.addComponent<ScriptComponent>(scriptPath, ScriptPropertyParser::makeDefaultScriptProperties(scriptPath));
     return true;
+}
+
+Vector2F getViewportCenter() {
+    const RenderRect viewport = Renderer::getInstance().getViewport();
+    if (viewport.width <= 0.0f || viewport.height <= 0.0f) {
+        return Vector2F(640.0f, 360.0f);
+    }
+
+    return Vector2F(
+        viewport.x + (viewport.width * 0.5f),
+        viewport.y + (viewport.height * 0.5f)
+    );
+}
+
+Entity& findOrCreateCanvasEntity() {
+    Level& level = Level::getCurrentLevel();
+    for (Entity& entity : level.getEntities()) {
+        if (!entity.isDestroyed() && entity.getComponent<CanvasComponent>() != nullptr) {
+            return entity;
+        }
+    }
+
+    Entity& canvas = level.createEntity();
+    canvas.setName("Canvas");
+    canvas.setTag("UI");
+    canvas.addComponent<RectTransformComponent>(
+        getViewportCenter(),
+        Vector2F(640.0f, 320.0f),
+        Vector2F(0.5f, 0.5f),
+        0.0f
+    );
+    canvas.addComponent<CanvasComponent>();
+    return canvas;
+}
+
+void ensureUiParent(Entity& entity) {
+    if (entity.getComponent<CanvasComponent>() != nullptr) {
+        return;
+    }
+
+    Entity& canvas = findOrCreateCanvasEntity();
+    Entity* parent = entity.getParent();
+    if (&entity != &canvas &&
+        (parent == nullptr || parent->getComponent<CanvasComponent>() == nullptr)) {
+        entity.setParent(&canvas, false);
+    }
 }
 
 struct ComponentAddEntry {
@@ -196,6 +244,29 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
             }
         },
         {
+            "UILabelComponent",
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
+                ensureComponent<RectTransformComponent>(
+                    entity,
+                    getViewportCenter(),
+                    Vector2F(240.0f, 48.0f),
+                    Vector2F(0.5f, 0.5f),
+                    0.0f
+                );
+                ensureUiParent(entity);
+
+                if (entity.getComponent<UILabelComponent>() != nullptr) {
+                    return false;
+                }
+
+                UILabelComponent& label = entity.addComponent<UILabelComponent>();
+                label.setText("New Label");
+                return true;
+            }
+        },
+        {
             "CanvasComponent",
             false,
             [](Entity& entity, const std::string& scriptPath) {
@@ -288,11 +359,21 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
         });
     }
 
+    if (entity.getComponent<UILabelComponent>() != nullptr) {
+        entries.push_back({
+            "UILabelComponent",
+            [](Entity& target) {
+                return target.removeComponent<UILabelComponent>();
+            }
+        });
+    }
+
     if (entity.getComponent<RectTransformComponent>() != nullptr) {
         entries.push_back({
             "RectTransformComponent",
             [](Entity& target) {
                 removeDependencyIfPresent<CanvasComponent>(target);
+                removeDependencyIfPresent<UILabelComponent>(target);
                 return target.removeComponent<RectTransformComponent>();
             }
         });

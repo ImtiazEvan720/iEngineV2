@@ -3,6 +3,7 @@
 #include "components/TransformComponent.h"
 #include "components/RectTransformComponent.h"
 #include "components/CanvasComponent.h"
+#include "components/UILabelComponent.h"
 #include "editor/BuildSystem.h"
 #include "math/Vector2F.h"
 #include "misc/Camera2D.h"
@@ -52,6 +53,56 @@ std::string getBuildScriptCommand(const std::string& scriptName) {
     return "./" + scriptName;
 }
 
+Vector2F getScreenViewportCenter() {
+    const RenderRect viewport = Renderer::getInstance().getViewport();
+    if (viewport.width <= 0.0f || viewport.height <= 0.0f) {
+        return Vector2F(640.0f, 360.0f);
+    }
+
+    return Vector2F(
+        viewport.x + (viewport.width * 0.5f),
+        viewport.y + (viewport.height * 0.5f)
+    );
+}
+
+Entity& findOrCreateCanvasEntity() {
+    Level& level = Level::getCurrentLevel();
+    for (Entity& entity : level.getEntities()) {
+        if (!entity.isDestroyed() && entity.getComponent<CanvasComponent>() != nullptr) {
+            return entity;
+        }
+    }
+
+    Entity& canvas = level.createEntity();
+    canvas.setName("Canvas");
+    canvas.setTag("UI");
+    canvas.addComponent<RectTransformComponent>(
+        getScreenViewportCenter(),
+        Vector2F(640.0f, 320.0f),
+        Vector2F(0.5f, 0.5f),
+        0.0f
+    );
+    canvas.addComponent<CanvasComponent>();
+    return canvas;
+}
+
+Entity& createUiChildEntity(
+    const std::string& name,
+    const Vector2F& size
+) {
+    Entity& canvas = findOrCreateCanvasEntity();
+    Entity& entity = Level::getCurrentLevel().createEntity();
+    entity.setName(name);
+    entity.setTag("UI");
+    entity.addComponent<RectTransformComponent>(
+        getScreenViewportCenter(),
+        size,
+        Vector2F(0.5f, 0.5f),
+        0.0f
+    );
+    entity.setParent(&canvas, false);
+    return entity;
+}
 }
 
 void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
@@ -110,19 +161,26 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
 
             if (ImGui::BeginMenu("UI")) {
                 if (ImGui::MenuItem("Canvas")) {
-                    const RenderRect viewport = Renderer::getInstance().getViewport();
-                    Vector2F position(
-                        viewport.x + (viewport.width * 0.5f),
-                        viewport.y + (viewport.height * 0.5f)
-                    );
-
                     Entity& entity = Level::getCurrentLevel().createEntity();
                     entity.setName("Canvas");
                     entity.setTag("UI");
-                    entity.addComponent<RectTransformComponent>(position, Vector2F(640.0f, 320.0f), Vector2F(0.5f, 0.5f), 0.0f);
+                    entity.addComponent<RectTransformComponent>(
+                        getScreenViewportCenter(),
+                        Vector2F(640.0f, 320.0f),
+                        Vector2F(0.5f, 0.5f),
+                        0.0f
+                    );
                     entity.addComponent<CanvasComponent>();
                     entityInspector.selectEntity(entity, true);
                     statusMessage = "Created Canvas entity " + std::to_string(entity.getId()) + ".";
+                }
+
+                if (ImGui::MenuItem("Label")) {
+                    Entity& entity = createUiChildEntity("Label", Vector2F(240.0f, 48.0f));
+                    UILabelComponent& label = entity.addComponent<UILabelComponent>();
+                    label.setText("New Label");
+                    entityInspector.selectEntity(entity, true);
+                    statusMessage = "Created Label entity " + std::to_string(entity.getId()) + ".";
                 }
 
                 ImGui::EndMenu();
