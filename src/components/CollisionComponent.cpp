@@ -2,20 +2,28 @@
 
 #include "Entity.h"
 #include "components/TransformComponent.h"
+#include "math/Math2D.h"
 #include "system/PhysicsSystem.h"
 #include "system/ScriptSystem.h"
 
-#include <cmath>
 #include <iostream>
 #include <utility>
 
 CollisionComponent::CollisionComponent(float width, float height)
     : CollisionComponent(width, height, BodyType::Static, false, "Collider") {}
 
-CollisionComponent::CollisionComponent(float width, float height, BodyType bodyType, bool isSensor, std::string name)
+CollisionComponent::CollisionComponent(
+    float width,
+    float height,
+    BodyType bodyType,
+    bool isSensor,
+    std::string name,
+    float rotation
+)
     : width(width),
       height(height),
       offset(Vector2F::zero()),
+      rotation(rotation),
       bodyType(bodyType),
       sensor(isSensor),
       name(std::move(name)) {}
@@ -32,13 +40,13 @@ void CollisionComponent::onStart() {
         return;
     }
 
-    constexpr float degreesToRadians = 3.14159265358979323846f / 180.0f;
-
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = toBox2DBodyType(bodyType);
     const Vector2F worldPosition = transform->getWorldPosition();
-    bodyDef.position = {worldPosition.x + offset.x, worldPosition.y + offset.y};
-    bodyDef.rotation = b2MakeRot(transform->getWorldRotation() * degreesToRadians);
+    bodyDef.position = {worldPosition.x, worldPosition.y};
+    bodyDef.rotation = b2MakeRot(
+        transform->getWorldRotation() * Math2D::DegreesToRadians
+    );
     bodyDef.fixedRotation = fixedRotation;
     bodyDef.userData = this;
 
@@ -56,7 +64,12 @@ void CollisionComponent::onStart() {
     shapeDef.density = 1.0f;
     shapeDef.material.friction = 0.3f;
 
-    const b2Polygon box = b2MakeBox(width * 0.5f, height * 0.5f);
+    const b2Polygon box = b2MakeOffsetBox(
+        width * 0.5f,
+        height * 0.5f,
+        b2Vec2{offset.x, offset.y},
+        b2MakeRot(rotation * Math2D::DegreesToRadians)
+    );
     shapeId = b2CreatePolygonShape(bodyId, &shapeDef, &box);
     if (!b2Shape_IsValid(shapeId)) {
         std::cerr << "Failed to create Box2D shape for CollisionComponent." << std::endl;
@@ -110,7 +123,11 @@ b2ShapeId CollisionComponent::getShapeId() const {
 Vector2F CollisionComponent::getWorldPosition() const {
     if (b2Body_IsValid(bodyId)) {
         const b2Vec2 position = b2Body_GetPosition(bodyId);
-        return Vector2F(position.x, position.y);
+        const float bodyRotation =
+            b2Rot_GetAngle(b2Body_GetRotation(bodyId))
+            / Math2D::DegreesToRadians;
+        return Vector2F(position.x, position.y)
+            + Math2D::rotate(offset, bodyRotation);
     }
 
     const Entity* entity = getEntity();
@@ -123,7 +140,8 @@ Vector2F CollisionComponent::getWorldPosition() const {
         return Vector2F::zero();
     }
 
-    return transform->getWorldPosition() + offset;
+    return transform->getWorldPosition()
+        + Math2D::rotate(offset, transform->getWorldRotation());
 }
 
 Vector2F CollisionComponent::getLinearVelocity() const {
@@ -151,6 +169,25 @@ float CollisionComponent::getHeight() const {
     return height;
 }
 
+float CollisionComponent::getRotation() const {
+    return rotation;
+}
+
+float CollisionComponent::getWorldRotation() const {
+    if (b2Body_IsValid(bodyId)) {
+        return b2Rot_GetAngle(b2Body_GetRotation(bodyId))
+            / Math2D::DegreesToRadians
+            + rotation;
+    }
+
+    const Entity* entity = getEntity();
+    const TransformComponent* transform =
+        entity == nullptr ? nullptr : entity->getComponent<TransformComponent>();
+    return transform == nullptr
+        ? rotation
+        : transform->getWorldRotation() + rotation;
+}
+
 CollisionComponent::BodyType CollisionComponent::getBodyType() const {
     return bodyType;
 }
@@ -169,7 +206,7 @@ void CollisionComponent::setName(const std::string& name) {
 
 void CollisionComponent::setOffset(const Vector2F& offset) {
     this->offset = offset;
-    syncBodyToTransform();
+    updateShapeGeometry();
 }
 
 void CollisionComponent::setSize(float width, float height) {
@@ -180,7 +217,12 @@ void CollisionComponent::setSize(float width, float height) {
 
     this->width = width;
     this->height = height;
-    rebuildBody();
+    updateShapeGeometry();
+}
+
+void CollisionComponent::setRotation(float value) {
+    rotation = value;
+    updateShapeGeometry();
 }
 
 void CollisionComponent::setBodyType(BodyType bodyType) {
@@ -264,12 +306,11 @@ void CollisionComponent::syncBodyToTransform() {
         return;
     }
 
-    constexpr float degreesToRadians = 3.14159265358979323846f / 180.0f;
     const Vector2F worldPosition = transform->getWorldPosition();
     b2Body_SetTransform(
         bodyId,
-        {worldPosition.x + offset.x, worldPosition.y + offset.y},
-        b2MakeRot(transform->getWorldRotation() * degreesToRadians)
+        {worldPosition.x, worldPosition.y},
+        b2MakeRot(transform->getWorldRotation() * Math2D::DegreesToRadians)
     );
 }
 
@@ -289,10 +330,11 @@ void CollisionComponent::syncTransformToBody() {
     }
 
     const b2Vec2 bodyPosition = b2Body_GetPosition(bodyId);
-    transform->setWorldPosition(Vector2F(
-        bodyPosition.x - offset.x,
-        bodyPosition.y - offset.y
-    ));
+    const float bodyRotation =
+        b2Rot_GetAngle(b2Body_GetRotation(bodyId))
+        / Math2D::DegreesToRadians;
+    transform->setWorldPosition(Vector2F(bodyPosition.x, bodyPosition.y));
+    transform->setWorldRotation(bodyRotation);
 }
 
 std::unique_ptr<Component> CollisionComponent::clone() const {
@@ -301,7 +343,8 @@ std::unique_ptr<Component> CollisionComponent::clone() const {
         height,
         bodyType,
         sensor,
-        name
+        name,
+        rotation
     );
     copy->setOffset(offset);
     copy->setFixedRotation(fixedRotation);
@@ -319,6 +362,20 @@ b2BodyType CollisionComponent::toBox2DBodyType(BodyType bodyType) {
         default:
             return b2_staticBody;
     }
+}
+
+void CollisionComponent::updateShapeGeometry() {
+    if (!b2Shape_IsValid(shapeId)) {
+        return;
+    }
+
+    const b2Polygon box = b2MakeOffsetBox(
+        width * 0.5f,
+        height * 0.5f,
+        b2Vec2{offset.x, offset.y},
+        b2MakeRot(rotation * Math2D::DegreesToRadians)
+    );
+    b2Shape_SetPolygon(shapeId, &box);
 }
 
 void CollisionComponent::rebuildBody() {

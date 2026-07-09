@@ -1,6 +1,6 @@
 #include "components/TransformComponent.h"
 
-#include <cmath>
+#include "math/Math2D.h"
 
 TransformComponent::TransformComponent()
     : position(Vector2F::zero()), rotation(0.0f) {}
@@ -21,18 +21,10 @@ Vector2F TransformComponent::getWorldPosition() const {
         return position;
     }
 
-    constexpr float degreesToRadians = 3.14159265358979323846f / 180.0f;
-
     const Vector2F parentWorldPosition = parent->getWorldPosition();
     const float parentWorldRotation = parent->getWorldRotation();
-    const float radians = parentWorldRotation * degreesToRadians;
-    const float cosAngle = std::cos(radians);
-    const float sinAngle = std::sin(radians);
-
-    const Vector2F rotatedLocalPosition(
-        position.x * cosAngle - position.y * sinAngle,
-        position.x * sinAngle + position.y * cosAngle
-    );
+    const Vector2F rotatedLocalPosition =
+        Math2D::rotate(position, parentWorldRotation);
 
     return Vector2F(
         parentWorldPosition.x + rotatedLocalPosition.x,
@@ -62,22 +54,11 @@ void TransformComponent::setWorldPosition(const Vector2F& worldPosition) {
         return;
     }
 
-    constexpr float degreesToRadians = 3.14159265358979323846f / 180.0f;
-
     const Vector2F parentWorldPosition = parent->getWorldPosition();
     const float parentWorldRotation = parent->getWorldRotation();
-    const float radians = parentWorldRotation * degreesToRadians;
-    const float cosAngle = std::cos(radians);
-    const float sinAngle = std::sin(radians);
-
-    const Vector2F delta(
-        worldPosition.x - parentWorldPosition.x,
-        worldPosition.y - parentWorldPosition.y
-    );
-
-    position = Vector2F(
-        delta.x * cosAngle + delta.y * sinAngle,
-        -delta.x * sinAngle + delta.y * cosAngle
+    position = Math2D::inverseRotate(
+        worldPosition - parentWorldPosition,
+        parentWorldRotation
     );
 }
 

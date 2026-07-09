@@ -1,5 +1,6 @@
 #include "system/sdl/SdlRenderBackend.h"
 
+#include "math/Math2D.h"
 #include "system/sdl/SdlWindowBackend.h"
 
 #include <SDL3/SDL.h>
@@ -224,6 +225,8 @@ void SdlRenderBackend::drawText(
     const std::string& text,
     const std::string& fontPath,
     const RenderVector2& position,
+    const RenderVector2& origin,
+    float rotationDegrees,
     unsigned int characterSize,
     RenderColor color
 ) {
@@ -247,8 +250,8 @@ void SdlRenderBackend::drawText(
 
     SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
     const SDL_FRect destinationRect{
-        position.x,
-        position.y,
+        position.x - origin.x,
+        position.y - origin.y,
         static_cast<float>(textSurface->w),
         static_cast<float>(textSurface->h)
     };
@@ -260,12 +263,23 @@ void SdlRenderBackend::drawText(
     }
 
     SDL_SetTextureBlendMode(textTexture, SDL_BLENDMODE_BLEND);
-    SDL_RenderTexture(renderer, textTexture, nullptr, &destinationRect);
+    const SDL_FPoint rotationOrigin{origin.x, origin.y};
+    SDL_RenderTextureRotated(
+        renderer,
+        textTexture,
+        nullptr,
+        &destinationRect,
+        static_cast<double>(rotationDegrees),
+        &rotationOrigin,
+        SDL_FLIP_NONE
+    );
     SDL_DestroyTexture(textTexture);
 #else
     (void)text;
     (void)fontPath;
     (void)position;
+    (void)origin;
+    (void)rotationDegrees;
     (void)characterSize;
     (void)color;
 #endif
@@ -273,6 +287,8 @@ void SdlRenderBackend::drawText(
 
 void SdlRenderBackend::drawRect(
     const RenderRect& rect,
+    const RenderVector2& origin,
+    float rotationDegrees,
     RenderColor color
 ) {
     SDL_Renderer* renderer = windowBackend.getRenderer();
@@ -280,16 +296,34 @@ void SdlRenderBackend::drawRect(
         return;
     }
 
-    const SDL_FRect destinationRect{
-        rect.x,
-        rect.y,
-        rect.width,
-        rect.height
+    const auto rotatePoint = [&](float x, float y) {
+        const Vector2F rotated = Math2D::rotate(
+            Vector2F(x - origin.x, y - origin.y),
+            rotationDegrees
+        );
+        return SDL_FPoint{
+            rect.x + rotated.x,
+            rect.y + rotated.y
+        };
     };
 
+    const SDL_FColor vertexColor{
+        colorToFloat(color.r),
+        colorToFloat(color.g),
+        colorToFloat(color.b),
+        colorToFloat(color.a)
+    };
+    const SDL_FPoint textureCoordinate{0.0f, 0.0f};
+    const SDL_Vertex vertices[] = {
+        {rotatePoint(0.0f, 0.0f), vertexColor, textureCoordinate},
+        {rotatePoint(rect.width, 0.0f), vertexColor, textureCoordinate},
+        {rotatePoint(rect.width, rect.height), vertexColor, textureCoordinate},
+        {rotatePoint(0.0f, rect.height), vertexColor, textureCoordinate}
+    };
+    const int indices[] = {0, 1, 2, 0, 2, 3};
+
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-    SDL_RenderFillRect(renderer, &destinationRect);
+    SDL_RenderGeometry(renderer, nullptr, vertices, 4, indices, 6);
 }
 
 void SdlRenderBackend::clear(RenderColor color) {

@@ -1,5 +1,6 @@
 #include "editor/LevelEditorViewport.h"
 
+#include "Application.h"
 #include "Entity.h"
 #include "components/AnimationComponent.h"
 #include "components/CollisionComponent.h"
@@ -11,6 +12,7 @@
 #include "editor/PrefabPanel.h"
 #include "editor/SpritePalettePanel.h"
 #include "editor/ViewportGrid.h"
+#include "math/Math2D.h"
 #include "math/Vector2F.h"
 #include "misc/Camera2D.h"
 #include "misc/Level.h"
@@ -19,6 +21,7 @@
 #include "system/EngineState.h"
 
 #include "imgui.h"
+
 #include <cstddef>
 
 bool LevelEditorViewport::draw(
@@ -59,27 +62,32 @@ bool LevelEditorViewport::draw(
         rectTransformGizmo.draw(entityInspector,camera);
     }
 
-    const bool moveToolRequested = handleEntityInteraction(
-        enabled,
-        camera,
-        viewportGrid,
-        entityInspector,
-        statusMessage
-    );
+    bool moveToolRequested = false;
 
-    if (activeEditorViewport) {
-        spritePalette.drawLevelDropTarget(
+    if(!isGamePlaying)
+    {
+        moveToolRequested = handleEntityInteraction(
+            enabled,
+            camera,
             viewportGrid,
-            camera.getViewport(),
-            toolbarHeight,
+            entityInspector,
             statusMessage
         );
-        prefabPanel.drawLevelDropTarget(
-            viewportGrid,
-            camera.getViewport(),
-            toolbarHeight,
-            statusMessage
-        );
+
+        if (activeEditorViewport) {
+            spritePalette.drawLevelDropTarget(
+                viewportGrid,
+                camera.getViewport(),
+                toolbarHeight,
+                statusMessage
+            );
+            prefabPanel.drawLevelDropTarget(
+                viewportGrid,
+                camera.getViewport(),
+                toolbarHeight,
+                statusMessage
+            );
+        }
     }
 
     return moveToolRequested;
@@ -121,8 +129,7 @@ bool LevelEditorViewport::handleEntityInteraction(
         viewport
     );
 
-    if (!EngineState::getInstance().isPlaying()
-        && rectTransformGizmo.handleInteraction(
+    if (rectTransformGizmo.handleInteraction(
             entityInspector,
             viewportGrid,
             screenMousePosition,
@@ -151,15 +158,12 @@ bool LevelEditorViewport::handleEntityInteraction(
             draggingEntityId = entity->getId();
             moveToolRequested = true;
 
-            if(RectTransformComponent* rectTransform = entity->getComponent<RectTransformComponent>())
-            {
-                const Vector2F& position = rectTransform->getAnchoredPosition();
+            if (RectTransformComponent* rectTransform = entity->getComponent<RectTransformComponent>()) {
+                const Vector2F position = rectTransform->getWorldPosition();
                 dragOffset[0] = screenMousePosition.x - position.x;
                 dragOffset[1] = screenMousePosition.y - position.y;
-
-            }
-            else if (TransformComponent* transform = entity->getComponent<TransformComponent>()) {
-                const Vector2F& position = transform->getPosition();
+            } else if (TransformComponent* transform = entity->getComponent<TransformComponent>()) {
+                const Vector2F position = transform->getWorldPosition();
                 dragOffset[0] = worldMousePosition.x - position.x;
                 dragOffset[1] = worldMousePosition.y - position.y;
             } else {
@@ -201,7 +205,7 @@ bool LevelEditorViewport::handleEntityInteraction(
                 newPosition = viewportGrid.snapPosition(newPosition);
             }
 
-            rectTransform->setAnchoredPosition(newPosition);
+            rectTransform->setWorldPosition(newPosition);
         } else if (transform != nullptr) {
             newPosition = Vector2F(
                 worldMousePosition.x - dragOffset[0],
@@ -371,17 +375,22 @@ bool LevelEditorViewport::uiEntityContainsPoint(
         return false;
     }
 
-    const Vector2F& center = rect->getAnchoredPosition();
-    const Vector2F& size = rect->getSize();
+    const Vector2F center = rect->getWorldPosition();
+    const Vector2F size =
+        rect->getSize() * Renderer::getInstance().getUiScale(entity);
     const Vector2F& pivot = rect->getPivot();
+    const Vector2F localPosition = Math2D::inverseRotate(
+        screenSpacePosition - center,
+        rect->getWorldRotation()
+    );
 
-    const float left = center.x - (size.x * pivot.x);
-    const float top = center.y - (size.y * pivot.y);
+    const float left = -(size.x * pivot.x);
+    const float top = -(size.y * pivot.y);
     const float right = left + size.x;
     const float bottom = top + size.y;
 
-    return screenSpacePosition.x >= left
-        && screenSpacePosition.x <= right
-        && screenSpacePosition.y >= top
-        && screenSpacePosition.y <= bottom;
+    return localPosition.x >= left
+        && localPosition.x <= right
+        && localPosition.y >= top
+        && localPosition.y <= bottom;
 }

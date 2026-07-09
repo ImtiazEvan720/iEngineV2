@@ -22,6 +22,7 @@ public:
     Camera2D& getCamera();
     const Camera2D& getCamera() const;
     RenderRect getViewport() const;
+    float getUiScale(const Entity& entity) const;
     float consumePendingPinchZoomFactor();
     bool buildTileLayerBatches(LevelAsset& levelAsset);
     void clearTileLayerBatches();

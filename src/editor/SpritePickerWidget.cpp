@@ -170,34 +170,6 @@ void SpritePickerWidget::refreshTilesets() {
             tileset.textureAsset = AssetManager::getInstance().getTextureAssetByName(tileset.imageFilename);
         }
 
-        for (const tinyxml2::XMLElement* tile = tilesetRoot->FirstChildElement("tile");
-             tile != nullptr;
-             tile = tile->NextSiblingElement("tile")) {
-            const int ownerTileId = tile->IntAttribute("id", -1);
-            if (ownerTileId < 0) {
-                continue;
-            }
-
-            const tinyxml2::XMLElement* animation = tile->FirstChildElement("animation");
-            if (animation == nullptr) {
-                continue;
-            }
-
-            EditorTileAnimation editorAnimation;
-            for (const tinyxml2::XMLElement* frame = animation->FirstChildElement("frame");
-                 frame != nullptr;
-                 frame = frame->NextSiblingElement("frame")) {
-                EditorAnimationFrame editorFrame;
-                editorFrame.tileId = frame->IntAttribute("tileid", ownerTileId);
-                editorFrame.durationMs = std::max(1, frame->IntAttribute("duration", 200));
-                editorAnimation.frames.push_back(editorFrame);
-            }
-
-            if (!editorAnimation.frames.empty()) {
-                tileset.animations[ownerTileId] = std::move(editorAnimation);
-            }
-        }
-
         tilesets.push_back(tileset);
     }
 
@@ -286,9 +258,7 @@ bool SpritePickerWidget::drawSelectedTilesetDetails(std::string& statusMessage) 
 bool SpritePickerWidget::drawTileGrid(
     const char* childId,
     bool allowDragDrop,
-    int animationOwnerTileId,
-    float height,
-    bool animatedTilesOnly
+    float height
 ) {
     EditorTileset* tileset = getSelectedTileset();
     if (tileset == nullptr || !isSelectedTilesetUsable()) {
@@ -309,15 +279,6 @@ bool SpritePickerWidget::drawTileGrid(
     int selectedGridIndex = -1;
 
     for (int tileId = 0; tileId < tileset->tileCount; ++tileId) {
-        const auto animationIterator = tileset->animations.find(tileId);
-        const bool animatedOwner =
-            animationIterator != tileset->animations.end()
-            && !animationIterator->second.frames.empty();
-
-        if (animatedTilesOnly && !animatedOwner) {
-            continue;
-        }
-
         const int column = tileId % tileset->columns;
         const int row = tileId / tileset->columns;
         const float sourceX = static_cast<float>(column * tileset->tileWidth);
@@ -337,22 +298,7 @@ bool SpritePickerWidget::drawTileGrid(
             (sourceY + static_cast<float>(tileset->tileHeight)) / static_cast<float>(tileset->imageHeight)
         );
 
-        const bool activeOwner = animationOwnerTileId == tileId;
-        if (animatedOwner || activeOwner) {
-            item.badge = animatedOwner ? "OWNER" : "OWNER*";
-            item.badgeColor = animatedOwner
-                ? IM_COL32(33, 120, 64, 220)
-                : IM_COL32(120, 90, 28, 210);
-        }
-
-        if (animatedOwner) {
-            item.tooltip =
-                "tile id: " + std::to_string(tileId)
-                + "\nanimation owner\nframes: "
-                + std::to_string(animationIterator->second.frames.size());
-        } else {
-            item.tooltip = "tile id: " + std::to_string(tileId);
-        }
+        item.tooltip = "tile id: " + std::to_string(tileId);
 
         if (allowDragDrop) {
             const TileDragPayload payload{selectedTilesetIndex, tileId};
@@ -383,7 +329,7 @@ bool SpritePickerWidget::drawTileGrid(
     options.cellHeight = previewSize.y + ImGui::GetTextLineHeightWithSpacing() + 12.0f;
     options.columns = tileset->columns;
     options.horizontalScrollbar = true;
-    options.emptyText = "No animated tiles found in this tileset.";
+    options.emptyText = "No tiles found in this tileset.";
 
     const GridViewResult result = EditorCollectionViews::drawGridView(
         childId,
@@ -455,68 +401,6 @@ std::optional<Sprite> SpritePickerWidget::createSpriteFromTile(
     ));
 
     return sprite;
-}
-
-std::optional<Animation> SpritePickerWidget::createAnimationFromSelectedTile(
-    float renderScale,
-    std::string& statusMessage
-) const {
-    return createAnimationFromTile(selectedTilesetIndex, selectedTileId, renderScale, statusMessage);
-}
-
-std::optional<Animation> SpritePickerWidget::createAnimationFromTile(
-    int tilesetIndex,
-    int ownerTileId,
-    float renderScale,
-    std::string& statusMessage
-) const {
-    const EditorTileset* tileset = getTileset(tilesetIndex);
-    if (tileset == nullptr) {
-        statusMessage = "Failed to create animation: invalid tileset.";
-        return std::nullopt;
-    }
-
-    if (ownerTileId < 0 || ownerTileId >= tileset->tileCount) {
-        statusMessage = "Failed to create animation: invalid owner tile id.";
-        return std::nullopt;
-    }
-
-    const auto animationIterator = tileset->animations.find(ownerTileId);
-    if (animationIterator == tileset->animations.end()
-        || animationIterator->second.frames.empty()) {
-        statusMessage = "Selected tile has no animation frames.";
-        return std::nullopt;
-    }
-
-    Animation animation;
-    bool addedFrame = false;
-
-    for (const EditorAnimationFrame& frame : animationIterator->second.frames) {
-        std::optional<Sprite> sprite = createSpriteFromTile(
-            tilesetIndex,
-            frame.tileId,
-            renderScale,
-            statusMessage
-        );
-
-        if (!sprite.has_value()) {
-            continue;
-        }
-
-        animation.addFrame(*sprite);
-        if (!addedFrame) {
-            animation.setFrameDuration(static_cast<float>(std::max(1, frame.durationMs)) / 1000.0f);
-        }
-
-        addedFrame = true;
-    }
-
-    if (!addedFrame) {
-        statusMessage = "Failed to create animation: no valid frames.";
-        return std::nullopt;
-    }
-
-    return animation;
 }
 
 bool SpritePickerWidget::hasScannedTilesets() const {

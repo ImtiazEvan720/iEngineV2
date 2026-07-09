@@ -65,11 +65,15 @@ public:
         const std::string &text,
         const std::string &fontPath,
         const RenderVector2 &position,
+        const RenderVector2 &origin,
+        float rotationDegrees,
         unsigned int characterSize,
         RenderColor color) = 0;
 
     virtual void drawRect(
         const RenderRect &rect,
+        const RenderVector2 &origin,
+        float rotationDegrees,
         RenderColor color
     ) = 0;
 

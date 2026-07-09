@@ -13,6 +13,7 @@ private:
         int entityId = -1;
         float offset[2] = {0.0f, 0.0f};
         float size[2] = {0.0f, 0.0f};
+        float rotation = 0.0f;
         int bodyType = 0;
         bool sensor = false;
         bool fixedRotation = false;

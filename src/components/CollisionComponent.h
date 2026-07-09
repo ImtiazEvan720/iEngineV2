@@ -34,7 +34,14 @@ public:
     };
 
     CollisionComponent(float width, float height);
-    CollisionComponent(float width, float height, BodyType bodyType, bool isSensor = false, std::string name = "Collider");
+    CollisionComponent(
+        float width,
+        float height,
+        BodyType bodyType,
+        bool isSensor = false,
+        std::string name = "Collider",
+        float rotation = 0.0f
+    );
     ~CollisionComponent() override = default;
 
     void onStart() override;
@@ -50,12 +57,15 @@ public:
     const Vector2F &getOffset() const;
     float getWidth() const;
     float getHeight() const;
+    float getRotation() const;
+    float getWorldRotation() const;
     BodyType getBodyType() const;
     bool isSensor() const;
     bool isFixedRotation() const;
     void setName(const std::string &name);
     void setOffset(const Vector2F &offset);
     void setSize(float width, float height);
+    void setRotation(float value);
     void setBodyType(BodyType bodyType);
     void setSensor(bool sensor);
     void setLinearVelocity(const Vector2F &velocity);
@@ -69,11 +79,13 @@ public:
 
 private:
     static b2BodyType toBox2DBodyType(BodyType bodyType);
+    void updateShapeGeometry();
     void rebuildBody();
 
     float width;
     float height;
     Vector2F offset;
+    float rotation;
     BodyType bodyType;
     bool sensor;
     bool fixedRotation = false;

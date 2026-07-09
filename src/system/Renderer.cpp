@@ -8,6 +8,8 @@
 #include "components/CanvasComponent.h"
 #include "components/RectTransformComponent.h"
 #include "components/UILabelComponent.h"
+#include "components/UIPanelComponent.h"
+#include "math/Math2D.h"
 #include "misc/Level.h"
 #include "misc/RenderConstants.h"
 #include "system/EngineState.h"
@@ -110,7 +112,7 @@ namespace
 
     RenderRect buildUiRect(const RectTransformComponent &rectTransformComponent, float scale)
     {
-        const Vector2F &screenPosition = rectTransformComponent.getAnchoredPosition();
+        const Vector2F screenPosition = rectTransformComponent.getWorldPosition();
         const Vector2F &size = rectTransformComponent.getSize();
         const Vector2F &pivot = rectTransformComponent.getPivot();
         const float clampedScale = std::isfinite(scale) ? std::max(0.0f, scale) : 1.0f;
@@ -122,17 +124,50 @@ namespace
             return RenderRect{};
         }
 
+        const float left = -(width * pivot.x);
+        const float top = -(height * pivot.y);
+        const float right = left + width;
+        const float bottom = top + height;
+        const float rotation = rectTransformComponent.getWorldRotation();
+        const Vector2F corners[] = {
+            screenPosition + Math2D::rotate(Vector2F(left, top), rotation),
+            screenPosition + Math2D::rotate(Vector2F(right, top), rotation),
+            screenPosition + Math2D::rotate(Vector2F(right, bottom), rotation),
+            screenPosition + Math2D::rotate(Vector2F(left, bottom), rotation)
+        };
+        float minX = corners[0].x;
+        float maxX = corners[0].x;
+        float minY = corners[0].y;
+        float maxY = corners[0].y;
+        for (const Vector2F &corner : corners)
+        {
+            minX = std::min(minX, corner.x);
+            maxX = std::max(maxX, corner.x);
+            minY = std::min(minY, corner.y);
+            maxY = std::max(maxY, corner.y);
+        }
+
         return RenderRect{
-            screenPosition.x - (width * pivot.x),
-            screenPosition.y - (height * pivot.y),
-            width,
-            height};
+            minX,
+            minY,
+            maxX - minX,
+            maxY - minY};
     }
 
     const CanvasComponent *getParentCanvas(const Entity &entity)
     {
-        const Entity *parent = entity.getParent();
-        return parent == nullptr ? nullptr : parent->getComponent<CanvasComponent>();
+        for (const Entity *parent = entity.getParent();
+             parent != nullptr;
+             parent = parent->getParent())
+        {
+            const CanvasComponent *canvas = parent->getComponent<CanvasComponent>();
+            if (canvas != nullptr)
+            {
+                return canvas;
+            }
+        }
+
+        return nullptr;
     }
 
     int getUiSortingOrder(const Entity &entity)
@@ -147,28 +182,25 @@ namespace
         return parentCanvas == nullptr ? 0 : parentCanvas->getSortingOrder();
     }
 
-    float getUiScale(const Entity &entity)
-    {
-        const CanvasComponent *canvas = entity.getComponent<CanvasComponent>();
-        if (canvas != nullptr)
-        {
-            return canvas->getScale();
-        }
-
-        const CanvasComponent *parentCanvas = getParentCanvas(entity);
-        return parentCanvas == nullptr ? 1.0f : parentCanvas->getScale();
-    }
-
     bool parentCanvasAllowsRender(const Entity &entity)
     {
-        const Entity *parent = entity.getParent();
-        if (parent == nullptr)
+        for (const Entity *parent = entity.getParent();
+             parent != nullptr;
+             parent = parent->getParent())
         {
-            return true;
+            if (!parent->isEnabled())
+            {
+                return false;
+            }
+
+            const CanvasComponent *parentCanvas = parent->getComponent<CanvasComponent>();
+            if (parentCanvas != nullptr && !parentCanvas->isEnabled())
+            {
+                return false;
+            }
         }
 
-        const CanvasComponent *parentCanvas = parent->getComponent<CanvasComponent>();
-        return parentCanvas == nullptr || (parent->isEnabled() && parentCanvas->isEnabled());
+        return true;
     }
 
     RenderVector2 getAlignedTextPosition(
@@ -302,6 +334,20 @@ RenderRect Renderer::getViewport() const
     }
 
     return windowBackend->getViewport();
+}
+
+float Renderer::getUiScale(const Entity &entity) const
+{
+    const CanvasComponent *canvas = entity.getComponent<CanvasComponent>();
+    if (canvas != nullptr)
+    {
+        return std::max(0.001f, canvas->getScale());
+    }
+
+    const CanvasComponent *parentCanvas = getParentCanvas(entity);
+    return parentCanvas == nullptr
+        ? 1.0f
+        : std::max(0.001f, parentCanvas->getScale());
 }
 
 float Renderer::consumePendingPinchZoomFactor()
@@ -645,16 +691,21 @@ void Renderer::renderUI()
 
         const CanvasComponent *canvasComponent = entity.getComponent<CanvasComponent>();
         const UILabelComponent *labelComponent = entity.getComponent<UILabelComponent>();
+        const UIPanelComponent *panelComponent = entity.getComponent<UIPanelComponent>();
         const RectTransformComponent *rectTransformComponent = entity.getComponent<RectTransformComponent>();
         const bool hasRenderableCanvas = canvasComponent != nullptr && canvasComponent->isEnabled();
         const bool hasRenderableLabel =
             labelComponent != nullptr &&
             labelComponent->isEnabled() &&
             parentCanvasAllowsRender(entity);
+        const bool hasRenderablePanel =
+            panelComponent != nullptr &&
+            panelComponent->isEnabled() &&
+            parentCanvasAllowsRender(entity);
 
         if (rectTransformComponent != nullptr &&
             rectTransformComponent->isEnabled() &&
-            (hasRenderableCanvas || hasRenderableLabel))
+            (hasRenderableCanvas || hasRenderableLabel || hasRenderablePanel))
         {
             UIEntities.push_back(&entity);
         }
@@ -685,6 +736,7 @@ void Renderer::renderUI()
         const RectTransformComponent *rectTransformComponent = entity->getComponent<RectTransformComponent>();
         const CanvasComponent *canvasComponent = entity->getComponent<CanvasComponent>();
         const UILabelComponent *labelComponent = entity->getComponent<UILabelComponent>();
+        const UIPanelComponent *panelComponent = entity->getComponent<UIPanelComponent>();
         const RenderRect unclippedRect = buildUiRect(*rectTransformComponent, getUiScale(*entity));
         if (unclippedRect.width <= 0.0f || unclippedRect.height <= 0.0f)
         {
@@ -697,6 +749,16 @@ void Renderer::renderUI()
             continue;
         }
 
+        const float scale = getUiScale(*entity);
+        const Vector2F position = rectTransformComponent->getWorldPosition();
+        const Vector2F &size = rectTransformComponent->getSize();
+        const Vector2F &pivot = rectTransformComponent->getPivot();
+        const float width = size.x * scale;
+        const float height = size.y * scale;
+        const float rotation = rectTransformComponent->getWorldRotation();
+        const RenderRect destination{position.x, position.y, width, height};
+        const RenderVector2 origin{width * pivot.x, height * pivot.y};
+
         if (canvasComponent != nullptr && canvasComponent->isEnabled())
         {
             const RenderColor color = applyOpacity(
@@ -704,7 +766,24 @@ void Renderer::renderUI()
                 canvasComponent->getOpacity());
             if (color.a != 0)
             {
-                renderBackend->drawRect(clippedRect, color);
+                renderBackend->drawRect(
+                    destination,
+                    origin,
+                    rotation,
+                    color
+                );
+            }
+        }
+
+        if (panelComponent != nullptr && panelComponent->isEnabled())
+        {
+            const RenderColor color = applyOpacity(
+                panelComponent->getColor(),
+                panelComponent->getOpacity()
+            );
+            if (color.a != 0)
+            {
+                renderBackend->drawRect(destination, origin, rotation, color);
             }
         }
 
@@ -715,10 +794,30 @@ void Renderer::renderUI()
             const int fontSize = std::max(1, labelComponent->getFontSize());
             const unsigned int characterSize = static_cast<unsigned int>(fontSize);
             const std::string &fontName = labelComponent->getFontName();
+            const RenderVector2 localTextPosition = getAlignedTextPosition(
+                RenderRect{
+                    -(width * pivot.x),
+                    -(height * pivot.y),
+                    width,
+                    height
+                },
+                *labelComponent,
+                characterSize
+            );
+            const Vector2F rotatedTextPosition = Math2D::rotate(
+                Vector2F(localTextPosition.x, localTextPosition.y),
+                rotation
+            );
+
             renderBackend->drawText(
                 labelComponent->getText(),
                 fontName.empty() ? "Assets/Fonts/default.ttf" : fontName,
-                getAlignedTextPosition(clippedRect, *labelComponent, characterSize),
+                RenderVector2{
+                    position.x + rotatedTextPosition.x,
+                    position.y + rotatedTextPosition.y
+                },
+                RenderVector2{0.0f, 0.0f},
+                rotation,
                 characterSize,
                 labelComponent->getFontColor());
         }

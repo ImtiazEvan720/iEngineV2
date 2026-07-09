@@ -11,6 +11,7 @@
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "components/UILabelComponent.h"
+#include "components/UIPanelComponent.h"
 #include "editor/EditorCollectionViews.h"
 #include "editor/ScriptPropertyParser.h"
 #include "math/Vector2F.h"
@@ -104,7 +105,7 @@ void ensureUiParent(Entity& entity) {
     Entity* parent = entity.getParent();
     if (&entity != &canvas &&
         (parent == nullptr || parent->getComponent<CanvasComponent>() == nullptr)) {
-        entity.setParent(&canvas, false);
+        entity.setParent(&canvas, true);
     }
 }
 
@@ -267,6 +268,22 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
             }
         },
         {
+            "UIPanelComponent",
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
+                ensureComponent<RectTransformComponent>(
+                    entity,
+                    getViewportCenter(),
+                    Vector2F(240.0f, 120.0f),
+                    Vector2F(0.5f, 0.5f),
+                    0.0f
+                );
+                ensureUiParent(entity);
+                return addComponentIfMissing<UIPanelComponent>(entity);
+            }
+        },
+        {
             "CanvasComponent",
             false,
             [](Entity& entity, const std::string& scriptPath) {
@@ -368,12 +385,22 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
         });
     }
 
+    if (entity.getComponent<UIPanelComponent>() != nullptr) {
+        entries.push_back({
+            "UIPanelComponent",
+            [](Entity& target) {
+                return target.removeComponent<UIPanelComponent>();
+            }
+        });
+    }
+
     if (entity.getComponent<RectTransformComponent>() != nullptr) {
         entries.push_back({
             "RectTransformComponent",
             [](Entity& target) {
                 removeDependencyIfPresent<CanvasComponent>(target);
                 removeDependencyIfPresent<UILabelComponent>(target);
+                removeDependencyIfPresent<UIPanelComponent>(target);
                 return target.removeComponent<RectTransformComponent>();
             }
         });

@@ -1,9 +1,6 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
-#include <vector>
-
 class TextureAsset;
 
 namespace EditorTileDrag {
@@ -13,15 +10,6 @@ constexpr const char* PayloadType = "IENGINE_TILE";
 struct TileDragPayload {
     int tilesetIndex = -1;
     int tileId = -1;
-};
-
-struct EditorAnimationFrame {
-    int tileId = 0;
-    int durationMs = 200;
-};
-
-struct EditorTileAnimation {
-    std::vector<EditorAnimationFrame> frames;
 };
 
 struct EditorTileset {
@@ -36,5 +24,4 @@ struct EditorTileset {
     int imageWidth = 0;
     int imageHeight = 0;
     TextureAsset* textureAsset = nullptr;
-    std::unordered_map<int, EditorTileAnimation> animations;
 };

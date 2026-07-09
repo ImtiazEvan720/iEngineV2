@@ -159,7 +159,7 @@ void AnimationEditorPanel::drawTilePicker(std::string &statusMessage)
 
     if (spritePickerWidget.drawSelectedTilesetDetails(statusMessage))
     {
-        spritePickerWidget.drawTileGrid("##AnimationEditorTileGrid", false, -1, 220.0f);
+        spritePickerWidget.drawTileGrid("##AnimationEditorTileGrid", false, 220.0f);
     }
 }
 

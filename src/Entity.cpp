@@ -1,5 +1,6 @@
 #include "Entity.h"
 
+#include "components/RectTransformComponent.h"
 #include "components/TransformComponent.h"
 #include "math/Vector2F.h"
 #include "misc/Guid.h"
@@ -430,12 +431,20 @@ bool Entity::setParent(Entity *parent, bool keepWorldTransform)
     }
 
     TransformComponent *transform = getComponent<TransformComponent>();
-    Vector2F worldPosition = Vector2F::zero();
-    float worldRotation = 0.0f;
+    RectTransformComponent *rectTransform = getComponent<RectTransformComponent>();
+    Vector2F transformWorldPosition = Vector2F::zero();
+    float transformWorldRotation = 0.0f;
+    Vector2F rectWorldPosition = Vector2F::zero();
+    float rectWorldRotation = 0.0f;
     if (transform != nullptr && keepWorldTransform)
     {
-        worldPosition = transform->getWorldPosition();
-        worldRotation = transform->getWorldRotation();
+        transformWorldPosition = transform->getWorldPosition();
+        transformWorldRotation = transform->getWorldRotation();
+    }
+    if (rectTransform != nullptr && keepWorldTransform)
+    {
+        rectWorldPosition = rectTransform->getWorldPosition();
+        rectWorldRotation = rectTransform->getWorldRotation();
     }
 
     if (parentEntity != nullptr)
@@ -458,22 +467,14 @@ bool Entity::setParent(Entity *parent, bool keepWorldTransform)
 
     if (transform != nullptr && keepWorldTransform)
     {
-        TransformComponent *parentTransform =
-            parentEntity == nullptr ? nullptr : parentEntity->getComponent<TransformComponent>();
+        transform->setWorldPosition(transformWorldPosition);
+        transform->setWorldRotation(transformWorldRotation);
+    }
 
-        if (parentTransform != nullptr)
-        {
-            const Vector2F parentWorldPosition = parentTransform->getWorldPosition();
-            transform->setPosition(Vector2F(
-                worldPosition.x - parentWorldPosition.x,
-                worldPosition.y - parentWorldPosition.y));
-            transform->setRotation(worldRotation - parentTransform->getWorldRotation());
-        }
-        else
-        {
-            transform->setPosition(worldPosition);
-            transform->setRotation(worldRotation);
-        }
+    if (rectTransform != nullptr && keepWorldTransform)
+    {
+        rectTransform->setWorldPosition(rectWorldPosition);
+        rectTransform->setWorldRotation(rectWorldRotation);
     }
 
     syncChildTransformParents();
@@ -505,14 +506,20 @@ void Entity::removeChildReference(Entity *child)
 void Entity::syncTransformParent()
 {
     TransformComponent *transform = getComponent<TransformComponent>();
-    if (transform == nullptr)
+    if (transform != nullptr)
     {
-        return;
+        TransformComponent *parentTransform =
+            parentEntity == nullptr ? nullptr : parentEntity->getComponent<TransformComponent>();
+        transform->setParent(parentTransform);
     }
 
-    TransformComponent *parentTransform =
-        parentEntity == nullptr ? nullptr : parentEntity->getComponent<TransformComponent>();
-    transform->setParent(parentTransform);
+    RectTransformComponent *rectTransform = getComponent<RectTransformComponent>();
+    if (rectTransform != nullptr)
+    {
+        RectTransformComponent *parentRectTransform =
+            parentEntity == nullptr ? nullptr : parentEntity->getComponent<RectTransformComponent>();
+        rectTransform->setParent(parentRectTransform);
+    }
 }
 
 void Entity::syncChildTransformParents()

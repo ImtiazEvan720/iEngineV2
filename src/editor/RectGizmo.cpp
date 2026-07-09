@@ -1,5 +1,6 @@
 #include "editor/RectGizmo.h"
 
+#include "math/Math2D.h"
 #include "misc/Camera2D.h"
 
 #include "imgui.h"
@@ -13,19 +14,27 @@ constexpr float HandleHalfSize = HandleSize * 0.5f;
 constexpr float MinRectSize = 1.0f;
 
 struct ScreenRect {
-    float left = 0.0f;
-    float top = 0.0f;
-    float right = 0.0f;
-    float bottom = 0.0f;
-
-    float centerX() const {
-        return (left + right) * 0.5f;
-    }
-
-    float centerY() const {
-        return (top + bottom) * 0.5f;
-    }
+    Vector2F topLeft = Vector2F::zero();
+    Vector2F topRight = Vector2F::zero();
+    Vector2F bottomRight = Vector2F::zero();
+    Vector2F bottomLeft = Vector2F::zero();
+    Vector2F center = Vector2F::zero();
 };
+
+Vector2F midpoint(const Vector2F& first, const Vector2F& second) {
+    return Vector2F(
+        (first.x + second.x) * 0.5f,
+        (first.y + second.y) * 0.5f
+    );
+}
+
+Vector2F rotatedCorner(
+    const RectGizmo::Rect& rect,
+    float localX,
+    float localY
+) {
+    return rect.center + Math2D::rotate(Vector2F(localX, localY), rect.rotation);
+}
 
 bool pointInRect(const Vector2F& point, const ImVec2& min, const ImVec2& max) {
     return point.x >= min.x
@@ -72,22 +81,25 @@ bool buildScreenRect(
         return false;
     }
 
-    const Vector2F halfSize(rect.width * 0.5f, rect.height * 0.5f);
-
-    const Vector2F screenTopLeft = camera.worldToScreen(
-        Vector2F(rect.center.x - halfSize.x, rect.center.y - halfSize.y),
+    const float halfWidth = rect.width * 0.5f;
+    const float halfHeight = rect.height * 0.5f;
+    screenRect.topLeft = camera.worldToScreen(
+        rotatedCorner(rect, -halfWidth, -halfHeight),
         viewport
     );
-
-    const Vector2F screenBottomRight = camera.worldToScreen(
-        Vector2F(rect.center.x + halfSize.x, rect.center.y + halfSize.y),
+    screenRect.topRight = camera.worldToScreen(
+        rotatedCorner(rect, halfWidth, -halfHeight),
         viewport
     );
-
-    screenRect.left = std::min(screenTopLeft.x, screenBottomRight.x);
-    screenRect.right = std::max(screenTopLeft.x, screenBottomRight.x);
-    screenRect.top = std::min(screenTopLeft.y, screenBottomRight.y);
-    screenRect.bottom = std::max(screenTopLeft.y, screenBottomRight.y);
+    screenRect.bottomRight = camera.worldToScreen(
+        rotatedCorner(rect, halfWidth, halfHeight),
+        viewport
+    );
+    screenRect.bottomLeft = camera.worldToScreen(
+        rotatedCorner(rect, -halfWidth, halfHeight),
+        viewport
+    );
+    screenRect.center = camera.worldToScreen(rect.center, viewport);
     return true;
 }
 
@@ -104,11 +116,13 @@ bool buildScreenRectScreenSpace(
         return false;
     }
 
-    const Vector2F halfSize(rect.width * 0.5f, rect.height * 0.5f);
-    screenRect.left = rect.center.x - halfSize.x;
-    screenRect.right = rect.center.x + halfSize.x;
-    screenRect.top = rect.center.y - halfSize.y;
-    screenRect.bottom = rect.center.y + halfSize.y;
+    const float halfWidth = rect.width * 0.5f;
+    const float halfHeight = rect.height * 0.5f;
+    screenRect.topLeft = rotatedCorner(rect, -halfWidth, -halfHeight);
+    screenRect.topRight = rotatedCorner(rect, halfWidth, -halfHeight);
+    screenRect.bottomRight = rotatedCorner(rect, halfWidth, halfHeight);
+    screenRect.bottomLeft = rotatedCorner(rect, -halfWidth, halfHeight);
+    screenRect.center = rect.center;
     return true;
 }
 
@@ -182,34 +196,38 @@ RectGizmo::Rect resizeRect(
 ) {
     RectGizmo::Rect result = rect;
 
-    float left = rect.center.x - (rect.width * 0.5f);
-    float right = rect.center.x + (rect.width * 0.5f);
-    float top = rect.center.y - (rect.height * 0.5f);
-    float bottom = rect.center.y + (rect.height * 0.5f);
+    float left = rect.width * -0.5f;
+    float right = rect.width * 0.5f;
+    float top = rect.height * -0.5f;
+    float bottom = rect.height * 0.5f;
     Vector2F snappedMousePosition = worldMousePosition;
 
     if (snapToGrid) {
         snappedMousePosition = snapPosition(worldMousePosition, gridSize);
     }
 
+    const Vector2F localMousePosition =
+        Math2D::inverseRotate(snappedMousePosition - rect.center, rect.rotation);
+
     if (isResizeLeftHandle(handle)) {
-        left = std::min(snappedMousePosition.x, right - MinRectSize);
+        left = std::min(localMousePosition.x, right - MinRectSize);
     } else if (isResizeRightHandle(handle)) {
-        right = std::max(snappedMousePosition.x, left + MinRectSize);
+        right = std::max(localMousePosition.x, left + MinRectSize);
     }
 
     if (isResizeTopHandle(handle)) {
-        top = std::min(snappedMousePosition.y, bottom - MinRectSize);
+        top = std::min(localMousePosition.y, bottom - MinRectSize);
     } else if (isResizeBottomHandle(handle)) {
-        bottom = std::max(snappedMousePosition.y, top + MinRectSize);
+        bottom = std::max(localMousePosition.y, top + MinRectSize);
     }
 
     result.width = std::max(MinRectSize, right - left);
     result.height = std::max(MinRectSize, bottom - top);
-    result.center = Vector2F(
+    const Vector2F localCenterOffset(
         left + (result.width * 0.5f),
         top + (result.height * 0.5f)
     );
+    result.center = rect.center + Math2D::rotate(localCenterOffset, rect.rotation);
 
     return result;
 }
@@ -234,30 +252,34 @@ void addHandle(
 
 void addRectHandles(
     ImDrawList& drawList,
-    float left,
-    float top,
-    float right,
-    float bottom,
+    const ScreenRect& screenRect,
     bool drawCenter,
     ImU32 fillColor,
     ImU32 centerFillColor,
     ImU32 outlineColor
 ) {
-    const float centerX = (left + right) * 0.5f;
-    const float centerY = (top + bottom) * 0.5f;
+    const Vector2F topCenter = midpoint(screenRect.topLeft, screenRect.topRight);
+    const Vector2F rightCenter = midpoint(screenRect.topRight, screenRect.bottomRight);
+    const Vector2F bottomCenter = midpoint(screenRect.bottomLeft, screenRect.bottomRight);
+    const Vector2F leftCenter = midpoint(screenRect.topLeft, screenRect.bottomLeft);
 
-    addHandle(drawList, ImVec2(left, top), fillColor, outlineColor);
-    addHandle(drawList, ImVec2(centerX, top), fillColor, outlineColor);
-    addHandle(drawList, ImVec2(right, top), fillColor, outlineColor);
+    addHandle(drawList, ImVec2(screenRect.topLeft.x, screenRect.topLeft.y), fillColor, outlineColor);
+    addHandle(drawList, ImVec2(topCenter.x, topCenter.y), fillColor, outlineColor);
+    addHandle(drawList, ImVec2(screenRect.topRight.x, screenRect.topRight.y), fillColor, outlineColor);
 
-    addHandle(drawList, ImVec2(left, centerY), fillColor, outlineColor);
-    addHandle(drawList, ImVec2(right, centerY), fillColor, outlineColor);
+    addHandle(drawList, ImVec2(leftCenter.x, leftCenter.y), fillColor, outlineColor);
+    addHandle(drawList, ImVec2(rightCenter.x, rightCenter.y), fillColor, outlineColor);
 
-    addHandle(drawList, ImVec2(left, bottom), fillColor, outlineColor);
-    addHandle(drawList, ImVec2(centerX, bottom), fillColor, outlineColor);
-    addHandle(drawList, ImVec2(right, bottom), fillColor, outlineColor);
+    addHandle(drawList, ImVec2(screenRect.bottomLeft.x, screenRect.bottomLeft.y), fillColor, outlineColor);
+    addHandle(drawList, ImVec2(bottomCenter.x, bottomCenter.y), fillColor, outlineColor);
+    addHandle(drawList, ImVec2(screenRect.bottomRight.x, screenRect.bottomRight.y), fillColor, outlineColor);
     if (drawCenter) {
-        addHandle(drawList, ImVec2(centerX, centerY), centerFillColor, outlineColor);
+        addHandle(
+            drawList,
+            ImVec2(screenRect.center.x, screenRect.center.y),
+            centerFillColor,
+            outlineColor
+        );
     }
 }
 
@@ -281,27 +303,33 @@ void drawHandlesFromScreenRect(
 
     drawList->PushClipRect(clipMin, clipMax, true);
 
-    drawList->AddRect(
-        ImVec2(screenRect.left + 1.0f, screenRect.top + 1.0f),
-        ImVec2(screenRect.right + 1.0f, screenRect.bottom + 1.0f),
-        shadowColor
+    const ImVec2 shadowOffset(1.0f, 1.0f);
+    const ImVec2 topLeft(screenRect.topLeft.x, screenRect.topLeft.y);
+    const ImVec2 topRight(screenRect.topRight.x, screenRect.topRight.y);
+    const ImVec2 bottomRight(screenRect.bottomRight.x, screenRect.bottomRight.y);
+    const ImVec2 bottomLeft(screenRect.bottomLeft.x, screenRect.bottomLeft.y);
+
+    drawList->AddQuad(
+        ImVec2(topLeft.x + shadowOffset.x, topLeft.y + shadowOffset.y),
+        ImVec2(topRight.x + shadowOffset.x, topRight.y + shadowOffset.y),
+        ImVec2(bottomRight.x + shadowOffset.x, bottomRight.y + shadowOffset.y),
+        ImVec2(bottomLeft.x + shadowOffset.x, bottomLeft.y + shadowOffset.y),
+        shadowColor,
+        1.0f
     );
 
-    drawList->AddRect(
-        ImVec2(screenRect.left, screenRect.top),
-        ImVec2(screenRect.right, screenRect.bottom),
+    drawList->AddQuad(
+        topLeft,
+        topRight,
+        bottomRight,
+        bottomLeft,
         outlineColor,
-        0.0f,
-        0,
         2.0f
     );
 
     addRectHandles(
         *drawList,
-        screenRect.left,
-        screenRect.top,
-        screenRect.right,
-        screenRect.bottom,
+        screenRect,
         showCenter,
         fillColor,
         centerFillColor,
@@ -316,42 +344,56 @@ RectGizmo::Handle hitTestScreenRect(
     const Vector2F& screenMousePosition,
     bool showCenterHandle
 ) {
-    if(showCenterHandle)
-    {
-        if (pointInHandle(screenMousePosition, ImVec2(screenRect.centerX(), screenRect.centerY()))) {
-           return RectGizmo::Handle::Move;
+    if (showCenterHandle) {
+        if (pointInHandle(
+                screenMousePosition,
+                ImVec2(screenRect.center.x, screenRect.center.y))) {
+            return RectGizmo::Handle::Move;
         }
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.left, screenRect.top))) {
+    if (pointInHandle(
+            screenMousePosition,
+            ImVec2(screenRect.topLeft.x, screenRect.topLeft.y))) {
         return RectGizmo::Handle::ResizeTopLeft;
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.right, screenRect.top))) {
+    if (pointInHandle(
+            screenMousePosition,
+            ImVec2(screenRect.topRight.x, screenRect.topRight.y))) {
         return RectGizmo::Handle::ResizeTopRight;
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.left, screenRect.bottom))) {
+    if (pointInHandle(
+            screenMousePosition,
+            ImVec2(screenRect.bottomLeft.x, screenRect.bottomLeft.y))) {
         return RectGizmo::Handle::ResizeBottomLeft;
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.right, screenRect.bottom))) {
+    if (pointInHandle(
+            screenMousePosition,
+            ImVec2(screenRect.bottomRight.x, screenRect.bottomRight.y))) {
         return RectGizmo::Handle::ResizeBottomRight;
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.centerX(), screenRect.top))) {
+    const Vector2F topCenter = midpoint(screenRect.topLeft, screenRect.topRight);
+    const Vector2F rightCenter = midpoint(screenRect.topRight, screenRect.bottomRight);
+    const Vector2F bottomCenter = midpoint(screenRect.bottomLeft, screenRect.bottomRight);
+    const Vector2F leftCenter = midpoint(screenRect.topLeft, screenRect.bottomLeft);
+
+    if (pointInHandle(screenMousePosition, ImVec2(topCenter.x, topCenter.y))) {
         return RectGizmo::Handle::ResizeTop;
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.centerX(), screenRect.bottom))) {
+    if (pointInHandle(screenMousePosition, ImVec2(bottomCenter.x, bottomCenter.y))) {
         return RectGizmo::Handle::ResizeBottom;
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.left, screenRect.centerY()))) {
+    if (pointInHandle(screenMousePosition, ImVec2(leftCenter.x, leftCenter.y))) {
         return RectGizmo::Handle::ResizeLeft;
     }
 
-    if (pointInHandle(screenMousePosition, ImVec2(screenRect.right, screenRect.centerY()))) {
+    if (pointInHandle(screenMousePosition, ImVec2(rightCenter.x, rightCenter.y))) {
         return RectGizmo::Handle::ResizeRight;
     }
 

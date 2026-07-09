@@ -143,6 +143,8 @@ void SfmlRenderBackend::drawText(
     const std::string& text,
     const std::string& fontPath,
     const RenderVector2& position,
+    const RenderVector2& origin,
+    float rotationDegrees,
     unsigned int characterSize,
     RenderColor color
 ) {
@@ -157,6 +159,8 @@ void SfmlRenderBackend::drawText(
 
     sf::Text drawableText(*font, text, characterSize);
     drawableText.setPosition({position.x, position.y});
+    drawableText.setOrigin({origin.x, origin.y});
+    drawableText.setRotation(sf::degrees(rotationDegrees));
     drawableText.setFillColor(sf::Color(color.r, color.g, color.b, color.a));
     sf::RenderTarget& target = getCurrentTarget();
     sf::RenderStates states;
@@ -166,6 +170,8 @@ void SfmlRenderBackend::drawText(
 
 void SfmlRenderBackend::drawRect(
     const RenderRect& rect,
+    const RenderVector2& origin,
+    float rotationDegrees,
     RenderColor color
 ) {
     if (rect.width <= 0.0f || rect.height <= 0.0f) {
@@ -174,6 +180,8 @@ void SfmlRenderBackend::drawRect(
 
     sf::RectangleShape rectangle({rect.width, rect.height});
     rectangle.setPosition({rect.x, rect.y});
+    rectangle.setOrigin({origin.x, origin.y});
+    rectangle.setRotation(sf::degrees(rotationDegrees));
     rectangle.setFillColor(sf::Color(color.r, color.g, color.b, color.a));
     sf::RenderTarget& target = getCurrentTarget();
     sf::RenderStates states;

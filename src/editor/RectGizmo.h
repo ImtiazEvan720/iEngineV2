@@ -27,6 +27,7 @@ public:
         Vector2F center = Vector2F::zero();
         float width = 0.0f;
         float height = 0.0f;
+        float rotation = 0.0f;
     };
 
     struct EditResult {

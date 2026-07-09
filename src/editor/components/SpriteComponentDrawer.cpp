@@ -55,7 +55,7 @@ void SpriteComponentDrawer::draw(
         spritePicker.drawTilesetSelector();
         if (spritePicker.drawSelectedTilesetDetails(statusMessage)) {
             const bool selectionChanged =
-                spritePicker.drawTileGrid("##SpriteComponentDrawerGrid", false, -1, 220.0f);
+                spritePicker.drawTileGrid("##SpriteComponentDrawerGrid", false, 220.0f);
             const bool applyClicked = ImGui::Button("Apply Selected Tile");
 
             if (selectionChanged || applyClicked) {

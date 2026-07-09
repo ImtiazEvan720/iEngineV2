@@ -53,6 +53,7 @@ void CollisionComponentDrawer::draw(
         editState.offset[1] = offset.y;
         editState.size[0] = collisionComponent->getWidth();
         editState.size[1] = collisionComponent->getHeight();
+        editState.rotation = collisionComponent->getRotation();
         editState.bodyType = bodyTypeToIndex(collisionComponent->getBodyType());
         editState.sensor = collisionComponent->isSensor();
         editState.fixedRotation = collisionComponent->isFixedRotation();
@@ -77,6 +78,11 @@ void CollisionComponentDrawer::draw(
         editState.size[1] = std::max(0.001f, editState.size[1]);
         collisionComponent->setSize(editState.size[0], editState.size[1]);
         statusMessage = "Updated CollisionComponent size.";
+    }
+
+    if (ImGui::SliderFloat("Rotation", &editState.rotation, -180.0f, 180.0f, "%.2f deg")) {
+        collisionComponent->setRotation(editState.rotation);
+        statusMessage = "Updated CollisionComponent rotation.";
     }
 
     if (ImGui::Combo("Body Type", &editState.bodyType, "Static\0Kinematic\0Dynamic\0")) {

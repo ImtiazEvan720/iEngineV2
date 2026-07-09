@@ -1,7 +1,6 @@
 #pragma once
 
 #include "editor/EditorTilesetTypes.h"
-#include "misc/Animation.h"
 #include "misc/Sprite.h"
 
 #include <optional>
@@ -18,9 +17,7 @@ public:
     bool drawTileGrid(
         const char* childId,
         bool allowDragDrop,
-        int animationOwnerTileId = -1,
-        float height = 0.0f,
-        bool animatedTilesOnly = false
+        float height = 0.0f
     );
 
     std::optional<Sprite> createSpriteFromSelectedTile(float renderScale, std::string& statusMessage) const;
@@ -30,14 +27,6 @@ public:
         float renderScale,
         std::string& statusMessage
     ) const;
-    std::optional<Animation> createAnimationFromSelectedTile(float renderScale, std::string& statusMessage) const;
-    std::optional<Animation> createAnimationFromTile(
-        int tilesetIndex,
-        int ownerTileId,
-        float renderScale,
-        std::string& statusMessage
-    ) const;
-
     bool hasScannedTilesets() const;
     int getSelectedTilesetIndex() const;
     int getSelectedTileId() const;

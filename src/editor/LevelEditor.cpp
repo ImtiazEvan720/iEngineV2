@@ -4,6 +4,7 @@
 #include "components/RectTransformComponent.h"
 #include "components/CanvasComponent.h"
 #include "components/UILabelComponent.h"
+#include "components/UIPanelComponent.h"
 #include "editor/BuildSystem.h"
 #include "math/Vector2F.h"
 #include "misc/Camera2D.h"
@@ -95,7 +96,7 @@ Entity& createUiChildEntity(
     entity.setName(name);
     entity.setTag("UI");
     entity.addComponent<RectTransformComponent>(
-        getScreenViewportCenter(),
+        Vector2F::zero(),
         size,
         Vector2F(0.5f, 0.5f),
         0.0f
@@ -181,6 +182,13 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
                     label.setText("New Label");
                     entityInspector.selectEntity(entity, true);
                     statusMessage = "Created Label entity " + std::to_string(entity.getId()) + ".";
+                }
+
+                if (ImGui::MenuItem("Panel")) {
+                    Entity& entity = createUiChildEntity("Panel", Vector2F(240.0f, 120.0f));
+                    entity.addComponent<UIPanelComponent>();
+                    entityInspector.selectEntity(entity, true);
+                    statusMessage = "Created Panel entity " + std::to_string(entity.getId()) + ".";
                 }
 
                 ImGui::EndMenu();

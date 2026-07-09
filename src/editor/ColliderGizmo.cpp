@@ -6,6 +6,7 @@
 #include "editor/EditorCamera.h"
 #include "editor/EntityInspectorPanel.h"
 #include "editor/ViewportGrid.h"
+#include "math/Math2D.h"
 #include "misc/Level.h"
 #include "system/Renderer.h"
 
@@ -26,9 +27,13 @@ RectGizmo::Rect ColliderGizmo::buildColliderRect(
     const CollisionComponent& collider
 ) const {
     RectGizmo::Rect rect;
-    rect.center = transform.getWorldPosition() + collider.getOffset();
+    const float transformRotation = transform.getWorldRotation();
+    rect.center =
+        transform.getWorldPosition()
+        + Math2D::rotate(collider.getOffset(), transformRotation);
     rect.width = collider.getWidth();
     rect.height = collider.getHeight();
+    rect.rotation = transformRotation + collider.getRotation();
     return rect;
 }
 
@@ -38,8 +43,12 @@ void ColliderGizmo::applyColliderRect(
     const RectGizmo::Rect& rect
 ) const {
     const Vector2F transformWorldPosition = transform.getWorldPosition();
+    const float transformWorldRotation = transform.getWorldRotation();
     collider.setSize(rect.width, rect.height);
-    collider.setOffset(rect.center - transformWorldPosition);
+    collider.setOffset(Math2D::inverseRotate(
+        rect.center - transformWorldPosition,
+        transformWorldRotation
+    ));
 }
 
 void ColliderGizmo::draw(
