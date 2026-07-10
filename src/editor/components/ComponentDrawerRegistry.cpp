@@ -11,6 +11,7 @@
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "components/UILabelComponent.h"
+#include "components/UIButtonComponent.h"
 #include "components/UIPanelComponent.h"
 #include "editor/components/AnimationComponentDrawer.h"
 #include "editor/components/CanvasComponentDrawer.h"
@@ -23,6 +24,7 @@
 #include "editor/components/SpriteComponentDrawer.h"
 #include "editor/components/TransformComponentDrawer.h"
 #include "editor/components/UILabelComponentDrawer.h"
+#include "editor/components/UIButtonComponentDrawer.h"
 #include "editor/components/UIPanelComponentDrawer.h"
 
 #include <typeinfo>
@@ -60,6 +62,10 @@ ComponentDrawerRegistry::ComponentDrawerRegistry() {
     registerDrawer<UILabelComponent>(
         "UILabelComponent",
         std::make_unique<UILabelComponentDrawer>()
+    );
+    registerDrawer<UIButtonComponent>(
+        "UIButtonComponent",
+        std::make_unique<UIButtonComponentDrawer>()
     );
     registerDrawer<UIPanelComponent>(
         "UIPanelComponent",

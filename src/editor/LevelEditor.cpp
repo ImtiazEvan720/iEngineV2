@@ -5,6 +5,7 @@
 #include "components/CanvasComponent.h"
 #include "components/UILabelComponent.h"
 #include "components/UIPanelComponent.h"
+#include "components/UIButtonComponent.h"
 #include "editor/BuildSystem.h"
 #include "math/Vector2F.h"
 #include "misc/Camera2D.h"
@@ -189,6 +190,31 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
                     entity.addComponent<UIPanelComponent>();
                     entityInspector.selectEntity(entity, true);
                     statusMessage = "Created Panel entity " + std::to_string(entity.getId()) + ".";
+                }
+                if (ImGui::MenuItem("Button")) {
+                    Entity& button = createUiChildEntity("Button", Vector2F(180.0f, 56.0f));
+                    button.addComponent<UIPanelComponent>();
+                    button.addComponent<UIButtonComponent>();
+
+                    Entity& labelEntity = Level::getCurrentLevel().createEntity();
+                    labelEntity.setName("Button Label");
+                    labelEntity.setTag("UI");
+                    labelEntity.addComponent<RectTransformComponent>(
+                        Vector2F::zero(),
+                        Vector2F(180.0f, 56.0f),
+                        Vector2F(0.5f, 0.5f),
+                        0.0f
+                    );
+
+                    UILabelComponent& label = labelEntity.addComponent<UILabelComponent>();
+                    label.setText("Button");
+                    label.setHorizontalTextAlign(HorizontalTextAlign::center);
+                    label.setVerticalTextAlign(VerticalTextAlign::center);
+
+                    labelEntity.setParent(&button, false);
+
+                    entityInspector.selectEntity(button, true);
+                    statusMessage = "Created Button entity " + std::to_string(button.getId()) + ".";
                 }
 
                 ImGui::EndMenu();

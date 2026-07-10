@@ -8,6 +8,7 @@
 #include "components/CanvasComponent.h"
 #include "components/RectTransformComponent.h"
 #include "components/UILabelComponent.h"
+#include "components/UIButtonComponent.h"
 #include "components/UIPanelComponent.h"
 #include "math/Math2D.h"
 #include "misc/Level.h"
@@ -691,6 +692,7 @@ void Renderer::renderUI()
 
         const CanvasComponent *canvasComponent = entity.getComponent<CanvasComponent>();
         const UILabelComponent *labelComponent = entity.getComponent<UILabelComponent>();
+        const UIButtonComponent *buttonComponent = entity.getComponent<UIButtonComponent>();
         const UIPanelComponent *panelComponent = entity.getComponent<UIPanelComponent>();
         const RectTransformComponent *rectTransformComponent = entity.getComponent<RectTransformComponent>();
         const bool hasRenderableCanvas = canvasComponent != nullptr && canvasComponent->isEnabled();
@@ -702,10 +704,14 @@ void Renderer::renderUI()
             panelComponent != nullptr &&
             panelComponent->isEnabled() &&
             parentCanvasAllowsRender(entity);
+        const bool hasRenderableButton =
+            buttonComponent != nullptr &&
+            buttonComponent->isEnabled() &&
+            parentCanvasAllowsRender(entity);
 
         if (rectTransformComponent != nullptr &&
             rectTransformComponent->isEnabled() &&
-            (hasRenderableCanvas || hasRenderableLabel || hasRenderablePanel))
+            (hasRenderableCanvas || hasRenderableLabel || hasRenderablePanel || hasRenderableButton))
         {
             UIEntities.push_back(&entity);
         }
@@ -736,6 +742,7 @@ void Renderer::renderUI()
         const RectTransformComponent *rectTransformComponent = entity->getComponent<RectTransformComponent>();
         const CanvasComponent *canvasComponent = entity->getComponent<CanvasComponent>();
         const UILabelComponent *labelComponent = entity->getComponent<UILabelComponent>();
+        const UIButtonComponent *buttonComponent = entity->getComponent<UIButtonComponent>();
         const UIPanelComponent *panelComponent = entity->getComponent<UIPanelComponent>();
         const RenderRect unclippedRect = buildUiRect(*rectTransformComponent, getUiScale(*entity));
         if (unclippedRect.width <= 0.0f || unclippedRect.height <= 0.0f)
@@ -775,7 +782,15 @@ void Renderer::renderUI()
             }
         }
 
-        if (panelComponent != nullptr && panelComponent->isEnabled())
+        if (buttonComponent != nullptr && buttonComponent->isEnabled())
+        {
+            const RenderColor color = buttonComponent->getCurrentColor();
+            if (color.a != 0)
+            {
+                renderBackend->drawRect(destination, origin, rotation, color);
+            }
+        }
+        else if (panelComponent != nullptr && panelComponent->isEnabled())
         {
             const RenderColor color = applyOpacity(
                 panelComponent->getColor(),

@@ -33,8 +33,8 @@ public:
     void bindTouchControl(TouchControl control, InputAction action);
     bool loadBindingsFromFile(const std::string& path, std::string& errorMessage);
 
-    void updateFromRawInput(const RawInputSystem& rawInputSystem);
-    void updateFromTouchControls(const TouchControlSystem& touchControlSystem);
+    void updateFromRawInput(const RawInputSystem& rawInputSystem, bool inputBlocked = false);
+    void updateFromTouchControls(const TouchControlSystem& touchControlSystem, bool inputBlocked = false);
 
     bool isActionDown(InputAction action) const;
     bool wasActionPressed(InputAction action) const;

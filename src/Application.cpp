@@ -20,6 +20,7 @@
 #include "system/sdl/SdlRenderBackend.h"
 #include "system/sdl/SdlWindowBackend.h"
 #include "system/TouchControlSystem.h"
+#include "system/UISystem.h"
 #include "system/VirtualInputSystem.h"
 
 #ifndef IENGINE_SDL_ONLY
@@ -410,9 +411,11 @@ void Application::tick() {
     const RenderRect viewport = windowBackend->getViewport();
     touchControlSystem.updateFromRawInput(rawInputSystem, viewport.width, viewport.height);
 
+    const bool uiConsumedInput = UISystem::getInstance().processInput(rawInputSystem);
+
     VirtualInputSystem& virtualInputSystem = VirtualInputSystem::getInstance();
-    virtualInputSystem.updateFromRawInput(rawInputSystem);
-    virtualInputSystem.updateFromTouchControls(touchControlSystem);
+    virtualInputSystem.updateFromRawInput(rawInputSystem, uiConsumedInput);
+    virtualInputSystem.updateFromTouchControls(touchControlSystem, uiConsumedInput);
 
     if (!EngineState::getInstance().isGamePaused()) {
         PhysicsSystem::getInstance().update(deltaTime);

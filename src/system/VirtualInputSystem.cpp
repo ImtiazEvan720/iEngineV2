@@ -156,9 +156,13 @@ bool VirtualInputSystem::loadBindingsFromFile(const std::string& path, std::stri
     return true;
 }
 
-void VirtualInputSystem::updateFromRawInput(const RawInputSystem& rawInputSystem) {
+void VirtualInputSystem::updateFromRawInput(const RawInputSystem& rawInputSystem, bool inputBlocked) {
     previousActions = currentActions;
     currentActions.clear();
+
+    if (inputBlocked) {
+        return;
+    }
 
     for (const auto& binding : keyBindings) {
         setActionState(currentActions, binding.second, rawInputSystem.isKeyDown(binding.first));
@@ -169,8 +173,11 @@ void VirtualInputSystem::updateFromRawInput(const RawInputSystem& rawInputSystem
     }
 }
 
-void VirtualInputSystem::updateFromTouchControls(const TouchControlSystem& touchControlSystem) {
-    if (!touchControlSystem.isEnabled()) {
+void VirtualInputSystem::updateFromTouchControls(
+    const TouchControlSystem& touchControlSystem,
+    bool inputBlocked
+) {
+    if (inputBlocked || !touchControlSystem.isEnabled()) {
         return;
     }
 
