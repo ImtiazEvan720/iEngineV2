@@ -249,6 +249,7 @@ set(IENGINE_SOURCES
     src/components/TransformComponent.cpp
     src/components/UILabelComponent.cpp
     src/components/UIButtonComponent.cpp
+    src/components/UIEditTextComponent.cpp
     src/components/UIPanelComponent.cpp
     src/components/PlayerController.cpp
     src/math/Vector2F.cpp
@@ -277,6 +278,7 @@ set(IENGINE_SOURCES
     src/serialization/components/TransformComponentSerializer.cpp
     src/serialization/components/UILabelComponentSerializer.cpp
     src/serialization/components/UIButtonComponentSerializer.cpp
+    src/serialization/components/UIEditTextComponentSerializer.cpp
     src/serialization/components/UIPanelComponentSerializer.cpp
     src/serialization/PrefabSerializer.cpp
     src/misc/TextureAsset.cpp
@@ -313,6 +315,7 @@ if(IENGINE_WITH_EDITOR)
         src/editor/components/TransformComponentDrawer.cpp
         src/editor/components/UILabelComponentDrawer.cpp
         src/editor/components/UIButtonComponentDrawer.cpp
+        src/editor/components/UIEditTextComponentDrawer.cpp
         src/editor/components/UIPanelComponentDrawer.cpp
         src/editor/ColliderGizmo.cpp
         src/editor/RectTransformGizmo.cpp

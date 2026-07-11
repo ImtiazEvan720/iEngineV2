@@ -28,6 +28,10 @@ const char* rawKeyToString(RawKey key) {
             return "Space";
         case RawKey::Escape:
             return "Escape";
+        case RawKey::Backspace:
+            return "Backspace";
+        case RawKey::Enter:
+            return "Enter";
         case RawKey::Unknown:
         default:
             return "Unknown";
@@ -57,6 +61,7 @@ RawInputSystem& RawInputSystem::getInstance() {
 void RawInputSystem::beginFrame() {
     previousKeys = currentKeys;
     previousMouseButtons = currentMouseButtons;
+    textInputThisFrame.clear();
 }
 
 void RawInputSystem::endFrame() {
@@ -86,6 +91,14 @@ void RawInputSystem::setKeyUp(RawKey key) {
     }
 
     currentKeys[key] = false;
+}
+
+void RawInputSystem::addTextInput(const std::string& text) {
+    if (text.empty()) {
+        return;
+    }
+
+    textInputThisFrame += text;
 }
 
 void RawInputSystem::setMouseButtonDown(RawMouseButton button, int x, int y) {
@@ -158,6 +171,10 @@ bool RawInputSystem::wasKeyReleased(RawKey key) const {
     return !getState(currentKeys, key) && getState(previousKeys, key);
 }
 
+const std::string& RawInputSystem::getTextInputThisFrame() const {
+    return textInputThisFrame;
+}
+
 bool RawInputSystem::isMouseButtonDown(RawMouseButton button) const {
     return getState(currentMouseButtons, button);
 }
@@ -185,6 +202,9 @@ const std::vector<RawTouch>& RawInputSystem::getTouches() const {
 void RawInputSystem::debugPrintState() const {
     std::cout << "RawInputSystem state" << std::endl;
     std::cout << "  Mouse: (" << mouseX << ", " << mouseY << ")" << std::endl;
+    if (!textInputThisFrame.empty()) {
+        std::cout << "  Text input: " << textInputThisFrame << std::endl;
+    }
 
     std::cout << "  Keys:" << std::endl;
     for (const auto& keyState : currentKeys) {

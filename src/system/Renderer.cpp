@@ -9,6 +9,7 @@
 #include "components/RectTransformComponent.h"
 #include "components/UILabelComponent.h"
 #include "components/UIButtonComponent.h"
+#include "components/UIEditTextComponent.h"
 #include "components/UIPanelComponent.h"
 #include "math/Math2D.h"
 #include "misc/Level.h"
@@ -693,6 +694,7 @@ void Renderer::renderUI()
         const CanvasComponent *canvasComponent = entity.getComponent<CanvasComponent>();
         const UILabelComponent *labelComponent = entity.getComponent<UILabelComponent>();
         const UIButtonComponent *buttonComponent = entity.getComponent<UIButtonComponent>();
+        const UIEditTextComponent *editTextComponent = entity.getComponent<UIEditTextComponent>();
         const UIPanelComponent *panelComponent = entity.getComponent<UIPanelComponent>();
         const RectTransformComponent *rectTransformComponent = entity.getComponent<RectTransformComponent>();
         const bool hasRenderableCanvas = canvasComponent != nullptr && canvasComponent->isEnabled();
@@ -708,10 +710,18 @@ void Renderer::renderUI()
             buttonComponent != nullptr &&
             buttonComponent->isEnabled() &&
             parentCanvasAllowsRender(entity);
+        const bool hasRenderableEditText =
+            editTextComponent != nullptr &&
+            editTextComponent->isEnabled() &&
+            parentCanvasAllowsRender(entity);
 
         if (rectTransformComponent != nullptr &&
             rectTransformComponent->isEnabled() &&
-            (hasRenderableCanvas || hasRenderableLabel || hasRenderablePanel || hasRenderableButton))
+            (hasRenderableCanvas ||
+                hasRenderableLabel ||
+                hasRenderablePanel ||
+                hasRenderableButton ||
+                hasRenderableEditText))
         {
             UIEntities.push_back(&entity);
         }
@@ -743,6 +753,7 @@ void Renderer::renderUI()
         const CanvasComponent *canvasComponent = entity->getComponent<CanvasComponent>();
         const UILabelComponent *labelComponent = entity->getComponent<UILabelComponent>();
         const UIButtonComponent *buttonComponent = entity->getComponent<UIButtonComponent>();
+        const UIEditTextComponent *editTextComponent = entity->getComponent<UIEditTextComponent>();
         const UIPanelComponent *panelComponent = entity->getComponent<UIPanelComponent>();
         const RenderRect unclippedRect = buildUiRect(*rectTransformComponent, getUiScale(*entity));
         if (unclippedRect.width <= 0.0f || unclippedRect.height <= 0.0f)
@@ -782,7 +793,17 @@ void Renderer::renderUI()
             }
         }
 
-        if (buttonComponent != nullptr && buttonComponent->isEnabled())
+        if (editTextComponent != nullptr && editTextComponent->isEnabled())
+        {
+            const RenderColor color = editTextComponent->isFocused()
+                ? editTextComponent->getFocusedColor()
+                : editTextComponent->getBackgroundColor();
+            if (color.a != 0)
+            {
+                renderBackend->drawRect(destination, origin, rotation, color);
+            }
+        }
+        else if (buttonComponent != nullptr && buttonComponent->isEnabled())
         {
             const RenderColor color = buttonComponent->getCurrentColor();
             if (color.a != 0)
@@ -835,6 +856,87 @@ void Renderer::renderUI()
                 rotation,
                 characterSize,
                 labelComponent->getFontColor());
+        }
+
+        if (editTextComponent != nullptr && editTextComponent->isEnabled())
+        {
+            const std::string displayText = editTextComponent->getDisplayText();
+            const bool showPlaceholder = displayText.empty();
+            const std::string visibleText = showPlaceholder
+                ? editTextComponent->getPlaceholder()
+                : displayText;
+            const int fontSize = std::max(1, editTextComponent->getFontSize());
+            const unsigned int characterSize = static_cast<unsigned int>(fontSize);
+            const float padding = 8.0f;
+            const std::string fontPath = editTextComponent->getFontName().empty()
+                ? "Assets/Fonts/default.ttf"
+                : editTextComponent->getFontName();
+            const RenderVector2 localTextPosition{
+                -(width * pivot.x) + padding,
+                -(height * pivot.y) + std::max(0.0f, (height - static_cast<float>(characterSize)) * 0.5f)
+            };
+            const Vector2F rotatedTextPosition = Math2D::rotate(
+                Vector2F(localTextPosition.x, localTextPosition.y),
+                rotation
+            );
+
+            if (!visibleText.empty())
+            {
+                renderBackend->drawText(
+                    visibleText,
+                    fontPath,
+                    RenderVector2{
+                        position.x + rotatedTextPosition.x,
+                        position.y + rotatedTextPosition.y
+                    },
+                    RenderVector2{0.0f, 0.0f},
+                    rotation,
+                    characterSize,
+                    showPlaceholder
+                        ? editTextComponent->getPlaceholderColor()
+                        : editTextComponent->getTextColor()
+                );
+            }
+
+            if (editTextComponent->isFocused() && !editTextComponent->isReadOnly())
+            {
+                const std::size_t cursorIndex = std::min(
+                    editTextComponent->getCursorIndex(),
+                    displayText.size()
+                );
+                const std::string textBeforeCursor = displayText.substr(0, cursorIndex);
+                const RenderVector2 cursorTextMetrics = renderBackend->measureText(
+                    textBeforeCursor,
+                    fontPath,
+                    characterSize
+                );
+                const RenderVector2 lineMetrics = renderBackend->measureText(
+                    visibleText.empty() ? "M" : visibleText,
+                    fontPath,
+                    characterSize
+                );
+                const float cursorHeight =
+                    lineMetrics.y > 0.0f ? lineMetrics.y : static_cast<float>(characterSize);
+                const Vector2F cursorWorldPosition = position + Math2D::rotate(
+                    Vector2F(
+                        localTextPosition.x + cursorTextMetrics.x,
+                        localTextPosition.y
+                    ),
+                    rotation
+                );
+
+                renderBackend->drawRect(
+                    RenderRect{
+                        cursorWorldPosition.x,
+                        cursorWorldPosition.y,
+                        2.0f,
+                        cursorHeight
+                    },
+                    RenderVector2{0.0f, 0.0f},
+                    rotation,
+                    editTextComponent->getCursorColor()
+                );
+            }
         }
     }
 }

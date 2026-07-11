@@ -411,7 +411,10 @@ void Application::tick() {
     const RenderRect viewport = windowBackend->getViewport();
     touchControlSystem.updateFromRawInput(rawInputSystem, viewport.width, viewport.height);
 
-    const bool uiConsumedInput = UISystem::getInstance().processInput(rawInputSystem);
+    const bool uiConsumedInput = UISystem::getInstance().processInput(
+        rawInputSystem,
+        windowBackend.get()
+    );
 
     VirtualInputSystem& virtualInputSystem = VirtualInputSystem::getInstance();
     virtualInputSystem.updateFromRawInput(rawInputSystem, uiConsumedInput);

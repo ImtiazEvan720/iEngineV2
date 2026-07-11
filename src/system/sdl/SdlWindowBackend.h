@@ -21,6 +21,8 @@ public:
     void endFrame() override;
     RenderRect getViewport() const override;
     float consumePendingPinchZoomFactor() override;
+    void startTextInput() override;
+    void stopTextInput() override;
 
     SDL_Window* getWindow();
     SDL_Renderer* getRenderer();

@@ -11,6 +11,8 @@
 #include "components/SpriteComponent.h"
 #include "components/TransformComponent.h"
 #include "components/UILabelComponent.h"
+#include "components/UIButtonComponent.h"
+#include "components/UIEditTextComponent.h"
 #include "components/UIPanelComponent.h"
 #include "editor/EditorCollectionViews.h"
 #include "editor/ScriptPropertyParser.h"
@@ -284,6 +286,38 @@ const std::vector<ComponentAddEntry>& getComponentAddRegistry() {
             }
         },
         {
+            "UIButtonComponent",
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
+                ensureComponent<RectTransformComponent>(
+                    entity,
+                    getViewportCenter(),
+                    Vector2F(180.0f, 56.0f),
+                    Vector2F(0.5f, 0.5f),
+                    0.0f
+                );
+                ensureUiParent(entity);
+                return addComponentIfMissing<UIButtonComponent>(entity);
+            }
+        },
+        {
+            "UIEditTextComponent",
+            false,
+            [](Entity& entity, const std::string& scriptPath) {
+                (void)scriptPath;
+                ensureComponent<RectTransformComponent>(
+                    entity,
+                    getViewportCenter(),
+                    Vector2F(240.0f, 48.0f),
+                    Vector2F(0.5f, 0.5f),
+                    0.0f
+                );
+                ensureUiParent(entity);
+                return addComponentIfMissing<UIEditTextComponent>(entity);
+            }
+        },
+        {
             "CanvasComponent",
             false,
             [](Entity& entity, const std::string& scriptPath) {
@@ -394,6 +428,24 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
         });
     }
 
+    if (entity.getComponent<UIButtonComponent>() != nullptr) {
+        entries.push_back({
+            "UIButtonComponent",
+            [](Entity& target) {
+                return target.removeComponent<UIButtonComponent>();
+            }
+        });
+    }
+
+    if (entity.getComponent<UIEditTextComponent>() != nullptr) {
+        entries.push_back({
+            "UIEditTextComponent",
+            [](Entity& target) {
+                return target.removeComponent<UIEditTextComponent>();
+            }
+        });
+    }
+
     if (entity.getComponent<RectTransformComponent>() != nullptr) {
         entries.push_back({
             "RectTransformComponent",
@@ -401,6 +453,8 @@ std::vector<ComponentRemoveEntry> getComponentRemoveEntries(Entity& entity) {
                 removeDependencyIfPresent<CanvasComponent>(target);
                 removeDependencyIfPresent<UILabelComponent>(target);
                 removeDependencyIfPresent<UIPanelComponent>(target);
+                removeDependencyIfPresent<UIButtonComponent>(target);
+                removeDependencyIfPresent<UIEditTextComponent>(target);
                 return target.removeComponent<RectTransformComponent>();
             }
         });

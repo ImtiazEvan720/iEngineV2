@@ -6,6 +6,7 @@
 #include "components/UILabelComponent.h"
 #include "components/UIPanelComponent.h"
 #include "components/UIButtonComponent.h"
+#include "components/UIEditTextComponent.h"
 #include "editor/BuildSystem.h"
 #include "math/Vector2F.h"
 #include "misc/Camera2D.h"
@@ -215,6 +216,15 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
 
                     entityInspector.selectEntity(button, true);
                     statusMessage = "Created Button entity " + std::to_string(button.getId()) + ".";
+                }
+
+                if (ImGui::MenuItem("Edit Text")) {
+                    Entity& editTextEntity = createUiChildEntity("Edit Text", Vector2F(240.0f, 48.0f));
+                    UIEditTextComponent& editText = editTextEntity.addComponent<UIEditTextComponent>();
+                    editText.setPlaceholder("Enter text...");
+                    entityInspector.selectEntity(editTextEntity, true);
+                    statusMessage =
+                        "Created Edit Text entity " + std::to_string(editTextEntity.getId()) + ".";
                 }
 
                 ImGui::EndMenu();

@@ -285,6 +285,43 @@ void SdlRenderBackend::drawText(
 #endif
 }
 
+RenderVector2 SdlRenderBackend::measureText(
+    const std::string& text,
+    const std::string& fontPath,
+    unsigned int characterSize
+) {
+#ifdef IENGINE_USE_SDL_TTF
+    if (characterSize == 0) {
+        return RenderVector2{};
+    }
+
+    TTF_Font* font = getFont(fontPath, characterSize);
+    if (font == nullptr) {
+        return RenderVector2{};
+    }
+
+    if (text.empty()) {
+        return RenderVector2{0.0f, static_cast<float>(characterSize)};
+    }
+
+    int width = 0;
+    int height = 0;
+    if (!TTF_GetStringSize(font, text.c_str(), 0, &width, &height)) {
+        return RenderVector2{};
+    }
+
+    return RenderVector2{
+        static_cast<float>(width),
+        height > 0 ? static_cast<float>(height) : static_cast<float>(characterSize)
+    };
+#else
+    (void)text;
+    (void)fontPath;
+    (void)characterSize;
+    return RenderVector2{};
+#endif
+}
+
 void SdlRenderBackend::drawRect(
     const RenderRect& rect,
     const RenderVector2& origin,

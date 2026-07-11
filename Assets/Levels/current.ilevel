@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <level version="1">
-    <entities count="27">
-        <entity id="154" guid="bdf4719b-395f-435d-8675-37e337bcecc4" name="EditorSprite_0" tag="EditorSprite" enabled="false" persistent="false" displayOrder="0">
+    <entities count="28">
+        <entity id="78" guid="bdf4719b-395f-435d-8675-37e337bcecc4" name="EditorSprite_0" tag="EditorSprite" enabled="false" persistent="false" displayOrder="0">
             <component type="TransformComponent" enabled="true" x="293" y="447" rotation="0"/>
             <component type="SpriteComponent" enabled="true" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="32" sourceY="0" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
         </entity>
-        <entity id="155" guid="29265847-1a16-4aa0-af96-155521b97fe9" name="Brick" tag="Obstacle" enabled="true" persistent="false" displayOrder="1">
+        <entity id="79" guid="29265847-1a16-4aa0-af96-155521b97fe9" name="Brick" tag="Obstacle" enabled="true" persistent="false" displayOrder="1">
             <component type="TransformComponent" enabled="true" x="529" y="374" rotation="0"/>
             <component type="SpriteComponent" enabled="true" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="0" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
             <component type="CollisionComponent" enabled="true" name="Collider" width="34.807739" height="34.826843" offsetX="0.80389404" offsetY="-0.58657837" rotation="0" bodyType="Static" isSensor="false" fixedRotation="false"/>
         </entity>
-        <entity id="156" guid="1434d3a5-861c-4a64-8e0b-2ae045292828" name="EditorSprite_2" tag="EditorSprite" enabled="true" persistent="false" displayOrder="2">
+        <entity id="80" guid="1434d3a5-861c-4a64-8e0b-2ae045292828" name="EditorSprite_2" tag="EditorSprite" enabled="true" persistent="false" displayOrder="2">
             <component type="TransformComponent" enabled="true" x="630" y="448" rotation="0"/>
             <component type="SpriteComponent" enabled="true" texture="NES - Battle City (JPN) - Miscellaneous - General Sprites.png" sourceX="256" sourceY="32" sourceWidth="16" sourceHeight="16" sizeX="32" sizeY="32" originX="8" originY="8"/>
         </entity>
-        <entity id="157" guid="5e1df4b3-d1e0-4ba3-b721-3617190df840" name="EditorAnimation_3" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="3">
+        <entity id="81" guid="5e1df4b3-d1e0-4ba3-b721-3617190df840" name="EditorAnimation_3" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="3">
             <component type="TransformComponent" enabled="true" x="667" y="344" rotation="0"/>
             <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
                 <frame duration="0.2" sizeX="32" sizeY="32">
@@ -25,7 +25,7 @@
                 </frame>
             </component>
         </entity>
-        <entity id="158" guid="d649b24c-44d7-428b-aca4-ef92f9b27f10" name="EditorAnimation_4" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="4">
+        <entity id="82" guid="d649b24c-44d7-428b-aca4-ef92f9b27f10" name="EditorAnimation_4" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="4">
             <component type="TransformComponent" enabled="true" x="698" y="344" rotation="0"/>
             <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
                 <frame duration="0.2" sizeX="32" sizeY="32">
@@ -36,7 +36,7 @@
                 </frame>
             </component>
         </entity>
-        <entity id="159" guid="309c0e13-ab05-49a3-a25f-a23888cfa940" name="EditorAnimation_5" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="5">
+        <entity id="83" guid="309c0e13-ab05-49a3-a25f-a23888cfa940" name="EditorAnimation_5" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="5">
             <component type="TransformComponent" enabled="true" x="666" y="374" rotation="0"/>
             <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
                 <frame duration="0.2" sizeX="32" sizeY="32">
@@ -47,7 +47,7 @@
                 </frame>
             </component>
         </entity>
-        <entity id="160" guid="01580c4a-4818-4292-8605-a61cfa7ba23f" name="EditorAnimation_6" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="6">
+        <entity id="84" guid="01580c4a-4818-4292-8605-a61cfa7ba23f" name="EditorAnimation_6" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="6">
             <component type="TransformComponent" enabled="true" x="698" y="374" rotation="0"/>
             <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
                 <frame duration="0.2" sizeX="32" sizeY="32">
@@ -58,7 +58,7 @@
                 </frame>
             </component>
         </entity>
-        <entity id="161" guid="5e31100f-6533-438b-9246-360ff84bcd8c" name="BulletManager" tag="Default" enabled="true" persistent="false" displayOrder="9">
+        <entity id="85" guid="5e31100f-6533-438b-9246-360ff84bcd8c" name="BulletManager" tag="Default" enabled="true" persistent="false" displayOrder="9">
             <component type="TransformComponent" enabled="true" x="640" y="360" rotation="0"/>
             <component type="ScriptComponent" enabled="true" path="Assets/Scripts/bullet_manager.lua">
                 <property name="bulletPrefab" type="prefab" value="Bullet"/>
@@ -69,7 +69,7 @@
                 <property name="debugBulletName" type="string" value="PooledBullet1"/>
             </component>
         </entity>
-        <entity id="162" guid="4bb3460f-31d4-48ba-b34f-3e9cec9d302a" name="EnemySpawner" tag="Default" enabled="false" persistent="false" displayOrder="10">
+        <entity id="86" guid="4bb3460f-31d4-48ba-b34f-3e9cec9d302a" name="EnemySpawner" tag="Default" enabled="false" persistent="false" displayOrder="10">
             <component type="TransformComponent" enabled="true" x="640" y="360" rotation="0"/>
             <component type="ScriptComponent" enabled="true" path="Assets/Scripts/enemy_spawner.lua">
                 <property name="SpawnRate" type="float" value="1"/>
@@ -86,19 +86,19 @@
                 </property>
             </component>
         </entity>
-        <entity id="163" guid="914f1540-32af-4a3e-a211-41601ef568da" name="SpawnPoint_0" tag="Default" enabled="true" persistent="false" displayOrder="12">
+        <entity id="87" guid="914f1540-32af-4a3e-a211-41601ef568da" name="SpawnPoint_0" tag="Default" enabled="true" persistent="false" displayOrder="12">
             <component type="TransformComponent" enabled="true" x="922" y="110" rotation="0"/>
         </entity>
-        <entity id="164" guid="d9b9bb67-7871-4cef-9c40-60a18290322b" name="SpawnPoint_1" tag="Default" enabled="true" persistent="false" displayOrder="13">
+        <entity id="88" guid="d9b9bb67-7871-4cef-9c40-60a18290322b" name="SpawnPoint_1" tag="Default" enabled="true" persistent="false" displayOrder="13">
             <component type="TransformComponent" enabled="true" x="926" y="592" rotation="0"/>
         </entity>
-        <entity id="165" guid="61c68876-fad8-471b-b81a-db87e81afb03" name="SpawnPoint_2" tag="Default" enabled="true" persistent="false" displayOrder="14">
+        <entity id="89" guid="61c68876-fad8-471b-b81a-db87e81afb03" name="SpawnPoint_2" tag="Default" enabled="true" persistent="false" displayOrder="14">
             <component type="TransformComponent" enabled="true" x="221" y="93" rotation="0"/>
         </entity>
-        <entity id="166" guid="67337491-3845-42d8-89af-f73adcccfd48" name="SpawnPoint_3" tag="Default" enabled="true" persistent="false" displayOrder="15">
+        <entity id="90" guid="67337491-3845-42d8-89af-f73adcccfd48" name="SpawnPoint_3" tag="Default" enabled="true" persistent="false" displayOrder="15">
             <component type="TransformComponent" enabled="true" x="233" y="612" rotation="0"/>
         </entity>
-        <entity id="167" guid="e8857580-9e49-477f-8242-965cc05fa69c" name="Player_Tank" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="8">
+        <entity id="91" guid="e8857580-9e49-477f-8242-965cc05fa69c" name="Player_Tank" tag="EditorAnimation" enabled="true" persistent="false" displayOrder="8">
             <component type="TransformComponent" enabled="true" x="250" y="322" rotation="0"/>
             <component type="AnimationComponent" enabled="true" frameDuration="0.079999998" playing="true" looping="true">
                 <frame duration="0.079999998" sizeX="32" sizeY="32">
@@ -117,10 +117,10 @@
                 <property name="turret" type="entity" value="7a0a9037-7180-4526-b471-55edc6cb0094"/>
             </component>
         </entity>
-        <entity id="168" guid="7a0a9037-7180-4526-b471-55edc6cb0094" name="Turret" tag="Default" enabled="true" persistent="false" displayOrder="0" parentId="167">
+        <entity id="92" guid="7a0a9037-7180-4526-b471-55edc6cb0094" name="Turret" tag="Default" enabled="true" persistent="false" displayOrder="0" parentId="91">
             <component type="TransformComponent" enabled="true" x="-0.59767151" y="-15.833984" rotation="0"/>
         </entity>
-        <entity id="169" guid="e663c370-c0de-4a3c-829a-7f7ee8c5c38b" name="BotTankGreen" tag="Enemy" enabled="false" persistent="false" displayOrder="96">
+        <entity id="93" guid="e663c370-c0de-4a3c-829a-7f7ee8c5c38b" name="BotTankGreen" tag="Enemy" enabled="false" persistent="false" displayOrder="96">
             <component type="TransformComponent" enabled="true" x="244" y="463" rotation="0"/>
             <component type="AnimationComponent" enabled="true" source="Assets/Animations/GreenTankMove.ianim" frameDuration="0.1" playing="true" looping="true">
                 <frame duration="0.1" sizeX="32" sizeY="32">
@@ -150,10 +150,10 @@
                 <property name="destroyDelay" type="float" value="0.6"/>
             </component>
         </entity>
-        <entity id="170" guid="0ad6609e-76b9-4b2b-873b-70216c5fc522" name="Turret" tag="Default" enabled="true" persistent="false" displayOrder="0" parentId="169">
+        <entity id="94" guid="0ad6609e-76b9-4b2b-873b-70216c5fc522" name="Turret" tag="Default" enabled="true" persistent="false" displayOrder="0" parentId="93">
             <component type="TransformComponent" enabled="true" x="-0.52459717" y="-15.606567" rotation="0"/>
         </entity>
-        <entity id="171" guid="264f16d8-9005-44fc-b7e8-a7316d73f854" name="BotTankRed" tag="Enemy" enabled="false" persistent="false" displayOrder="97">
+        <entity id="95" guid="264f16d8-9005-44fc-b7e8-a7316d73f854" name="BotTankRed" tag="Enemy" enabled="false" persistent="false" displayOrder="97">
             <component type="TransformComponent" enabled="true" x="389" y="547" rotation="0"/>
             <component type="AnimationComponent" enabled="true" source="Assets/Animations/RedTankMove.ianim" frameDuration="0.1" playing="true" looping="true">
                 <frame duration="0.1" sizeX="32" sizeY="32">
@@ -183,10 +183,10 @@
                 <property name="destroyDelay" type="float" value="0.6"/>
             </component>
         </entity>
-        <entity id="172" guid="17b99f7c-5c3f-44b3-9855-c1c560c30322" name="Turret" tag="Default" enabled="true" persistent="false" displayOrder="0" parentId="171">
+        <entity id="96" guid="17b99f7c-5c3f-44b3-9855-c1c560c30322" name="Turret" tag="Default" enabled="true" persistent="false" displayOrder="0" parentId="95">
             <component type="TransformComponent" enabled="true" x="-0.52459717" y="-15.606567" rotation="0"/>
         </entity>
-        <entity id="173" guid="1242d6f6-2e9d-416f-8184-6e21dfe662c1" name="DEAnim" tag="EditorAnimation" enabled="false" persistent="false" displayOrder="1" parentId="169">
+        <entity id="97" guid="1242d6f6-2e9d-416f-8184-6e21dfe662c1" name="DEAnim" tag="EditorAnimation" enabled="false" persistent="false" displayOrder="1" parentId="93">
             <component type="TransformComponent" enabled="true" x="0" y="0" rotation="0"/>
             <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
                 <frame duration="0.2" sizeX="32" sizeY="32">
@@ -204,7 +204,7 @@
                 <property name="fallbackDestroyDelay" type="float" value="0"/>
             </component>
         </entity>
-        <entity id="174" guid="3e7b68ed-56ca-448f-b737-fd0ced88e509" name="DestroyEntityAnimation_Copy" tag="EditorAnimation" enabled="false" persistent="false" displayOrder="1" parentId="171">
+        <entity id="98" guid="3e7b68ed-56ca-448f-b737-fd0ced88e509" name="DestroyEntityAnimation_Copy" tag="EditorAnimation" enabled="false" persistent="false" displayOrder="1" parentId="95">
             <component type="TransformComponent" enabled="true" x="0" y="0" rotation="0"/>
             <component type="AnimationComponent" enabled="true" frameDuration="0.2" playing="true" looping="true">
                 <frame duration="0.2" sizeX="32" sizeY="32">
@@ -222,7 +222,7 @@
                 <property name="fallbackDestroyDelay" type="float" value="0"/>
             </component>
         </entity>
-        <entity id="175" guid="6d87a65b-b6b3-425d-9ae6-8decfa47bd63" name="SparkEffect" tag="Default" enabled="false" persistent="false" displayOrder="21">
+        <entity id="99" guid="6d87a65b-b6b3-425d-9ae6-8decfa47bd63" name="SparkEffect" tag="Default" enabled="false" persistent="false" displayOrder="21">
             <component type="TransformComponent" enabled="true" x="366" y="328" rotation="0"/>
             <component type="AnimationComponent" enabled="false" source="Assets/Animations/Spark.ianim" frameDuration="0.1" playing="true" looping="true">
                 <frame duration="0.1" sizeX="32" sizeY="32">
@@ -239,27 +239,32 @@
                 <property name="delaySeconds" type="float" value="1.5"/>
             </component>
         </entity>
-        <entity id="176" guid="5d98902a-d3a8-4c5a-be0a-c40950afa935" name="MainCamera" tag="MainCamera" enabled="true" persistent="false" displayOrder="22">
+        <entity id="100" guid="5d98902a-d3a8-4c5a-be0a-c40950afa935" name="MainCamera" tag="MainCamera" enabled="true" persistent="false" displayOrder="22">
             <component type="TransformComponent" enabled="true" x="640" y="360" rotation="0"/>
             <component type="PlayerCameraComponent" enabled="true" zoom="1" viewportWidth="1280" viewportHeight="720" offsetX="0" offsetY="0" clampToBounds="false" minX="0" minY="0" maxX="1280" maxY="720"/>
         </entity>
-        <entity id="177" guid="8d89c21f-f5cf-4259-8ebf-7dafdb1b90c1" name="Canvas" tag="UI" enabled="true" persistent="false" displayOrder="23">
+        <entity id="101" guid="8d89c21f-f5cf-4259-8ebf-7dafdb1b90c1" name="Canvas" tag="UI" enabled="true" persistent="false" displayOrder="23">
             <component type="RectTransformComponent" enabled="true" anchoredX="452" anchoredY="350" sizeX="640" sizeY="320" pivotX="0.5" pivotY="0.5" rotation="0"/>
             <component type="CanvasComponent" enabled="true" referenceWidth="640" referenceHeight="320" sortingOrder="0" opacity="1" scale="1" colorR="180" colorG="180" colorB="180" colorA="220"/>
         </entity>
-        <entity id="178" guid="07ff4841-0fe2-4c46-8885-2b7cbb10a7d8" name="Label" tag="UI" enabled="true" persistent="false" displayOrder="24" parentId="177">
+        <entity id="102" guid="07ff4841-0fe2-4c46-8885-2b7cbb10a7d8" name="Label" tag="UI" enabled="true" persistent="false" displayOrder="24" parentId="101">
             <component type="RectTransformComponent" enabled="true" anchoredX="6.5" anchoredY="-96" sizeX="273" sizeY="42" pivotX="0.5" pivotY="0.5" rotation="0"/>
             <component type="UILabelComponent" enabled="true" text="New Label" font="Assets/Fonts/default.ttf" fontSize="18" colorR="255" colorG="255" colorB="255" colorA="255" horizontalAlign="center" verticalAlign="center"/>
         </entity>
-        <entity id="179" guid="67cb65ae-0db1-4b1f-8b70-f89c9e59a883" name="Button" tag="UI" enabled="true" persistent="false" displayOrder="27" parentId="177">
-            <component type="RectTransformComponent" enabled="true" anchoredX="0" anchoredY="0" sizeX="180" sizeY="56" pivotX="0.5" pivotY="0.5" rotation="0"/>
+        <entity id="103" guid="67cb65ae-0db1-4b1f-8b70-f89c9e59a883" name="Button" tag="UI" enabled="true" persistent="false" displayOrder="27" parentId="101">
+            <component type="RectTransformComponent" enabled="true" anchoredX="14" anchoredY="17" sizeX="180" sizeY="56" pivotX="0.5" pivotY="0.5" rotation="0"/>
             <component type="UIPanelComponent" enabled="true" opacity="1" colorR="255" colorG="255" colorB="255" colorA="255"/>
             <component type="UIButtonComponent" enabled="true" action="onClick" interactable="true" normalColorR="60" normalColorG="60" normalColorB="70" normalColorA="255" hoverColorR="80" hoverColorG="80" hoverColorB="95" hoverColorA="255" pressedColorR="45" pressedColorG="45" pressedColorB="55" pressedColorA="255" disabledColorR="40" disabledColorG="40" disabledColorB="45" disabledColorA="120"/>
             <component type="ScriptComponent" enabled="true" path="Assets/Scripts/ui_button_debug_a.lua"/>
         </entity>
-        <entity id="180" guid="c05eec8d-97b9-4441-8203-1b7432896152" name="Button Label" tag="UI" enabled="true" persistent="false" displayOrder="28" parentId="179">
+        <entity id="104" guid="c05eec8d-97b9-4441-8203-1b7432896152" name="Button Label" tag="UI" enabled="true" persistent="false" displayOrder="28" parentId="103">
             <component type="RectTransformComponent" enabled="true" anchoredX="0" anchoredY="0" sizeX="180" sizeY="56" pivotX="0.5" pivotY="0.5" rotation="0"/>
             <component type="UILabelComponent" enabled="true" text="Button" font="Assets/Fonts/default.ttf" fontSize="18" colorR="255" colorG="255" colorB="255" colorA="255" horizontalAlign="center" verticalAlign="center"/>
+        </entity>
+        <entity id="105" guid="742246b5-db43-408f-9e37-12358e81f88d" name="Edit Text" tag="UI" enabled="true" persistent="false" displayOrder="27" parentId="101">
+            <component type="RectTransformComponent" enabled="true" anchoredX="18" anchoredY="-51" sizeX="240" sizeY="48" pivotX="0.5" pivotY="0.5" rotation="0"/>
+            <component type="UIEditTextComponent" enabled="true" text="" placeholder="Enter text..." submitFunction="onSubmit" font="Assets/Fonts/default.ttf" fontSize="18" maxLength="64" cursorIndex="0" readOnly="false" password="false" textColorR="255" textColorG="255" textColorB="255" textColorA="255" placeholderColorR="180" placeholderColorG="180" placeholderColorB="180" placeholderColorA="180" backgroundColorR="35" backgroundColorG="35" backgroundColorB="42" backgroundColorA="255" focusedColorR="55" focusedColorG="70" focusedColorB="95" focusedColorA="255" cursorColorR="255" cursorColorG="255" cursorColorB="255" cursorColorA="255"/>
+            <component type="ScriptComponent" enabled="true" path="Assets/Scripts/ui_edit_text_submit.lua"/>
         </entity>
     </entities>
 </level>

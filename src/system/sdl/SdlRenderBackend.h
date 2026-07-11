@@ -40,6 +40,11 @@ public:
         unsigned int characterSize,
         RenderColor color
     ) override;
+    RenderVector2 measureText(
+        const std::string& text,
+        const std::string& fontPath,
+        unsigned int characterSize
+    ) override;
     void drawRect(
         const RenderRect& rect,
         const RenderVector2& origin,

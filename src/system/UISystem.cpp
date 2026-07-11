@@ -4,8 +4,10 @@
 #include "components/CanvasComponent.h"
 #include "components/RectTransformComponent.h"
 #include "components/UIButtonComponent.h"
+#include "components/UIEditTextComponent.h"
 #include "math/Math2D.h"
 #include "misc/Level.h"
+#include "system/IWindowBackend.h"
 #include "system/RawInputSystem.h"
 #include "system/ScriptSystem.h"
 
@@ -91,7 +93,7 @@ UISystem& UISystem::getInstance() {
     return instance;
 }
 
-bool UISystem::processInput(const RawInputSystem& rawInputSystem) {
+bool UISystem::processInput(const RawInputSystem& rawInputSystem, IWindowBackend* windowBackend) {
     Level& level = Level::getCurrentLevel();
     PointerState pointer;
 
@@ -145,7 +147,16 @@ bool UISystem::processInput(const RawInputSystem& rawInputSystem) {
         }
     }
 
-    Entity* hoveredEntity = findTopmostButtonAt(pointer.position);
+    bool editTextConsumedInput = false;
+    if (pointer.pressedThisFrame) {
+        Entity* editTextEntity = findTopmostEditTextAt(pointer.position);
+        setFocusedEditText(editTextEntity, windowBackend);
+        editTextConsumedInput = editTextEntity != nullptr;
+    }
+
+    updateFocusedEditText(rawInputSystem, windowBackend);
+
+    Entity* hoveredEntity = editTextConsumedInput ? nullptr : findTopmostButtonAt(pointer.position);
     UIButtonComponent* hoveredButton =
         hoveredEntity == nullptr ? nullptr : hoveredEntity->getComponent<UIButtonComponent>();
 
@@ -188,7 +199,10 @@ bool UISystem::processInput(const RawInputSystem& rawInputSystem) {
         activeTouchId = -1;
     }
 
-    return hoveredEntity != nullptr || pressedEntityId >= 0;
+    return editTextConsumedInput ||
+        focusedEditTextEntityId >= 0 ||
+        hoveredEntity != nullptr ||
+        pressedEntityId >= 0;
 }
 
 Entity* UISystem::findTopmostButtonAt(const Vector2F& screenPosition) {
@@ -221,6 +235,107 @@ Entity* UISystem::findTopmostButtonAt(const Vector2F& screenPosition) {
 
     std::sort(candidates.begin(), candidates.end(), isUiEntityHigher);
     return candidates.front();
+}
+
+Entity* UISystem::findTopmostEditTextAt(const Vector2F& screenPosition) {
+    std::vector<Entity*> candidates;
+
+    for (Entity& entity : Level::getCurrentLevel().getEntities()) {
+        if (entity.isDestroyed() || !entity.isEnabled()) {
+            continue;
+        }
+
+        UIEditTextComponent* editText = entity.getComponent<UIEditTextComponent>();
+        const RectTransformComponent* rectTransform = entity.getComponent<RectTransformComponent>();
+        if (editText == nullptr ||
+            rectTransform == nullptr ||
+            !editText->isEnabled() ||
+            !rectTransform->isEnabled() ||
+            !parentCanvasAllowsInput(entity)) {
+            continue;
+        }
+
+        if (isPointInsideRectTransform(*rectTransform, screenPosition, getUiScale(entity))) {
+            candidates.push_back(&entity);
+        }
+    }
+
+    if (candidates.empty()) {
+        return nullptr;
+    }
+
+    std::sort(candidates.begin(), candidates.end(), isUiEntityHigher);
+    return candidates.front();
+}
+
+void UISystem::setFocusedEditText(Entity* entity, IWindowBackend* windowBackend) {
+    const int nextFocusedId = entity == nullptr ? -1 : entity->getId();
+    if (focusedEditTextEntityId == nextFocusedId) {
+        return;
+    }
+
+    if (focusedEditTextEntityId >= 0) {
+        Entity* previousEntity = Level::getCurrentLevel().findEntityById(focusedEditTextEntityId);
+        UIEditTextComponent* previousEditText =
+            previousEntity == nullptr ? nullptr : previousEntity->getComponent<UIEditTextComponent>();
+        if (previousEditText != nullptr) {
+            previousEditText->setFocused(false);
+        }
+    }
+
+    focusedEditTextEntityId = nextFocusedId;
+
+    UIEditTextComponent* nextEditText =
+        entity == nullptr ? nullptr : entity->getComponent<UIEditTextComponent>();
+    if (nextEditText != nullptr) {
+        nextEditText->setFocused(true);
+        nextEditText->setCursorIndex(nextEditText->getText().size());
+        if (windowBackend != nullptr) {
+            windowBackend->startTextInput();
+        }
+        return;
+    }
+
+    if (windowBackend != nullptr) {
+        windowBackend->stopTextInput();
+    }
+}
+
+void UISystem::updateFocusedEditText(
+    const RawInputSystem& rawInputSystem,
+    IWindowBackend* windowBackend
+) {
+    if (focusedEditTextEntityId < 0) {
+        return;
+    }
+
+    Entity* entity = Level::getCurrentLevel().findEntityById(focusedEditTextEntityId);
+    UIEditTextComponent* editText =
+        entity == nullptr ? nullptr : entity->getComponent<UIEditTextComponent>();
+    if (entity == nullptr ||
+        entity->isDestroyed() ||
+        !entity->isEnabled() ||
+        editText == nullptr ||
+        !editText->isEnabled()) {
+        setFocusedEditText(nullptr, windowBackend);
+        return;
+    }
+
+    if (!rawInputSystem.getTextInputThisFrame().empty()) {
+        editText->insertText(rawInputSystem.getTextInputThisFrame());
+    }
+
+    if (rawInputSystem.wasKeyPressed(RawKey::Backspace)) {
+        editText->backspace();
+    }
+
+    if (rawInputSystem.wasKeyPressed(RawKey::Enter) &&
+        !editText->getSubmitFunction().empty()) {
+        ScriptSystem::getInstance().callEntityScriptFunctionWithSelf(
+            *entity,
+            editText->getSubmitFunction()
+        );
+    }
 }
 
 bool UISystem::isPointInsideRectTransform(

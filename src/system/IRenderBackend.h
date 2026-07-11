@@ -70,6 +70,11 @@ public:
         unsigned int characterSize,
         RenderColor color) = 0;
 
+    virtual RenderVector2 measureText(
+        const std::string &text,
+        const std::string &fontPath,
+        unsigned int characterSize) = 0;
+
     virtual void drawRect(
         const RenderRect &rect,
         const RenderVector2 &origin,

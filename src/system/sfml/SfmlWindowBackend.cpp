@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 
 namespace {
 InputKey mapKey(sf::Keyboard::Key key) {
@@ -49,6 +50,10 @@ RawKey mapRawKey(sf::Keyboard::Key key) {
             return RawKey::Space;
         case sf::Keyboard::Key::Escape:
             return RawKey::Escape;
+        case sf::Keyboard::Key::Backspace:
+            return RawKey::Backspace;
+        case sf::Keyboard::Key::Enter:
+            return RawKey::Enter;
         default:
             return RawKey::Unknown;
     }
@@ -78,6 +83,31 @@ RawMouseButton mapRawMouseButton(sf::Mouse::Button button) {
         default:
             return RawMouseButton::Unknown;
     }
+}
+
+std::string utf8FromCodepoint(char32_t codepoint) {
+    if (codepoint < 32 || codepoint == 127) {
+        return "";
+    }
+
+    std::string text;
+    if (codepoint <= 0x7F) {
+        text.push_back(static_cast<char>(codepoint));
+    } else if (codepoint <= 0x7FF) {
+        text.push_back(static_cast<char>(0xC0 | ((codepoint >> 6) & 0x1F)));
+        text.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    } else if (codepoint <= 0xFFFF) {
+        text.push_back(static_cast<char>(0xE0 | ((codepoint >> 12) & 0x0F)));
+        text.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+        text.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    } else if (codepoint <= 0x10FFFF) {
+        text.push_back(static_cast<char>(0xF0 | ((codepoint >> 18) & 0x07)));
+        text.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+        text.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+        text.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    }
+
+    return text;
 }
 }
 
@@ -145,6 +175,8 @@ void SfmlWindowBackend::pollEvents(InputSystem& inputSystem, IGuiBackend* guiBac
         } else if (const auto* keyReleased = event->getIf<sf::Event::KeyReleased>()) {
             inputSystem.processKeyReleased(mapKey(keyReleased->code));
             rawInputSystem.setKeyUp(mapRawKey(keyReleased->code));
+        } else if (const auto* textEntered = event->getIf<sf::Event::TextEntered>()) {
+            rawInputSystem.addTextInput(utf8FromCodepoint(textEntered->unicode));
         } else if (const auto* mouseMoved = event->getIf<sf::Event::MouseMoved>()) {
             rawInputSystem.setMousePosition(mouseMoved->position.x, mouseMoved->position.y);
         } else if (const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()) {

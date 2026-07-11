@@ -42,6 +42,11 @@ RawKey mapRawKey(SDL_Keycode key) {
             return RawKey::Space;
         case SDLK_ESCAPE:
             return RawKey::Escape;
+        case SDLK_BACKSPACE:
+            return RawKey::Backspace;
+        case SDLK_RETURN:
+        case SDLK_KP_ENTER:
+            return RawKey::Enter;
         default:
             return RawKey::Unknown;
     }
@@ -177,6 +182,10 @@ void SdlWindowBackend::pollEvents(InputSystem& inputSystem, IGuiBackend* guiBack
         } else if (event.type == SDL_EVENT_KEY_UP) {
             inputSystem.processKeyReleased(mapKey(event.key.key));
             rawInputSystem.setKeyUp(mapRawKey(event.key.key));
+        } else if (event.type == SDL_EVENT_TEXT_INPUT) {
+            if (event.text.text != nullptr) {
+                rawInputSystem.addTextInput(event.text.text);
+            }
         } else if (event.type == SDL_EVENT_MOUSE_MOTION) {
             rawInputSystem.setMousePosition(
                 static_cast<int>(event.motion.x),
@@ -272,6 +281,18 @@ float SdlWindowBackend::consumePendingPinchZoomFactor() {
     }
 
     return zoomFactor;
+}
+
+void SdlWindowBackend::startTextInput() {
+    if (window != nullptr) {
+        (void)SDL_StartTextInput(window);
+    }
+}
+
+void SdlWindowBackend::stopTextInput() {
+    if (window != nullptr) {
+        SDL_StopTextInput(window);
+    }
 }
 
 SDL_Window* SdlWindowBackend::getWindow() {

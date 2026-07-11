@@ -5,6 +5,7 @@
 #include "components/CollisionComponent.h"
 #include "components/ScriptComponent.h"
 #include "components/TransformComponent.h"
+#include "components/UIEditTextComponent.h"
 #include "math/Vector2F.h"
 #include "misc/Level.h"
 #include "misc/LevelManager.h"
@@ -965,6 +966,19 @@ void ScriptSystem::bindEngineTypes() {
         }
     );
 
+    lua.new_usertype<UIEditTextComponent>(
+        "UIEditTextComponent",
+        "isEnabled", &UIEditTextComponent::isEnabled,
+        "setEnabled", &UIEditTextComponent::setEnabled,
+        "getText", &UIEditTextComponent::getText,
+        "setText", &UIEditTextComponent::setText,
+        "getPlaceholder", &UIEditTextComponent::getPlaceholder,
+        "setPlaceholder", &UIEditTextComponent::setPlaceholder,
+        "isFocused", &UIEditTextComponent::isFocused,
+        "setFocused", &UIEditTextComponent::setFocused,
+        "clear", &UIEditTextComponent::clear
+    );
+
     lua.new_usertype<Entity>(
         "Entity",
         "getId", &Entity::getId,
@@ -1010,6 +1024,9 @@ void ScriptSystem::bindEngineTypes() {
         },
         "getCollision", [](Entity& entity) {
             return entity.getComponent<CollisionComponent>();
+        },
+        "getEditText", [](Entity& entity) {
+            return entity.getComponent<UIEditTextComponent>();
         },
         "isInViewport", [](Entity& entity) {
             return Renderer::getInstance().isEntityInViewport(entity);

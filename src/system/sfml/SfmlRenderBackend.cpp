@@ -16,6 +16,7 @@
 #include <SFML/Graphics/Vertex.hpp>
 #include <SFML/Graphics/Image.hpp>
 
+#include <algorithm>
 #include <cstring>
 #include <iostream>
 #include <memory>
@@ -166,6 +167,50 @@ void SfmlRenderBackend::drawText(
     sf::RenderStates states;
     states.blendMode = sf::BlendAlpha;
     target.draw(drawableText, states);
+}
+
+RenderVector2 SfmlRenderBackend::measureText(
+    const std::string& text,
+    const std::string& fontPath,
+    unsigned int characterSize
+) {
+    if (characterSize == 0) {
+        return RenderVector2{};
+    }
+
+    sf::Font* font = getFont(fontPath);
+    if (font == nullptr) {
+        return RenderVector2{};
+    }
+
+    if (text.empty()) {
+        return RenderVector2{0.0f, static_cast<float>(characterSize)};
+    }
+
+    sf::Text drawableText(*font, text, characterSize);
+    const std::vector<sf::Text::ShapedGlyph>& shapedGlyphs = drawableText.getShapedGlyphs();
+
+    float cursorX = 0.0f;
+    float height = 0.0f;
+    for (const sf::Text::ShapedGlyph& shapedGlyph : shapedGlyphs) {
+        const sf::FloatRect& bounds = shapedGlyph.glyph.bounds;
+        const float glyphLeft = shapedGlyph.position.x + bounds.position.x;
+        const float glyphRight = glyphLeft + bounds.size.x;
+        const float glyphTop = shapedGlyph.baseline + bounds.position.y;
+        const float glyphBottom = glyphTop + bounds.size.y;
+
+        cursorX = std::max(cursorX, glyphRight);
+        height = std::max(height, glyphBottom);
+    }
+
+    const sf::FloatRect localBounds = drawableText.getLocalBounds();
+    cursorX = std::max(cursorX, localBounds.position.x + localBounds.size.x);
+    height = std::max(height, localBounds.position.y + localBounds.size.y);
+
+    return RenderVector2{
+        cursorX,
+        height > 0.0f ? height : static_cast<float>(characterSize)
+    };
 }
 
 void SfmlRenderBackend::drawRect(

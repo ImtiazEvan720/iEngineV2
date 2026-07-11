@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -10,7 +11,9 @@ enum class RawKey {
     S,
     D,
     Space,
-    Escape
+    Escape,
+    Backspace,
+    Enter
 };
 
 enum class RawMouseButton {
@@ -41,6 +44,7 @@ public:
 
     void setKeyDown(RawKey key);
     void setKeyUp(RawKey key);
+    void addTextInput(const std::string& text);
 
     void setMouseButtonDown(RawMouseButton button, int x, int y);
     void setMouseButtonUp(RawMouseButton button, int x, int y);
@@ -53,6 +57,7 @@ public:
     bool isKeyDown(RawKey key) const;
     bool wasKeyPressed(RawKey key) const;
     bool wasKeyReleased(RawKey key) const;
+    const std::string& getTextInputThisFrame() const;
 
     bool isMouseButtonDown(RawMouseButton button) const;
     bool wasMouseButtonPressed(RawMouseButton button) const;
@@ -79,6 +84,7 @@ private:
 
     int mouseX = 0;
     int mouseY = 0;
+    std::string textInputThisFrame;
 
     std::vector<RawTouch> touches;
 };

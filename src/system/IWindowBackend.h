@@ -22,4 +22,6 @@ public:
     virtual void endFrame() = 0;
     virtual RenderRect getViewport() const = 0;
     virtual float consumePendingPinchZoomFactor() { return 1.0f; }
+    virtual void startTextInput() {}
+    virtual void stopTextInput() {}
 };
