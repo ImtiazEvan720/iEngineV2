@@ -10,6 +10,7 @@
 #include "system/IGuiBackend.h"
 #include "system/IRenderBackend.h"
 #include "system/IWindowBackend.h"
+#include "system/InputActionRegistry.h"
 #include "system/InputSystem.h"
 #include "system/PhysicsSystem.h"
 #include "system/ProjectManager.h"
@@ -347,6 +348,15 @@ bool Application::initialize(int argc, char* argv[]) {
     AssetManager& assetManager = AssetManager::getInstance();
     if (!assetManager.loadAssets(projectManager.getAssetsPath().string())) {
         std::cerr << "One or more assets failed to load." << std::endl;
+    }
+
+    InputActionRegistry& inputActionRegistry = InputActionRegistry::getInstance();
+    const std::string inputActionsPath =
+        (projectManager.getAssetsPath() / "Input" / "actions.inputactions.xml").string();
+    std::string inputActionsError;
+    if (!inputActionRegistry.loadFromFile(inputActionsPath, inputActionsError)) {
+        std::cerr << inputActionsError << " Falling back to runtime input actions." << std::endl;
+        inputActionRegistry.registerRuntimeDefaults();
     }
 
     VirtualInputSystem& virtualInputSystem = VirtualInputSystem::getInstance();

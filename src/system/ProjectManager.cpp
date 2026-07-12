@@ -3,6 +3,7 @@
 #include "misc/Level.h"
 #include "system/AssetManager.h"
 #include "system/EngineState.h"
+#include "system/InputActionRegistry.h"
 #include "system/Renderer.h"
 #include "system/VirtualInputSystem.h"
 
@@ -138,6 +139,30 @@ bool writeDefaultConfig(const std::filesystem::path& configPath, std::string& er
     return saveXmlDocument(document, configPath, errorMessage);
 }
 
+bool writeDefaultInputActions(const std::filesystem::path& inputActionsPath, std::string& errorMessage) {
+    tinyxml2::XMLDocument document;
+    document.InsertEndChild(document.NewDeclaration(R"(xml version="1.0" encoding="UTF-8")"));
+
+    tinyxml2::XMLElement* inputActions = document.NewElement("inputActions");
+    inputActions->SetAttribute("version", 1);
+    document.InsertEndChild(inputActions);
+
+    auto addAction = [&](int id, const char* name, const char* type) {
+        tinyxml2::XMLElement* action = document.NewElement("action");
+        action->SetAttribute("id", id);
+        action->SetAttribute("name", name);
+        action->SetAttribute("type", type);
+        inputActions->InsertEndChild(action);
+    };
+
+    addAction(1, "Move", "Axis");
+    addAction(2, "Fire", "Button");
+    addAction(3, "Fire2", "Button");
+    addAction(4, "Pause", "Button");
+
+    return saveXmlDocument(document, inputActionsPath, errorMessage);
+}
+
 bool writeDefaultInputBindings(const std::filesystem::path& inputPath, std::string& errorMessage) {
     tinyxml2::XMLDocument document;
     document.InsertEndChild(document.NewDeclaration(R"(xml version="1.0" encoding="UTF-8")"));
@@ -155,17 +180,32 @@ bool writeDefaultInputBindings(const std::filesystem::path& inputPath, std::stri
         bindings->InsertEndChild(binding);
     };
 
-    addBinding("MoveUp", "key", "W");
-    addBinding("MoveDown", "key", "S");
-    addBinding("MoveLeft", "key", "A");
-    addBinding("MoveRight", "key", "D");
+    auto addAxisBinding = [&](
+        const char* action,
+        const char* attributeName,
+        const char* value,
+        float axisX,
+        float axisY
+    ) {
+        tinyxml2::XMLElement* binding = document.NewElement("binding");
+        binding->SetAttribute("action", action);
+        binding->SetAttribute(attributeName, value);
+        binding->SetAttribute("axisX", axisX);
+        binding->SetAttribute("axisY", axisY);
+        bindings->InsertEndChild(binding);
+    };
+
+    addAxisBinding("Move", "key", "W", 0.0f, -1.0f);
+    addAxisBinding("Move", "key", "S", 0.0f, 1.0f);
+    addAxisBinding("Move", "key", "A", -1.0f, 0.0f);
+    addAxisBinding("Move", "key", "D", 1.0f, 0.0f);
     addBinding("Fire", "key", "Space");
     addBinding("Fire2", "key", "Escape");
     addBinding("Fire", "mouse", "Left");
-    addBinding("MoveUp", "touchControl", "MoveStickUp");
-    addBinding("MoveDown", "touchControl", "MoveStickDown");
-    addBinding("MoveLeft", "touchControl", "MoveStickLeft");
-    addBinding("MoveRight", "touchControl", "MoveStickRight");
+    addAxisBinding("Move", "touchControl", "MoveStickUp", 0.0f, -1.0f);
+    addAxisBinding("Move", "touchControl", "MoveStickDown", 0.0f, 1.0f);
+    addAxisBinding("Move", "touchControl", "MoveStickLeft", -1.0f, 0.0f);
+    addAxisBinding("Move", "touchControl", "MoveStickRight", 1.0f, 0.0f);
     addBinding("Fire", "touchControl", "FireButton");
 
     return saveXmlDocument(document, inputPath, errorMessage);
@@ -302,6 +342,10 @@ bool ProjectManager::createProject(
         return false;
     }
 
+    if (!writeDefaultInputActions(projectRoot / "Assets" / "Input" / "actions.inputactions.xml", errorMessage)) {
+        return false;
+    }
+
     if (!writeDefaultInputBindings(projectRoot / "Assets" / "Input" / "default.input.xml", errorMessage)) {
         return false;
     }
@@ -337,6 +381,15 @@ bool ProjectManager::openProject(const std::string& projectFilePath, std::string
 
     if (!AssetManager::getInstance().loadAssets(currentProject.assetsPath.string())) {
         appendWarning(errorMessage, "Opened project, but one or more assets failed to load.");
+    }
+
+    InputActionRegistry& inputActionRegistry = InputActionRegistry::getInstance();
+    const std::filesystem::path inputActionsPath =
+        currentProject.assetsPath / "Input" / "actions.inputactions.xml";
+    std::string inputActionsError;
+    if (!inputActionRegistry.loadFromFile(inputActionsPath.string(), inputActionsError)) {
+        inputActionRegistry.registerRuntimeDefaults();
+        appendWarning(errorMessage, inputActionsError + " Falling back to runtime input actions.");
     }
 
     VirtualInputSystem& virtualInputSystem = VirtualInputSystem::getInstance();

@@ -457,12 +457,11 @@ void LevelEditor::drawLevelOutlineTab(const InputSystem& inputSystem) {
         touchControls.isControlDown(TouchControl::MoveStickRight) ? "down" : "up",
         touchControls.isControlDown(TouchControl::FireButton) ? "down" : "up"
     );
+    const Vector2F moveAxis = virtualInput.getAxis2D(InputAction::Move);
     ImGui::Text(
-        "Actions: Up=%s Down=%s Left=%s Right=%s Fire=%s Fire2=%s",
-        virtualInput.isActionDown(InputAction::MoveUp) ? "down" : "up",
-        virtualInput.isActionDown(InputAction::MoveDown) ? "down" : "up",
-        virtualInput.isActionDown(InputAction::MoveLeft) ? "down" : "up",
-        virtualInput.isActionDown(InputAction::MoveRight) ? "down" : "up",
+        "Actions: Move=(%.2f, %.2f) Fire=%s Fire2=%s",
+        moveAxis.x,
+        moveAxis.y,
         virtualInput.isActionDown(InputAction::Fire) ? "down" : "up",
         virtualInput.isActionDown(InputAction::Fire2) ? "down" : "up"
     );

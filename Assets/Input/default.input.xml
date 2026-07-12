@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <input>
   <bindings>
-    <binding action="MoveUp" key="W"/>
-    <binding action="MoveDown" key="S"/>
-    <binding action="MoveLeft" key="A"/>
-    <binding action="MoveRight" key="D"/>
+    <binding action="Move" key="W" axisX="0" axisY="-1"/>
+    <binding action="Move" key="S" axisX="0" axisY="1"/>
+    <binding action="Move" key="A" axisX="-1" axisY="0"/>
+    <binding action="Move" key="D" axisX="1" axisY="0"/>
     <binding action="Fire" key="Space"/>
     <binding action="Fire2" key="Escape"/>
     <binding action="Fire" mouse="Left"/>
-    <binding action="MoveUp" touchControl="MoveStickUp"/>
-    <binding action="MoveDown" touchControl="MoveStickDown"/>
-    <binding action="MoveLeft" touchControl="MoveStickLeft"/>
-    <binding action="MoveRight" touchControl="MoveStickRight"/>
+    <binding action="Move" touchControl="MoveStickUp" axisX="0" axisY="-1"/>
+    <binding action="Move" touchControl="MoveStickDown" axisX="0" axisY="1"/>
+    <binding action="Move" touchControl="MoveStickLeft" axisX="-1" axisY="0"/>
+    <binding action="Move" touchControl="MoveStickRight" axisX="1" axisY="0"/>
     <binding action="Fire" touchControl="FireButton"/>
   </bindings>
 </input>

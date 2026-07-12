@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inputActions version="1">
+  <action id="1" name="Move" type="Axis"/>
+  <action id="2" name="Fire" type="Button"/>
+  <action id="3" name="Fire2" type="Button"/>
+  <action id="4" name="Pause" type="Button"/>
+</inputActions>

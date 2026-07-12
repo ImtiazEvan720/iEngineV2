@@ -89,20 +89,21 @@ void PlayerController::onUpdate(float deltaTime) {
     float rotation = transform->getRotation();
     bool moving = false;
     const float speed = 100.0f;
+    const Vector2F move = input.getAxis2D(InputAction::Move);
 
-    if (input.isActionDown(InputAction::MoveUp)) {
+    if (move.y < -0.001f) {
         position.y -= speed * deltaTime;
         rotation = 0.0f;
         moving = true;
-    } else if (input.isActionDown(InputAction::MoveDown)) {
+    } else if (move.y > 0.001f) {
         position.y += speed * deltaTime;
         rotation = 180.0f;
         moving = true;
-    } else if (input.isActionDown(InputAction::MoveLeft)) {
+    } else if (move.x < -0.001f) {
         position.x -= speed * deltaTime;
         rotation = -90.0f;
         moving = true;
-    } else if (input.isActionDown(InputAction::MoveRight)) {
+    } else if (move.x > 0.001f) {
         position.x += speed * deltaTime;
         rotation = 90.0f;
         moving = true;

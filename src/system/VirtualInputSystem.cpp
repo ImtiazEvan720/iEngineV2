@@ -2,13 +2,30 @@
 
 #include "tinyxml2.h"
 
+#include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <iostream>
 
 namespace {
+constexpr float AxisDeadZone = 0.001f;
+
 bool getActionState(const std::unordered_map<InputAction, bool>& states, InputAction action) {
     const auto iterator = states.find(action);
     return iterator != states.end() && iterator->second;
+}
+
+Vector2F getAxisState(const std::unordered_map<InputAction, Vector2F>& states, InputAction action) {
+    const auto iterator = states.find(action);
+    if (iterator == states.end()) {
+        return Vector2F::zero();
+    }
+
+    return iterator->second;
+}
+
+bool isAxisValueActive(const Vector2F& value) {
+    return std::abs(value.x) > AxisDeadZone || std::abs(value.y) > AxisDeadZone;
 }
 
 std::string normalizeInputName(std::string value) {
@@ -36,6 +53,31 @@ void setActionState(std::unordered_map<InputAction, bool>& states, InputAction a
 
     states[action] = states[action] || down;
 }
+
+void addAxis2DState(
+    std::unordered_map<InputAction, Vector2F>& states,
+    InputAction action,
+    const Vector2F& value
+) {
+    if (action == InputAction::Unknown) {
+        return;
+    }
+
+    auto iterator = states.find(action);
+    if (iterator == states.end()) {
+        states.emplace(action, value);
+        return;
+    }
+
+    iterator->second += value;
+}
+
+void clampAxis2DStates(std::unordered_map<InputAction, Vector2F>& states) {
+    for (auto& state : states) {
+        state.second.x = std::clamp(state.second.x, -1.0f, 1.0f);
+        state.second.y = std::clamp(state.second.y, -1.0f, 1.0f);
+    }
+}
 }
 
 VirtualInputSystem& VirtualInputSystem::getInstance() {
@@ -47,21 +89,23 @@ void VirtualInputSystem::clearBindings() {
     keyBindings.clear();
     mouseButtonBindings.clear();
     touchControlBindings.clear();
+    keyAxis2DBindings.clear();
+    touchAxis2DBindings.clear();
 }
 
 void VirtualInputSystem::bindDefaultKeyboardMouse() {
     clearBindings();
-    bindKey(RawKey::W, InputAction::MoveUp);
-    bindKey(RawKey::S, InputAction::MoveDown);
-    bindKey(RawKey::A, InputAction::MoveLeft);
-    bindKey(RawKey::D, InputAction::MoveRight);
+    bindKeyAxis2D(RawKey::W, InputAction::Move, Vector2F(0.0f, -1.0f));
+    bindKeyAxis2D(RawKey::S, InputAction::Move, Vector2F(0.0f, 1.0f));
+    bindKeyAxis2D(RawKey::A, InputAction::Move, Vector2F(-1.0f, 0.0f));
+    bindKeyAxis2D(RawKey::D, InputAction::Move, Vector2F(1.0f, 0.0f));
     bindKey(RawKey::Space, InputAction::Fire);
     bindKey(RawKey::Escape, InputAction::Fire2);
     bindMouseButton(RawMouseButton::Left, InputAction::Fire);
-    bindTouchControl(TouchControl::MoveStickUp, InputAction::MoveUp);
-    bindTouchControl(TouchControl::MoveStickDown, InputAction::MoveDown);
-    bindTouchControl(TouchControl::MoveStickLeft, InputAction::MoveLeft);
-    bindTouchControl(TouchControl::MoveStickRight, InputAction::MoveRight);
+    bindTouchControlAxis2D(TouchControl::MoveStickUp, InputAction::Move, Vector2F(0.0f, -1.0f));
+    bindTouchControlAxis2D(TouchControl::MoveStickDown, InputAction::Move, Vector2F(0.0f, 1.0f));
+    bindTouchControlAxis2D(TouchControl::MoveStickLeft, InputAction::Move, Vector2F(-1.0f, 0.0f));
+    bindTouchControlAxis2D(TouchControl::MoveStickRight, InputAction::Move, Vector2F(1.0f, 0.0f));
     bindTouchControl(TouchControl::FireButton, InputAction::Fire);
 }
 
@@ -71,6 +115,14 @@ void VirtualInputSystem::bindKey(RawKey key, InputAction action) {
     }
 
     keyBindings[key] = action;
+}
+
+void VirtualInputSystem::bindKeyAxis2D(RawKey key, InputAction action, const Vector2F& value) {
+    if (key == RawKey::Unknown || action == InputAction::Unknown) {
+        return;
+    }
+
+    keyAxis2DBindings.push_back({key, action, value});
 }
 
 void VirtualInputSystem::bindMouseButton(RawMouseButton button, InputAction action) {
@@ -87,6 +139,18 @@ void VirtualInputSystem::bindTouchControl(TouchControl control, InputAction acti
     }
 
     touchControlBindings[control] = action;
+}
+
+void VirtualInputSystem::bindTouchControlAxis2D(
+    TouchControl control,
+    InputAction action,
+    const Vector2F& value
+) {
+    if (control == TouchControl::Unknown || action == InputAction::Unknown) {
+        return;
+    }
+
+    touchAxis2DBindings.push_back({control, action, value});
 }
 
 bool VirtualInputSystem::loadBindingsFromFile(const std::string& path, std::string& errorMessage) {
@@ -124,10 +188,20 @@ bool VirtualInputSystem::loadBindingsFromFile(const std::string& path, std::stri
             continue;
         }
 
+        const bool hasAxisX = binding->FindAttribute("axisX") != nullptr;
+        const bool hasAxisY = binding->FindAttribute("axisY") != nullptr;
+        const Vector2F axisValue(
+            binding->FloatAttribute("axisX", 0.0f),
+            binding->FloatAttribute("axisY", 0.0f)
+        );
+        const bool isAxisBinding = hasAxisX || hasAxisY;
+
         if (const char* keyText = binding->Attribute("key")) {
             const RawKey key = rawKeyFromString(keyText);
             if (key == RawKey::Unknown) {
                 std::cerr << "Unknown raw key in binding file: " << keyText << std::endl;
+            } else if (isAxisBinding) {
+                bindKeyAxis2D(key, action, axisValue);
             } else {
                 bindKey(key, action);
             }
@@ -146,6 +220,8 @@ bool VirtualInputSystem::loadBindingsFromFile(const std::string& path, std::stri
             const TouchControl control = touchControlFromString(touchControlText);
             if (control == TouchControl::Unknown) {
                 std::cerr << "Unknown touch control in binding file: " << touchControlText << std::endl;
+            } else if (isAxisBinding) {
+                bindTouchControlAxis2D(control, action, axisValue);
             } else {
                 bindTouchControl(control, action);
             }
@@ -158,7 +234,9 @@ bool VirtualInputSystem::loadBindingsFromFile(const std::string& path, std::stri
 
 void VirtualInputSystem::updateFromRawInput(const RawInputSystem& rawInputSystem, bool inputBlocked) {
     previousActions = currentActions;
+    previousAxis2D = currentAxis2D;
     currentActions.clear();
+    currentAxis2D.clear();
 
     if (inputBlocked) {
         return;
@@ -171,6 +249,14 @@ void VirtualInputSystem::updateFromRawInput(const RawInputSystem& rawInputSystem
     for (const auto& binding : mouseButtonBindings) {
         setActionState(currentActions, binding.second, rawInputSystem.isMouseButtonDown(binding.first));
     }
+
+    for (const KeyAxis2DBinding& binding : keyAxis2DBindings) {
+        if (rawInputSystem.isKeyDown(binding.key)) {
+            addAxis2DState(currentAxis2D, binding.action, binding.value);
+        }
+    }
+
+    clampAxis2DStates(currentAxis2D);
 }
 
 void VirtualInputSystem::updateFromTouchControls(
@@ -184,18 +270,38 @@ void VirtualInputSystem::updateFromTouchControls(
     for (const auto& binding : touchControlBindings) {
         setActionState(currentActions, binding.second, touchControlSystem.isControlDown(binding.first));
     }
+
+    for (const TouchAxis2DBinding& binding : touchAxis2DBindings) {
+        if (touchControlSystem.isControlDown(binding.control)) {
+            addAxis2DState(currentAxis2D, binding.action, binding.value);
+        }
+    }
+
+    clampAxis2DStates(currentAxis2D);
+}
+
+Vector2F VirtualInputSystem::getAxis2D(InputAction action) const {
+    return getAxisState(currentAxis2D, action);
 }
 
 bool VirtualInputSystem::isActionDown(InputAction action) const {
-    return getActionState(currentActions, action);
+    return getActionState(currentActions, action) || isAxisValueActive(getAxis2D(action));
 }
 
 bool VirtualInputSystem::wasActionPressed(InputAction action) const {
-    return getActionState(currentActions, action) && !getActionState(previousActions, action);
+    const bool current = getActionState(currentActions, action)
+        || isAxisValueActive(getAxisState(currentAxis2D, action));
+    const bool previous = getActionState(previousActions, action)
+        || isAxisValueActive(getAxisState(previousAxis2D, action));
+    return current && !previous;
 }
 
 bool VirtualInputSystem::wasActionReleased(InputAction action) const {
-    return !getActionState(currentActions, action) && getActionState(previousActions, action);
+    const bool current = getActionState(currentActions, action)
+        || isAxisValueActive(getAxisState(currentAxis2D, action));
+    const bool previous = getActionState(previousActions, action)
+        || isAxisValueActive(getAxisState(previousAxis2D, action));
+    return !current && previous;
 }
 
 void VirtualInputSystem::debugPrintState() const {
@@ -206,6 +312,12 @@ void VirtualInputSystem::debugPrintState() const {
                   << " down=" << (actionState.second ? "true" : "false")
                   << " pressed=" << (wasActionPressed(actionState.first) ? "true" : "false")
                   << " released=" << (wasActionReleased(actionState.first) ? "true" : "false")
+                  << std::endl;
+    }
+
+    for (const auto& axisState : currentAxis2D) {
+        std::cout << "  " << inputActionToString(axisState.first)
+                  << " axis=(" << axisState.second.x << ", " << axisState.second.y << ")"
                   << std::endl;
     }
 }
@@ -261,20 +373,8 @@ RawMouseButton rawMouseButtonFromString(const std::string& value) {
 InputAction inputActionFromString(const std::string& value) {
     const std::string normalized = normalizeInputName(value);
 
-    if (normalized == "moveup") {
-        return InputAction::MoveUp;
-    }
-
-    if (normalized == "movedown") {
-        return InputAction::MoveDown;
-    }
-
-    if (normalized == "moveleft") {
-        return InputAction::MoveLeft;
-    }
-
-    if (normalized == "moveright") {
-        return InputAction::MoveRight;
+    if (normalized == "move") {
+        return InputAction::Move;
     }
 
     if (normalized == "fire") {
@@ -294,14 +394,8 @@ InputAction inputActionFromString(const std::string& value) {
 
 const char* inputActionToString(InputAction action) {
     switch (action) {
-        case InputAction::MoveUp:
-            return "MoveUp";
-        case InputAction::MoveDown:
-            return "MoveDown";
-        case InputAction::MoveLeft:
-            return "MoveLeft";
-        case InputAction::MoveRight:
-            return "MoveRight";
+        case InputAction::Move:
+            return "Move";
         case InputAction::Fire:
             return "Fire";
         case InputAction::Fire2:

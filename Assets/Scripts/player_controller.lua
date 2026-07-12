@@ -122,20 +122,21 @@ function onUpdate(entity, deltaTime, script)
     local moveX = 0.0
     local moveY = 0.0
     local moving = false
+    local move = Input.getAxis2D("Move")
 
-    if Input.isActionDown("MoveUp") then
+    if move ~= nil and move.y < -0.001 then
         moveY = -1.0
         rotation = 0.0
         moving = true
-    elseif Input.isActionDown("MoveDown") then
+    elseif move ~= nil and move.y > 0.001 then
         moveY = 1.0
         rotation = 180.0
         moving = true
-    elseif Input.isActionDown("MoveLeft") then
+    elseif move ~= nil and move.x < -0.001 then
         moveX = -1.0
         rotation = -90.0
         moving = true
-    elseif Input.isActionDown("MoveRight") then
+    elseif move ~= nil and move.x > 0.001 then
         moveX = 1.0
         rotation = 90.0
         moving = true

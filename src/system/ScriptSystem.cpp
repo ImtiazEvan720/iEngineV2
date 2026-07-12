@@ -864,6 +864,9 @@ void ScriptSystem::bindEngineTypes() {
     inputTable["isActionDown"] = [](const std::string& actionName) {
         return VirtualInputSystem::getInstance().isActionDown(inputActionFromString(actionName));
     };
+    inputTable["getAxis2D"] = [](const std::string& actionName) {
+        return VirtualInputSystem::getInstance().getAxis2D(inputActionFromString(actionName));
+    };
     inputTable["wasActionPressed"] = [](const std::string& actionName) {
         return VirtualInputSystem::getInstance().wasActionPressed(inputActionFromString(actionName));
     };

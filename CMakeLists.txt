@@ -284,6 +284,7 @@ set(IENGINE_SOURCES
     src/misc/TextureAsset.cpp
     src/system/AssetManager.cpp
     src/system/EngineState.cpp
+    src/system/InputActionRegistry.cpp
     src/system/InputListener.cpp
     src/system/InputSystem.cpp
     src/system/PhysicsSystem.cpp
