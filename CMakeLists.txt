@@ -453,6 +453,10 @@ endif()
 target_compile_features(iEngineV2 PRIVATE cxx_std_17)
 target_compile_definitions(iEngineV2 PRIVATE IMGUI_USER_CONFIG=${IENGINE_IMGUI_USER_CONFIG})
 
+if(MSVC)
+    target_compile_options(iEngineV2 PRIVATE /bigobj)
+endif()
+
 if(IENGINE_WITH_EDITOR)
     target_compile_definitions(iEngineV2 PRIVATE IENGINE_WITH_EDITOR)
 endif()
