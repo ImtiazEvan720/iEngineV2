@@ -24,6 +24,9 @@ jobs:
       - name: Build
         run: cmake --build build-release --config Release --parallel
 
+      - name: Ad-hoc sign macOS binary
+        run: codesign --force --deep --sign - build-release/bin/iEngineV2
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
