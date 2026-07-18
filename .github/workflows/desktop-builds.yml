@@ -1,0 +1,56 @@
+name: Desktop Builds
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    name: macOS Release
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-release
+          -DCMAKE_BUILD_TYPE=Release
+          -DIENGINE_WITH_EDITOR=OFF
+
+      - name: Build
+        run: cmake --build build-release --config Release --parallel
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iEngineV2-macos
+          path: |
+            build-release/bin/**
+
+  windows:
+    name: Windows Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-release
+          -DCMAKE_BUILD_TYPE=Release
+          -DIENGINE_WITH_EDITOR=OFF
+
+      - name: Build
+        run: cmake --build build-release --config Release --parallel
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iEngineV2-windows
+          path: |
+            build-release/bin/**
