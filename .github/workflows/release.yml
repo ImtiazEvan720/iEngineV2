@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure
         run: cmake -S . -B build
@@ -33,7 +33,7 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent build/bin dist/iEngineV2-macos.zip
 
       - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: iEngineV2-macos
           path: dist/iEngineV2-macos.zip
@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure
         run: cmake -S . -B build
@@ -59,7 +59,7 @@ jobs:
           Compress-Archive -Path build/bin/* -DestinationPath dist/iEngineV2-windows.zip -Force
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: iEngineV2-windows
           path: dist/iEngineV2-windows.zip
@@ -71,12 +71,12 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: dist
 
       - name: Publish release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/iEngineV2-macos/iEngineV2-macos.zip
