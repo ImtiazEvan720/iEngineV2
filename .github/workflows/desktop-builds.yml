@@ -2,8 +2,8 @@ name: Desktop Builds
 
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches:
+      - "release/**"
   workflow_dispatch:
 
 jobs:
