@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 namespace {
 constexpr float HandleSize = 8.0f;
@@ -124,6 +125,23 @@ bool buildScreenRectScreenSpace(
     screenRect.bottomLeft = rotatedCorner(rect, -halfWidth, halfHeight);
     screenRect.center = rect.center;
     return true;
+}
+
+void debugPrintViewportChange(const char* label, const RenderRect& viewport) {
+    static float lastWidth = -1.0f;
+    static float lastHeight = -1.0f;
+
+    if (viewport.width == lastWidth && viewport.height == lastHeight) {
+        return;
+    }
+
+    lastWidth = viewport.width;
+    lastHeight = viewport.height;
+
+    std::cout
+        << label << " viewport: "
+        << viewport.width << "x" << viewport.height
+        << std::endl;
 }
 
 bool isResizeLeftHandle(RectGizmo::Handle handle) {
@@ -501,6 +519,8 @@ void RectGizmo::drawHandles(
     const Camera2D& camera,
     const RenderRect& viewport
 ) const {
+    debugPrintViewportChange("RectGizmo", viewport);
+
     ScreenRect screenRect;
     if (!buildScreenRect(rect, camera, viewport, screenRect)) {
         return;
@@ -513,6 +533,8 @@ void RectGizmo::drawHandlesScreenSpace(
     const Rect& rect,
     const RenderRect& viewport
 ) const {
+    debugPrintViewportChange("RectGizmo", viewport);
+
     ScreenRect screenRect;
     if (!buildScreenRectScreenSpace(rect, viewport, screenRect)) {
         return;

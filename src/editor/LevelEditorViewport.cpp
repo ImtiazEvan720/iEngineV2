@@ -53,7 +53,7 @@ bool LevelEditorViewport::draw(
         transformGizmo.draw(Level::getCurrentLevel(), entityInspector, camera);
     }
 
-    if (activeEditorViewport && viewportGrid.shouldShowColliders()) {
+    if (activeEditorViewport && viewportGrid.shouldShowColliders() && !isGamePlaying) {
         colliderGizmo.draw(entityInspector, camera);
     }
 

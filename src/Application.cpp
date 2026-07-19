@@ -7,6 +7,7 @@
 #include "misc/TextureAsset.h"
 #include "system/AssetManager.h"
 #include "system/EngineState.h"
+#include "system/EngineDefaults.h"
 #include "system/IGuiBackend.h"
 #include "system/IRenderBackend.h"
 #include "system/IWindowBackend.h"
@@ -246,7 +247,8 @@ bool loadWindowConfig(
     }
 
     std::cout << "Loaded config.xml. Window: " << windowWidth << "x" << windowHeight
-              << ", title: " << windowTitle << std::endl;
+              << ", title: " << windowTitle << ", framerate: "
+              << framerateLimit << std::endl;
     return true;
 }
 
@@ -290,18 +292,21 @@ bool Application::initialize(int argc, char* argv[]) {
         return false;
     }
 
-    int windowWidth = 1280;
-    int windowHeight = 720;
-    int framerateLimit = 60;
-    std::string windowTitle = "iEngine(Alpha)";
     const std::string runtimeDataRoot = getRuntimeDataRoot(argc, argv);
     ProjectManager& projectManager = ProjectManager::getInstance();
     projectManager.setDefaultProjectRoot(runtimeDataRoot);
 
     const std::string configPath = getRuntimePath(runtimeDataRoot, "config.xml");
 
-    if (!loadWindowConfig(configPath, windowWidth, windowHeight, framerateLimit, windowTitle)) {
-        return false;
+    int windowWidth = EngineDefaults::WindowWidth;
+    int windowHeight = EngineDefaults::WindowHeight;
+    int frameRate = EngineDefaults::FrameLimit;
+    std::string windowTitle = EngineDefaults::WindowTitle;
+
+    if (!loadWindowConfig(configPath, windowWidth, windowHeight, frameRate, windowTitle)) {
+        std::cout << "Using default window config: " << windowWidth << "x" << windowHeight
+                  << ", title: " << windowTitle << ", framerate: "
+                  << frameRate << std::endl;
     }
 
     const std::string backendName = getBackendName(argc, argv);
@@ -309,7 +314,7 @@ bool Application::initialize(int argc, char* argv[]) {
 
     if (backendName == "sdl") {
         auto sdlWindowBackend = std::make_unique<SdlWindowBackend>();
-        if (!sdlWindowBackend->initialize(windowWidth, windowHeight, windowTitle, framerateLimit)) {
+        if (!sdlWindowBackend->initialize(windowWidth, windowHeight, windowTitle, frameRate)) {
             return false;
         }
 
@@ -320,7 +325,7 @@ bool Application::initialize(int argc, char* argv[]) {
 #ifndef IENGINE_SDL_ONLY
     } else if (backendName == "sfml") {
         auto sfmlWindowBackend = std::make_unique<SfmlWindowBackend>();
-        if (!sfmlWindowBackend->initialize(windowWidth, windowHeight, windowTitle, framerateLimit)) {
+        if (!sfmlWindowBackend->initialize(windowWidth, windowHeight, windowTitle, frameRate)) {
             return false;
         }
 
@@ -417,8 +422,13 @@ void Application::tick() {
     rawInputSystem.beginFrame();
     windowBackend->pollEvents(inputSystem, guiBackend.get());
 
+    WindowResizeEvent resizeEvent;
+    if (windowBackend->consumeResizeEvent(resizeEvent)) {
+        Renderer::getInstance().debugPrintResizeInfo("Window resized", resizeEvent);
+    }
+
     TouchControlSystem& touchControlSystem = TouchControlSystem::getInstance();
-    const RenderRect viewport = windowBackend->getViewport();
+    const RenderRect viewport = Renderer::getInstance().getViewport();
     touchControlSystem.updateFromRawInput(rawInputSystem, viewport.width, viewport.height);
 
     const bool uiConsumedInput = UISystem::getInstance().processInput(

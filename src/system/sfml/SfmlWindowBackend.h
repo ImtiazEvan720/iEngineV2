@@ -23,10 +23,13 @@ public:
     void beginFrame(const RenderColor& clearColor) override;
     void endFrame() override;
     RenderRect getViewport() const override;
+    bool consumeResizeEvent(WindowResizeEvent& resizeEvent) override;
 
     sf::RenderWindow& getWindow();
     const sf::RenderWindow& getWindow() const;
 
 private:
     std::unique_ptr<sf::RenderWindow> window;
+    WindowResizeEvent pendingResizeEvent;
+    bool hasPendingResizeEvent = false;
 };

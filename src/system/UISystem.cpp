@@ -8,7 +8,9 @@
 #include "math/Math2D.h"
 #include "misc/Level.h"
 #include "system/IWindowBackend.h"
+#include "system/EngineState.h"
 #include "system/RawInputSystem.h"
+#include "system/Renderer.h"
 #include "system/ScriptSystem.h"
 
 #include <algorithm>
@@ -86,6 +88,14 @@ bool isUiEntityHigher(const Entity* left, const Entity* right) {
 
     return left->getId() > right->getId();
 }
+
+Vector2F getUiPointerPosition(const Vector2F& screenPosition) {
+    if (EngineState::getInstance().isPlaying()) {
+        return Renderer::getInstance().screenToGamePosition(screenPosition);
+    }
+
+    return screenPosition;
+}
 }
 
 UISystem& UISystem::getInstance() {
@@ -133,6 +143,8 @@ bool UISystem::processInput(const RawInputSystem& rawInputSystem, IWindowBackend
         pointer.pressedThisFrame = rawInputSystem.wasMouseButtonPressed(RawMouseButton::Left);
         pointer.releasedThisFrame = rawInputSystem.wasMouseButtonReleased(RawMouseButton::Left);
     }
+
+    pointer.position = getUiPointerPosition(pointer.position);
 
     for (Entity& entity : level.getEntities()) {
         UIButtonComponent* button = entity.getComponent<UIButtonComponent>();

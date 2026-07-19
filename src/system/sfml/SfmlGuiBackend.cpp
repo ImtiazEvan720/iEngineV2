@@ -1,6 +1,7 @@
 #include "system/sfml/SfmlGuiBackend.h"
 
 #include "system/InputSystem.h"
+#include "system/Renderer.h"
 #include "system/sfml/SfmlWindowBackend.h"
 
 #include "imgui.h"
@@ -66,7 +67,7 @@ void SfmlGuiBackend::render(const InputSystem& inputSystem) {
         return;
     }
 
-    levelEditor.draw(inputSystem, windowBackend->getViewport().width);
+    levelEditor.draw(inputSystem, Renderer::getInstance().getViewport().width);
 
     ImGui::SFML::Render(windowBackend->getWindow());
 #endif

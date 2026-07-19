@@ -5,6 +5,7 @@
 #include "system/RawInputSystem.h"
 
 #include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/Rect.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/View.hpp>
 #include <SFML/Window/ContextSettings.hpp>
@@ -172,6 +173,14 @@ void SfmlWindowBackend::pollEvents(InputSystem& inputSystem, IGuiBackend* guiBac
         if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
             inputSystem.processKeyPressed(mapKey(keyPressed->code));
             rawInputSystem.setKeyDown(mapRawKey(keyPressed->code));
+        } else if (const auto* resized = event->getIf<sf::Event::Resized>()) {
+            pendingResizeEvent = WindowResizeEvent{
+                static_cast<int>(resized->size.x),
+                static_cast<int>(resized->size.y),
+                static_cast<int>(resized->size.x),
+                static_cast<int>(resized->size.y)
+            };
+            hasPendingResizeEvent = true;
         } else if (const auto* keyReleased = event->getIf<sf::Event::KeyReleased>()) {
             inputSystem.processKeyReleased(mapKey(keyReleased->code));
             rawInputSystem.setKeyUp(mapRawKey(keyReleased->code));
@@ -233,7 +242,11 @@ void SfmlWindowBackend::beginFrame(const RenderColor& clearColor) {
     }
 
     window->resetGLStates();
-    window->setView(window->getDefaultView());
+    const sf::Vector2u size = window->getSize();
+    window->setView(sf::View(sf::FloatRect(
+        {0.0f, 0.0f},
+        {static_cast<float>(size.x), static_cast<float>(size.y)}
+    )));
     window->clear(sf::Color(clearColor.r, clearColor.g, clearColor.b, clearColor.a));
 }
 
@@ -256,6 +269,16 @@ RenderRect SfmlWindowBackend::getViewport() const {
         static_cast<float>(size.x),
         static_cast<float>(size.y)
     };
+}
+
+bool SfmlWindowBackend::consumeResizeEvent(WindowResizeEvent& resizeEvent) {
+    if (!hasPendingResizeEvent) {
+        return false;
+    }
+
+    resizeEvent = pendingResizeEvent;
+    hasPendingResizeEvent = false;
+    return true;
 }
 
 sf::RenderWindow& SfmlWindowBackend::getWindow() {

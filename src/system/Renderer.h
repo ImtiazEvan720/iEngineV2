@@ -1,12 +1,14 @@
 #pragma once
 
 #include "misc/Camera2D.h"
+#include "system/EngineDefaults.h"
 #include "system/IRenderBackend.h"
 #include "system/TileLayerRenderer.h"
 
 #include <vector>
 
 class IWindowBackend;
+struct WindowResizeEvent;
 class LevelAsset;
 class Entity;
 class PlayerCameraComponent;
@@ -22,6 +24,11 @@ public:
     Camera2D& getCamera();
     const Camera2D& getCamera() const;
     RenderRect getViewport() const;
+    void setInternalResolution(int width, int height);
+    RenderRect getWindowViewport() const;
+    RenderRect getGameViewport() const;
+    RenderRect getLetterboxDestination() const;
+    Vector2F screenToGamePosition(const Vector2F& screenPosition) const;
     float getUiScale(const Entity& entity) const;
     float consumePendingPinchZoomFactor();
     bool buildTileLayerBatches(LevelAsset& levelAsset);
@@ -38,6 +45,7 @@ public:
         float lifetimeSeconds = 0.0f
     );
     void clearDebugDraw();
+    void debugPrintResizeInfo(const char* reason, const WindowResizeEvent& resizeEvent) const;
     void render();
     ImTextureID renderCameraPreview(
         const TransformComponent& transform,
@@ -67,6 +75,9 @@ private:
 
     void applyMainCamera(const RenderRect& viewport);
     void ensureCameraPreviewTarget(int width, int height);
+    void ensureGameRenderTarget();
+    void destroyCameraPreviewTarget();
+    void destroyGameRenderTarget();
     Camera2D buildCameraFromPlayerCamera(
         const TransformComponent& transform,
         const PlayerCameraComponent& cameraComponent,
@@ -75,13 +86,18 @@ private:
     void renderWorld(const Camera2D& renderCamera, const RenderRect& viewport);
     void renderDebugPoints(const Camera2D& renderCamera, const RenderRect& viewport);
     void updateDebugPoints();
-    void renderUI();
+    void renderUI(const RenderRect& viewport);
 
     IRenderBackend* renderBackend = nullptr;
     IWindowBackend* windowBackend = nullptr;
     RenderTargetHandle cameraPreviewTarget = nullptr;
     int cameraPreviewWidth = 0;
     int cameraPreviewHeight = 0;
+    RenderTargetHandle gameRenderTarget = nullptr;
+    int gameRenderTargetWidth = 0;
+    int gameRenderTargetHeight = 0;
+    int internalResolutionWidth = EngineDefaults::InternalResolutionWidth;
+    int internalResolutionHeight = EngineDefaults::InternalResolutionHeight;
     float renderScale = 4.0f;
     bool editorDragDropActive = false;
     bool editorGridVisible = false;

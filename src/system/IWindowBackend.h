@@ -7,6 +7,13 @@
 class IGuiBackend;
 class InputSystem;
 
+struct WindowResizeEvent {
+    int width = 0;
+    int height = 0;
+    int pixelWidth = 0;
+    int pixelHeight = 0;
+};
+
 class IWindowBackend {
 public:
     virtual ~IWindowBackend() = default;
@@ -21,6 +28,7 @@ public:
     virtual void beginFrame(const RenderColor& clearColor) = 0;
     virtual void endFrame() = 0;
     virtual RenderRect getViewport() const = 0;
+    virtual bool consumeResizeEvent(WindowResizeEvent& resizeEvent) = 0;
     virtual float consumePendingPinchZoomFactor() { return 1.0f; }
     virtual void startTextInput() {}
     virtual void stopTextInput() {}

@@ -406,6 +406,8 @@ void SdlRenderBackend::beginRenderTarget(RenderTargetHandle target) {
     }
 
     SDL_SetRenderTarget(renderer, static_cast<SDL_Texture*>(target));
+    (void)SDL_SetRenderViewport(renderer, nullptr);
+    (void)SDL_SetRenderClipRect(renderer, nullptr);
 }
 
 void SdlRenderBackend::endRenderTarget() {
@@ -415,6 +417,8 @@ void SdlRenderBackend::endRenderTarget() {
     }
 
     SDL_SetRenderTarget(renderer, nullptr);
+    (void)SDL_SetRenderViewport(renderer, nullptr);
+    (void)SDL_SetRenderClipRect(renderer, nullptr);
 }
 
 RenderTextureHandle SdlRenderBackend::getRenderTargetTexture(RenderTargetHandle target) {

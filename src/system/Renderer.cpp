@@ -286,12 +286,10 @@ Renderer &Renderer::getInstance()
 
 void Renderer::setRenderBackend(IRenderBackend *backend)
 {
-    if (cameraPreviewTarget != nullptr && renderBackend != nullptr)
+    if (renderBackend != nullptr && renderBackend != backend)
     {
-        renderBackend->destroyRenderTarget(cameraPreviewTarget);
-        cameraPreviewTarget = nullptr;
-        cameraPreviewWidth = 0;
-        cameraPreviewHeight = 0;
+        destroyCameraPreviewTarget();
+        destroyGameRenderTarget();
     }
 
     renderBackend = backend;
@@ -330,12 +328,86 @@ const Camera2D &Renderer::getCamera() const
 
 RenderRect Renderer::getViewport() const
 {
+    return getWindowViewport();
+}
+
+void Renderer::setInternalResolution(int width, int height)
+{
+    const int newWidth = std::max(1, width);
+    const int newHeight = std::max(1, height);
+
+    if (internalResolutionWidth == newWidth && internalResolutionHeight == newHeight)
+    {
+        return;
+    }
+
+    internalResolutionWidth = newWidth;
+    internalResolutionHeight = newHeight;
+    destroyGameRenderTarget();
+}
+
+RenderRect Renderer::getWindowViewport() const
+{
     if (windowBackend == nullptr)
     {
         return RenderRect{};
     }
 
     return windowBackend->getViewport();
+}
+
+RenderRect Renderer::getGameViewport() const
+{
+    return RenderRect{
+        0.0f,
+        0.0f,
+        static_cast<float>(internalResolutionWidth),
+        static_cast<float>(internalResolutionHeight)
+    };
+}
+
+RenderRect Renderer::getLetterboxDestination() const
+{
+    const RenderRect windowViewport = getWindowViewport();
+    const RenderRect gameViewport = getGameViewport();
+    if (windowViewport.width <= 0.0f ||
+        windowViewport.height <= 0.0f ||
+        gameViewport.width <= 0.0f ||
+        gameViewport.height <= 0.0f)
+    {
+        return RenderRect{};
+    }
+
+    const float scale = std::min(
+        windowViewport.width / gameViewport.width,
+        windowViewport.height / gameViewport.height
+    );
+    const float outputWidth = gameViewport.width * scale;
+    const float outputHeight = gameViewport.height * scale;
+
+    return RenderRect{
+        windowViewport.x + ((windowViewport.width - outputWidth) * 0.5f),
+        windowViewport.y + ((windowViewport.height - outputHeight) * 0.5f),
+        outputWidth,
+        outputHeight
+    };
+}
+
+Vector2F Renderer::screenToGamePosition(const Vector2F &screenPosition) const
+{
+    const RenderRect destination = getLetterboxDestination();
+    if (destination.width <= 0.0f || destination.height <= 0.0f)
+    {
+        return Vector2F::zero();
+    }
+
+    const float scaleX = static_cast<float>(internalResolutionWidth) / destination.width;
+    const float scaleY = static_cast<float>(internalResolutionHeight) / destination.height;
+
+    return Vector2F(
+        (screenPosition.x - destination.x) * scaleX,
+        (screenPosition.y - destination.y) * scaleY
+    );
 }
 
 float Renderer::getUiScale(const Entity &entity) const
@@ -439,13 +511,7 @@ void Renderer::ensureCameraPreviewTarget(int width, int height)
         return;
     }
 
-    if (cameraPreviewTarget != nullptr)
-    {
-        renderBackend->destroyRenderTarget(cameraPreviewTarget);
-        cameraPreviewTarget = nullptr;
-        cameraPreviewWidth = 0;
-        cameraPreviewHeight = 0;
-    }
+    destroyCameraPreviewTarget();
 
     cameraPreviewTarget = renderBackend->createRenderTarget(width, height);
     if (cameraPreviewTarget != nullptr)
@@ -453,6 +519,65 @@ void Renderer::ensureCameraPreviewTarget(int width, int height)
         cameraPreviewWidth = width;
         cameraPreviewHeight = height;
     }
+}
+
+void Renderer::ensureGameRenderTarget()
+{
+    if (renderBackend == nullptr || internalResolutionWidth <= 0 || internalResolutionHeight <= 0)
+    {
+        return;
+    }
+
+    if (gameRenderTarget != nullptr &&
+        gameRenderTargetWidth == internalResolutionWidth &&
+        gameRenderTargetHeight == internalResolutionHeight)
+    {
+        return;
+    }
+
+    destroyGameRenderTarget();
+
+    gameRenderTarget = renderBackend->createRenderTarget(
+        internalResolutionWidth,
+        internalResolutionHeight
+    );
+    if (gameRenderTarget != nullptr)
+    {
+        gameRenderTargetWidth = internalResolutionWidth;
+        gameRenderTargetHeight = internalResolutionHeight;
+    }
+}
+
+void Renderer::destroyCameraPreviewTarget()
+{
+    if (cameraPreviewTarget == nullptr || renderBackend == nullptr)
+    {
+        cameraPreviewTarget = nullptr;
+        cameraPreviewWidth = 0;
+        cameraPreviewHeight = 0;
+        return;
+    }
+
+    renderBackend->destroyRenderTarget(cameraPreviewTarget);
+    cameraPreviewTarget = nullptr;
+    cameraPreviewWidth = 0;
+    cameraPreviewHeight = 0;
+}
+
+void Renderer::destroyGameRenderTarget()
+{
+    if (gameRenderTarget == nullptr || renderBackend == nullptr)
+    {
+        gameRenderTarget = nullptr;
+        gameRenderTargetWidth = 0;
+        gameRenderTargetHeight = 0;
+        return;
+    }
+
+    renderBackend->destroyRenderTarget(gameRenderTarget);
+    gameRenderTarget = nullptr;
+    gameRenderTargetWidth = 0;
+    gameRenderTargetHeight = 0;
 }
 
 Camera2D Renderer::buildCameraFromPlayerCamera(
@@ -506,7 +631,9 @@ bool Renderer::isEntityInViewport(const Entity &entity) const
         return false;
     }
 
-    const RenderRect viewport = windowBackend->getViewport();
+    const RenderRect viewport = EngineState::getInstance().isPlaying()
+        ? getGameViewport()
+        : getWindowViewport();
     if (viewport.width <= 0.0f || viewport.height <= 0.0f)
     {
         return false;
@@ -552,6 +679,29 @@ void Renderer::debugDrawPoint(
 void Renderer::clearDebugDraw()
 {
     debugPoints.clear();
+}
+
+void Renderer::debugPrintResizeInfo(
+    const char *reason,
+    const WindowResizeEvent &resizeEvent) const
+{
+    const RenderRect windowViewport = getWindowViewport();
+    const RenderRect gameViewport = getGameViewport();
+    const RenderRect destination = getLetterboxDestination();
+
+    std::cout << "[Resize] " << (reason == nullptr ? "Window resized" : reason) << '\n'
+              << "  window logical: "
+              << resizeEvent.width << "x" << resizeEvent.height << '\n'
+              << "  window pixels: "
+              << resizeEvent.pixelWidth << "x" << resizeEvent.pixelHeight << '\n'
+              << "  window viewport: "
+              << windowViewport.width << "x" << windowViewport.height << '\n'
+              << "  internal/game: "
+              << gameViewport.width << "x" << gameViewport.height << '\n'
+              << "  scaled output: "
+              << destination.x << ", " << destination.y << ", "
+              << destination.width << "x" << destination.height
+              << std::endl;
 }
 
 void Renderer::renderWorld(const Camera2D &renderCamera, const RenderRect &viewport)
@@ -669,14 +819,13 @@ void Renderer::updateDebugPoints()
         debugPoints.end());
 }
 
-void Renderer::renderUI()
+void Renderer::renderUI(const RenderRect &viewport)
 {
-    if (renderBackend == nullptr || windowBackend == nullptr)
+    if (renderBackend == nullptr)
     {
         return;
     }
 
-    const RenderRect viewport = windowBackend->getViewport();
     if (viewport.width <= 0.0f || viewport.height <= 0.0f)
     {
         return;
@@ -948,12 +1097,46 @@ void Renderer::render()
         return;
     }
 
-    const RenderRect viewport = windowBackend->getViewport();
+    if (EngineState::getInstance().isPlaying())
+    {
+        ensureGameRenderTarget();
+
+        if (gameRenderTarget != nullptr)
+        {
+            const RenderRect gameViewport = getGameViewport();
+            renderBackend->beginRenderTarget(gameRenderTarget);
+            renderBackend->clear(RenderConstants::ClearColor);
+            applyMainCamera(gameViewport);
+            renderWorld(camera, gameViewport);
+            renderDebugPoints(camera, gameViewport);
+            renderUI(gameViewport);
+            renderBackend->endRenderTarget();
+
+            RenderTextureHandle gameTexture =
+                renderBackend->getRenderTargetTexture(gameRenderTarget);
+            const RenderRect destination = getLetterboxDestination();
+            if (gameTexture != nullptr && destination.width > 0.0f && destination.height > 0.0f)
+            {
+                renderBackend->drawTexture(
+                    gameTexture,
+                    gameViewport,
+                    destination,
+                    RenderVector2{0.0f, 0.0f},
+                    0.0f
+                );
+            }
+
+            updateDebugPoints();
+            return;
+        }
+    }
+
+    const RenderRect viewport = getWindowViewport();
     applyMainCamera(viewport);
     renderWorld(camera, viewport);
     renderDebugPoints(camera, viewport);
     updateDebugPoints();
-    renderUI();
+    renderUI(viewport);
 
     // const Vector2F TextPosition = Vector2F(viewport.width/2, viewport.height/2);
     // Vector2F screen = camera.worldToScreen(TextPosition, viewport);

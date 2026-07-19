@@ -93,6 +93,23 @@ void getTouchPosition(SDL_Window* window, const SDL_TouchFingerEvent& touchEvent
     x = touchEvent.x * static_cast<float>(width);
     y = touchEvent.y * static_cast<float>(height);
 }
+
+WindowResizeEvent getCurrentResizeEvent(SDL_Window* window, SDL_Renderer* renderer) {
+    WindowResizeEvent resizeEvent;
+    if (window != nullptr) {
+        SDL_GetWindowSize(window, &resizeEvent.width, &resizeEvent.height);
+    }
+
+    if (renderer != nullptr) {
+        SDL_GetCurrentRenderOutputSize(
+            renderer,
+            &resizeEvent.pixelWidth,
+            &resizeEvent.pixelHeight
+        );
+    }
+
+    return resizeEvent;
+}
 }
 
 bool SdlWindowBackend::initialize(
@@ -172,6 +189,10 @@ void SdlWindowBackend::pollEvents(InputSystem& inputSystem, IGuiBackend* guiBack
 
         if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
             open = false;
+        } else if (event.type == SDL_EVENT_WINDOW_RESIZED ||
+                   event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+            pendingResizeEvent = getCurrentResizeEvent(window, renderer);
+            hasPendingResizeEvent = true;
         } else if (event.type == SDL_EVENT_PINCH_UPDATE) {
             if (std::isfinite(event.pinch.scale) && event.pinch.scale > 0.0f) {
                 pendingPinchZoomFactor *= event.pinch.scale;
@@ -237,6 +258,9 @@ void SdlWindowBackend::beginFrame(const RenderColor& clearColor) {
         return;
     }
 
+    (void)SDL_SetRenderTarget(renderer, nullptr);
+    (void)SDL_SetRenderViewport(renderer, nullptr);
+    (void)SDL_SetRenderClipRect(renderer, nullptr);
     SDL_SetRenderDrawColor(renderer, clearColor.r, clearColor.g, clearColor.b, clearColor.a);
     SDL_RenderClear(renderer);
 }
@@ -270,6 +294,16 @@ RenderRect SdlWindowBackend::getViewport() const {
         static_cast<float>(width),
         static_cast<float>(height)
     };
+}
+
+bool SdlWindowBackend::consumeResizeEvent(WindowResizeEvent& resizeEvent) {
+    if (!hasPendingResizeEvent) {
+        return false;
+    }
+
+    resizeEvent = pendingResizeEvent;
+    hasPendingResizeEvent = false;
+    return true;
 }
 
 float SdlWindowBackend::consumePendingPinchZoomFactor() {

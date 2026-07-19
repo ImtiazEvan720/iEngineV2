@@ -20,6 +20,7 @@ public:
     void beginFrame(const RenderColor& clearColor) override;
     void endFrame() override;
     RenderRect getViewport() const override;
+    bool consumeResizeEvent(WindowResizeEvent& resizeEvent) override;
     float consumePendingPinchZoomFactor() override;
     void startTextInput() override;
     void stopTextInput() override;
@@ -33,4 +34,6 @@ private:
     bool open = false;
     int frameDelayMilliseconds = 0;
     float pendingPinchZoomFactor = 1.0f;
+    WindowResizeEvent pendingResizeEvent;
+    bool hasPendingResizeEvent = false;
 };

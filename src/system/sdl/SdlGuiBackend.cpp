@@ -1,6 +1,7 @@
 #include "system/sdl/SdlGuiBackend.h"
 
 #include "system/InputSystem.h"
+#include "system/Renderer.h"
 #include "system/sdl/SdlWindowBackend.h"
 
 #include "imgui.h"
@@ -74,7 +75,7 @@ void SdlGuiBackend::render(const InputSystem& inputSystem) {
         return;
     }
 
-    levelEditor.draw(inputSystem, windowBackend->getViewport().width);
+    levelEditor.draw(inputSystem, Renderer::getInstance().getViewport().width);
 
     ImGui::Render();
     ImGui_ImplSDLRenderer3_RenderDrawData(
