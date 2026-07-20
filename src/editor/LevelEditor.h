@@ -47,6 +47,7 @@ private:
     void drawProjectOpenWindow();
     void drawProjectNewWindow();
     void drawAssetsMenu();
+    void drawCreateLuaScriptWindow();
     void drawBuildMenu();
     void drawGameControls();
     void drawBuildOutputWindow();
@@ -63,6 +64,8 @@ private:
     void saveLevelToPromptPath();
     void loadSelectedLevel(const std::string& path);
     void duplicateSelectedEntity();
+    void openCreateLuaScriptWindow();
+    void createLuaScriptFromPrompt();
 
     bool enabled = true;
     bool showLevelLoadWindow = false;
@@ -70,6 +73,7 @@ private:
     bool showProjectNewWindow = false;
     bool showProjectOpenWindow = false;
     bool showBuildOutputWindow = false;
+    bool showCreateLuaScriptWindow = false;
     Tool currentTool = Tool::Select;
     std::string statusMessage;
     std::string saveLevelFileName = "current.ilevel";
@@ -77,6 +81,7 @@ private:
     std::string newProjectName = "NewProject";
     std::string projectBrowserPath;
     std::string selectedProjectPath;
+    std::string newLuaScriptFileName = "new_script.lua";
     EditorCamera camera;
     EntityInspectorPanel entityInspector;
     LevelManagerPanel levelManagerPanel;

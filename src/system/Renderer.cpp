@@ -13,6 +13,7 @@
 #include "components/UIPanelComponent.h"
 #include "math/Math2D.h"
 #include "misc/Level.h"
+#include "misc/RectTransformLayout.h"
 #include "misc/RenderConstants.h"
 #include "system/EngineState.h"
 #include "system/IWindowBackend.h"
@@ -110,50 +111,6 @@ namespace
                 0.0f,
                 255.0f));
         return color;
-    }
-
-    RenderRect buildUiRect(const RectTransformComponent &rectTransformComponent, float scale)
-    {
-        const Vector2F screenPosition = rectTransformComponent.getWorldPosition();
-        const Vector2F &size = rectTransformComponent.getSize();
-        const Vector2F &pivot = rectTransformComponent.getPivot();
-        const float clampedScale = std::isfinite(scale) ? std::max(0.0f, scale) : 1.0f;
-        const float width = size.x * clampedScale;
-        const float height = size.y * clampedScale;
-
-        if (!std::isfinite(width) || !std::isfinite(height) || width <= 0.0f || height <= 0.0f)
-        {
-            return RenderRect{};
-        }
-
-        const float left = -(width * pivot.x);
-        const float top = -(height * pivot.y);
-        const float right = left + width;
-        const float bottom = top + height;
-        const float rotation = rectTransformComponent.getWorldRotation();
-        const Vector2F corners[] = {
-            screenPosition + Math2D::rotate(Vector2F(left, top), rotation),
-            screenPosition + Math2D::rotate(Vector2F(right, top), rotation),
-            screenPosition + Math2D::rotate(Vector2F(right, bottom), rotation),
-            screenPosition + Math2D::rotate(Vector2F(left, bottom), rotation)
-        };
-        float minX = corners[0].x;
-        float maxX = corners[0].x;
-        float minY = corners[0].y;
-        float maxY = corners[0].y;
-        for (const Vector2F &corner : corners)
-        {
-            minX = std::min(minX, corner.x);
-            maxX = std::max(maxX, corner.x);
-            minY = std::min(minY, corner.y);
-            maxY = std::max(maxY, corner.y);
-        }
-
-        return RenderRect{
-            minX,
-            minY,
-            maxX - minX,
-            maxY - minY};
     }
 
     const CanvasComponent *getParentCanvas(const Entity &entity)
@@ -904,7 +861,8 @@ void Renderer::renderUI(const RenderRect &viewport)
         const UIButtonComponent *buttonComponent = entity->getComponent<UIButtonComponent>();
         const UIEditTextComponent *editTextComponent = entity->getComponent<UIEditTextComponent>();
         const UIPanelComponent *panelComponent = entity->getComponent<UIPanelComponent>();
-        const RenderRect unclippedRect = buildUiRect(*rectTransformComponent, getUiScale(*entity));
+        const RenderRect unclippedRect =
+            RectTransformLayout::buildBounds(*rectTransformComponent, viewport, getUiScale(*entity));
         if (unclippedRect.width <= 0.0f || unclippedRect.height <= 0.0f)
         {
             continue;
@@ -917,7 +875,8 @@ void Renderer::renderUI(const RenderRect &viewport)
         }
 
         const float scale = getUiScale(*entity);
-        const Vector2F position = rectTransformComponent->getWorldPosition();
+        const Vector2F position =
+            RectTransformLayout::resolveWorldPosition(*rectTransformComponent, viewport, scale);
         const Vector2F &size = rectTransformComponent->getSize();
         const Vector2F &pivot = rectTransformComponent->getPivot();
         const float width = size.x * scale;

@@ -13,6 +13,7 @@ private:
         float size[2] = {100.0f, 100.0f};
         float pivot[2] = {0.5f, 0.5f};
         float rotation = 0.0f;
+        int anchorAlignment = 0;
     };
 
     EditState editState;

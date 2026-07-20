@@ -9,8 +9,18 @@ RectTransformComponent::RectTransformComponent()
 {
 }
 
-RectTransformComponent::RectTransformComponent(const Vector2F& anchorPos, const Vector2F& sizeVal, const Vector2F& pivotVal, float rotationVal)
-    : anchorPosition(anchorPos), size(sizeVal), pivot(pivotVal), rotation(rotationVal)
+RectTransformComponent::RectTransformComponent(
+    const Vector2F& anchorPos,
+    const Vector2F& sizeVal,
+    const Vector2F& pivotVal,
+    float rotationVal,
+    AnchorAlignment alignmentVal
+)
+    : anchorPosition(anchorPos),
+      alignment(alignmentVal),
+      size(sizeVal),
+      pivot(pivotVal),
+      rotation(rotationVal)
 {
 }
 
@@ -50,8 +60,17 @@ void RectTransformComponent::setParent(RectTransformComponent* parent) {
     this->parent = parent;
 }
 
+void RectTransformComponent::setAnchorAlignment(AnchorAlignment alignmentValue)
+{
+    alignment = alignmentValue;
+}
+
 const Vector2F& RectTransformComponent::getAnchoredPosition() const {
     return anchorPosition;
+}
+
+AnchorAlignment RectTransformComponent::getAnchorAlignment() const {
+    return alignment;
 }
 
 Vector2F RectTransformComponent::getWorldPosition() const {
@@ -96,7 +115,8 @@ std::unique_ptr<Component> RectTransformComponent::clone() const {
         anchorPosition,
         size,
         pivot,
-        rotation
+        rotation,
+        alignment
     );
     copy->setEnabled(isEnabled());
     return copy;

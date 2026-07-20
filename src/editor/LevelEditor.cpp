@@ -23,6 +23,8 @@
 #include "misc/cpp/imgui_stdlib.h"
 
 #include <filesystem>
+#include <fstream>
+#include <system_error>
 #include <utility>
 
 namespace {
@@ -40,6 +42,22 @@ std::filesystem::path resolveLevelSavePath(const std::string& fileName) {
     }
 
     return ProjectManager::getInstance().getAssetsPath() / "Levels" / outputFileName;
+}
+
+std::filesystem::path resolveLuaScriptPath(const std::string& fileName) {
+    namespace fs = std::filesystem;
+
+    fs::path outputFileName(fileName);
+    outputFileName = outputFileName.filename();
+    if (outputFileName.empty()) {
+        return {};
+    }
+
+    if (outputFileName.extension() != ".lua") {
+        outputFileName.replace_extension(".lua");
+    }
+
+    return ProjectManager::getInstance().getAssetsPath() / "Scripts" / outputFileName;
 }
 
 std::string getBuildScriptCommand(const std::string& scriptName) {
@@ -277,6 +295,7 @@ void LevelEditor::draw(const InputSystem& inputSystem, float windowWidth) {
         spritePalette.refreshTilesets();
     }
 
+    drawCreateLuaScriptWindow();
     drawLevelSaveWindow();
     drawLevelLoadWindow();
     drawProjectNewWindow();
@@ -589,8 +608,16 @@ void LevelEditor::drawAssetsMenu() {
         return;
     }
 
-    if (ImGui::MenuItem("Create Tileset")) {
-        tilesetCreator.open();
+    if (ImGui::BeginMenu("Create")) {
+        if (ImGui::MenuItem("Lua Script")) {
+            openCreateLuaScriptWindow();
+        }
+
+        if (ImGui::MenuItem("Tileset")) {
+            tilesetCreator.open();
+        }
+
+        ImGui::EndMenu();
     }
 
     if (ImGui::MenuItem("Refresh Tilesets")) {
@@ -604,6 +631,86 @@ void LevelEditor::drawAssetsMenu() {
     }
 
     ImGui::EndMenu();
+}
+
+void LevelEditor::openCreateLuaScriptWindow() {
+    newLuaScriptFileName = "new_script.lua";
+    showCreateLuaScriptWindow = true;
+}
+
+void LevelEditor::drawCreateLuaScriptWindow() {
+    if (!showCreateLuaScriptWindow) {
+        return;
+    }
+
+    if (!ImGui::Begin("Create Lua Script", &showCreateLuaScriptWindow)) {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::InputText("File Name", &newLuaScriptFileName);
+
+    const std::filesystem::path outputPath = resolveLuaScriptPath(newLuaScriptFileName);
+    if (!outputPath.empty()) {
+        ImGui::TextWrapped("Output: %s", outputPath.string().c_str());
+    }
+
+    if (ImGui::Button("Create")) {
+        createLuaScriptFromPrompt();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Cancel")) {
+        showCreateLuaScriptWindow = false;
+    }
+
+    ImGui::End();
+}
+
+void LevelEditor::createLuaScriptFromPrompt() {
+    const std::filesystem::path outputPath = resolveLuaScriptPath(newLuaScriptFileName);
+    if (outputPath.empty()) {
+        statusMessage = "Lua script file name cannot be empty.";
+        return;
+    }
+
+    std::error_code errorCode;
+    std::filesystem::create_directories(outputPath.parent_path(), errorCode);
+    if (errorCode) {
+        statusMessage = "Failed to create Scripts folder: " + errorCode.message();
+        return;
+    }
+
+    if (std::filesystem::exists(outputPath)) {
+        statusMessage = "Lua script already exists: " + outputPath.filename().string();
+        return;
+    }
+
+    std::ofstream file(outputPath);
+    if (!file.is_open()) {
+        statusMessage = "Failed to create Lua script: " + outputPath.string();
+        return;
+    }
+
+    file << R"(ScriptProperties = {
+}
+
+function onStart(entity, script)
+    Engine.log("Started Lua script on " .. entity:getName())
+end
+
+function onUpdate(entity, deltaTime, script)
+end
+)";
+
+    if (!file.good()) {
+        statusMessage = "Failed to write Lua script: " + outputPath.string();
+        return;
+    }
+
+    statusMessage = "Created Lua script: " + outputPath.filename().string();
+    showCreateLuaScriptWindow = false;
 }
 
 void LevelEditor::drawBuildMenu() {

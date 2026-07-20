@@ -3,10 +3,36 @@
 #include "Entity.h"
 #include "components/RectTransformComponent.h"
 #include "math/Vector2F.h"
+#include "misc/RectTransformLayout.h"
 
 #include "imgui.h"
 
 #include <algorithm>
+#include <iterator>
+
+namespace {
+constexpr AnchorAlignment AnchorAlignments[] = {
+    AnchorAlignment::LeftTop,
+    AnchorAlignment::LeftCenter,
+    AnchorAlignment::LeftBottom,
+    AnchorAlignment::CenterTop,
+    AnchorAlignment::Center,
+    AnchorAlignment::CenterBottom,
+    AnchorAlignment::RightTop,
+    AnchorAlignment::RightCenter,
+    AnchorAlignment::RightBottom
+};
+
+int getAnchorAlignmentIndex(AnchorAlignment alignment) {
+    for (int index = 0; index < static_cast<int>(std::size(AnchorAlignments)); ++index) {
+        if (AnchorAlignments[index] == alignment) {
+            return index;
+        }
+    }
+
+    return 0;
+}
+}
 
 void RectTransformComponentDrawer::draw(
     Entity& entity,
@@ -31,6 +57,28 @@ void RectTransformComponentDrawer::draw(
         editState.pivot[0] = pivot.x;
         editState.pivot[1] = pivot.y;
         editState.rotation = rectTransform->getRotation();
+        editState.anchorAlignment = getAnchorAlignmentIndex(rectTransform->getAnchorAlignment());
+    }
+
+    if (ImGui::BeginCombo(
+            "Anchor Alignment",
+            RectTransformLayout::anchorAlignmentToString(AnchorAlignments[editState.anchorAlignment])
+        )) {
+        for (int index = 0; index < static_cast<int>(std::size(AnchorAlignments)); ++index) {
+            const AnchorAlignment alignment = AnchorAlignments[index];
+            const bool selected = index == editState.anchorAlignment;
+            if (ImGui::Selectable(RectTransformLayout::anchorAlignmentToString(alignment), selected)) {
+                editState.anchorAlignment = index;
+                rectTransform->setAnchorAlignment(alignment);
+                statusMessage = "Updated RectTransformComponent anchor alignment.";
+            }
+
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+
+        ImGui::EndCombo();
     }
 
     ImGui::InputFloat2("Anchored Position", editState.anchoredPosition, "%.2f");

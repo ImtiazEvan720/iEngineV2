@@ -8,6 +8,7 @@
 #include "math/Math2D.h"
 #include "math/Vector2F.h"
 #include "misc/Level.h"
+#include "misc/RectTransformLayout.h"
 #include "system/Renderer.h"
 
 #include <string>
@@ -41,7 +42,7 @@ void RectTransformGizmo::draw(
     }
 
     RectGizmo::Rect rect;
-    this->calculateRect(rect, *rectTransform);
+    this->calculateRect(rect, *rectTransform, viewport);
     rectGizmo.drawHandlesScreenSpace(
         rect,
         viewport
@@ -67,7 +68,7 @@ bool RectTransformGizmo::handleInteraction(
     }
 
     RectGizmo::Rect currentRect;
-    calculateRect(currentRect, *rectTransform);
+    calculateRect(currentRect, *rectTransform, viewport);
 
     RectGizmo::Options options;
     options.allowMove = false;
@@ -90,7 +91,7 @@ bool RectTransformGizmo::handleInteraction(
     draggingEntityId = -1;
 
     if (result.changed) {
-        applyRect(result.rect, *rectTransform);
+        applyRect(result.rect, *rectTransform, viewport);
     }
 
     if (result.changed || result.finished) {
@@ -109,7 +110,8 @@ bool RectTransformGizmo::handleInteraction(
 
 void RectTransformGizmo::calculateRect(
     RectGizmo::Rect& rect,
-    const RectTransformComponent& rectTransform
+    const RectTransformComponent& rectTransform,
+    const RenderRect& viewport
 ) const {
     const Vector2F& size = rectTransform.getSize();
     const Vector2F& pivot = rectTransform.getPivot();
@@ -125,7 +127,7 @@ void RectTransformGizmo::calculateRect(
     );
 
     rect.center =
-        rectTransform.getWorldPosition()
+        RectTransformLayout::resolveWorldPosition(rectTransform, viewport, scale)
         + Math2D::rotate(pivotToCenter, worldRotation);
     rect.width = scaledSize.x;
     rect.height = scaledSize.y;
@@ -134,7 +136,8 @@ void RectTransformGizmo::calculateRect(
 
 void RectTransformGizmo::applyRect(
     const RectGizmo::Rect& rect,
-    RectTransformComponent& rectTransform
+    RectTransformComponent& rectTransform,
+    const RenderRect& viewport
 ) {
     const Vector2F& pivot = rectTransform.getPivot();
     const Entity* entity = rectTransform.getEntity();
@@ -148,6 +151,11 @@ void RectTransformGizmo::applyRect(
     const Vector2F worldPivot =
         rect.center + Math2D::rotate(centerToPivot, rect.rotation);
 
-    rectTransform.setWorldPosition(worldPivot);
+    rectTransform.setAnchoredPosition(RectTransformLayout::worldToAnchoredPosition(
+        rectTransform,
+        worldPivot,
+        viewport,
+        scale
+    ));
     rectTransform.setSize({rect.width / scale, rect.height / scale});
 }

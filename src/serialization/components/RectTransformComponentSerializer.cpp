@@ -2,6 +2,7 @@
 
 #include "Entity.h"
 #include "components/RectTransformComponent.h"
+#include "misc/RectTransformLayout.h"
 #include "serialization/ComponentSerializationHelpers.h"
 
 #include "tinyxml2.h"
@@ -39,6 +40,10 @@ void RectTransformComponentSerializer::save(
     component->SetAttribute("pivotX", pivot.x);
     component->SetAttribute("pivotY", pivot.y);
     component->SetAttribute("rotation", rectTransform->getRotation());
+    component->SetAttribute(
+        "anchorAlignment",
+        RectTransformLayout::anchorAlignmentToString(rectTransform->getAnchorAlignment())
+    );
 }
 
 bool RectTransformComponentSerializer::load(
@@ -66,6 +71,11 @@ bool RectTransformComponentSerializer::load(
         componentElement.FloatAttribute("pivotY", 0.0f)
     );
     const float rotation = componentElement.FloatAttribute("rotation", 0.0f);
+    AnchorAlignment anchorAlignment = AnchorAlignment::LeftTop;
+    const char* anchorAlignmentText = componentElement.Attribute("anchorAlignment");
+    if (anchorAlignmentText != nullptr) {
+        (void)RectTransformLayout::anchorAlignmentFromString(anchorAlignmentText, anchorAlignment);
+    }
 
     RectTransformComponent* rectTransform = entity.getComponent<RectTransformComponent>();
     if (rectTransform == nullptr) {
@@ -73,7 +83,8 @@ bool RectTransformComponentSerializer::load(
             position,
             size,
             pivot,
-            rotation
+            rotation,
+            anchorAlignment
         );
         ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, component);
     } else {
@@ -81,6 +92,7 @@ bool RectTransformComponentSerializer::load(
         rectTransform->setSize(size);
         rectTransform->setPivot(pivot);
         rectTransform->setRotation(rotation);
+        rectTransform->setAnchorAlignment(anchorAlignment);
         ComponentSerializationHelpers::applyComponentEnabledAttribute(componentElement, *rectTransform);
     }
 

@@ -27,8 +27,16 @@ public:
     );
 
 private:
-    void calculateRect(RectGizmo::Rect& rect, const RectTransformComponent& rectTransform) const;
-    void applyRect(const RectGizmo::Rect& rect, RectTransformComponent& rectTransform);
+    void calculateRect(
+        RectGizmo::Rect& rect,
+        const RectTransformComponent& rectTransform,
+        const RenderRect& viewport
+    ) const;
+    void applyRect(
+        const RectGizmo::Rect& rect,
+        RectTransformComponent& rectTransform,
+        const RenderRect& viewport
+    );
 
     RectGizmo::Rect rect = RectGizmo::Rect();
     RectGizmo rectGizmo;

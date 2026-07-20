@@ -7,6 +7,7 @@
 #include "components/UIEditTextComponent.h"
 #include "math/Math2D.h"
 #include "misc/Level.h"
+#include "misc/RectTransformLayout.h"
 #include "system/IWindowBackend.h"
 #include "system/EngineState.h"
 #include "system/RawInputSystem.h"
@@ -364,7 +365,13 @@ bool UISystem::isPointInsideRectTransform(
     }
 
     const Vector2F localPosition = Math2D::rotate(
-        screenPosition - rectTransform.getWorldPosition(),
+        screenPosition - RectTransformLayout::resolveWorldPosition(
+            rectTransform,
+            EngineState::getInstance().isPlaying()
+                ? Renderer::getInstance().getGameViewport()
+                : Renderer::getInstance().getWindowViewport(),
+            scale
+        ),
         -rectTransform.getWorldRotation()
     );
     const float left = -(width * pivot.x);

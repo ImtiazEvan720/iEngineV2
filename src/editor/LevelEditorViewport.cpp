@@ -16,6 +16,7 @@
 #include "math/Vector2F.h"
 #include "misc/Camera2D.h"
 #include "misc/Level.h"
+#include "misc/RectTransformLayout.h"
 #include "misc/Sprite.h"
 #include "system/Renderer.h"
 #include "system/EngineState.h"
@@ -159,7 +160,11 @@ bool LevelEditorViewport::handleEntityInteraction(
             moveToolRequested = true;
 
             if (RectTransformComponent* rectTransform = entity->getComponent<RectTransformComponent>()) {
-                const Vector2F position = rectTransform->getWorldPosition();
+                const Vector2F position = RectTransformLayout::resolveWorldPosition(
+                    *rectTransform,
+                    viewport,
+                    Renderer::getInstance().getUiScale(*entity)
+                );
                 dragOffset[0] = screenMousePosition.x - position.x;
                 dragOffset[1] = screenMousePosition.y - position.y;
             } else if (TransformComponent* transform = entity->getComponent<TransformComponent>()) {
@@ -205,7 +210,12 @@ bool LevelEditorViewport::handleEntityInteraction(
                 newPosition = viewportGrid.snapPosition(newPosition);
             }
 
-            rectTransform->setWorldPosition(newPosition);
+            rectTransform->setAnchoredPosition(RectTransformLayout::worldToAnchoredPosition(
+                *rectTransform,
+                newPosition,
+                viewport,
+                Renderer::getInstance().getUiScale(*entity)
+            ));
         } else if (transform != nullptr) {
             newPosition = Vector2F(
                 worldMousePosition.x - dragOffset[0],
@@ -375,7 +385,12 @@ bool LevelEditorViewport::uiEntityContainsPoint(
         return false;
     }
 
-    const Vector2F center = rect->getWorldPosition();
+    const RenderRect viewport = Renderer::getInstance().getWindowViewport();
+    const Vector2F center = RectTransformLayout::resolveWorldPosition(
+        *rect,
+        viewport,
+        Renderer::getInstance().getUiScale(entity)
+    );
     const Vector2F size =
         rect->getSize() * Renderer::getInstance().getUiScale(entity);
     const Vector2F& pivot = rect->getPivot();
