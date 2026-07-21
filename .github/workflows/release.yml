@@ -22,7 +22,7 @@ jobs:
         run: >
           cmake -S . -B build-release
           -DCMAKE_BUILD_TYPE=Release
-          -DIENGINE_WITH_EDITOR=OFF
+          -DIENGINE_WITH_EDITOR=ON
           -DIENGINE_EMBED_LUA_SCRIPTS=ON
 
       - name: Build
@@ -54,7 +54,7 @@ jobs:
         run: >
           cmake -S . -B build-release
           -DCMAKE_BUILD_TYPE=Release
-          -DIENGINE_WITH_EDITOR=OFF
+          -DIENGINE_WITH_EDITOR=ON
           -DIENGINE_EMBED_LUA_SCRIPTS=ON
 
       - name: Build
