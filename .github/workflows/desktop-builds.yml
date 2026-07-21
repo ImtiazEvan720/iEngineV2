@@ -16,20 +16,24 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Configure
-        run: cmake -S . -B build
+        run: >
+          cmake -S . -B build-release
+          -DCMAKE_BUILD_TYPE=Release
+          -DIENGINE_WITH_EDITOR=OFF
+          -DIENGINE_EMBED_LUA_SCRIPTS=ON
 
       - name: Build
-        run: cmake --build build
+        run: cmake --build build-release --config Release --parallel
 
       - name: Ad-hoc sign macOS binary
-        run: codesign --force --deep --sign - build/bin/iEngineV2
+        run: codesign --force --deep --sign - build-release/bin/iEngineV2
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v6
         with:
           name: iEngineV2-macos
           path: |
-            build/bin/**
+            build-release/bin/**
 
   windows:
     name: Windows Build
@@ -40,14 +44,18 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Configure
-        run: cmake -S . -B build
+        run: >
+          cmake -S . -B build-release
+          -DCMAKE_BUILD_TYPE=Release
+          -DIENGINE_WITH_EDITOR=OFF
+          -DIENGINE_EMBED_LUA_SCRIPTS=ON
 
       - name: Build
-        run: cmake --build build
+        run: cmake --build build-release --config Release --parallel
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v6
         with:
           name: iEngineV2-windows
           path: |
-            build/bin/**
+            build-release/bin/**
