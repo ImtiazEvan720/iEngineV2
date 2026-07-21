@@ -52,11 +52,11 @@ def collect_release_level_files(levels_config: Path) -> set[str]:
 
 
 def copy_release_levels(source: Path, destination: Path) -> None:
-    if destination.exists():
-        shutil.rmtree(destination)
-
     if not source.exists() or not source.is_dir():
         return
+
+    if destination.exists():
+        shutil.rmtree(destination)
 
     destination.mkdir(parents=True, exist_ok=True)
     level_files = collect_release_level_files(source / "levels.xml")

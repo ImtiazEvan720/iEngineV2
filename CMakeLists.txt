@@ -408,8 +408,8 @@ if(IENGINE_EMBED_LUA_SCRIPTS)
     file(GLOB_RECURSE IENGINE_RUNTIME_ASSET_FILES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/Assets/*"
     )
-    file(GLOB_RECURSE IENGINE_EDITOR_RUNTIME_LEVEL_FILES CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Levels/*"
+    file(GLOB_RECURSE IENGINE_RELEASE_LEVEL_FILES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/Assets/Levels/*"
     )
     file(GLOB_RECURSE IENGINE_EDITOR_RUNTIME_PREFAB_FILES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Prefabs/*"
@@ -424,13 +424,13 @@ if(IENGINE_EMBED_LUA_SCRIPTS)
             "${IENGINE_FILTERED_RUNTIME_ASSETS_DIR}"
             "--exclude-scripts"
             "--level-overlay"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Levels:Levels"
+            "${CMAKE_CURRENT_SOURCE_DIR}/Assets/Levels:Levels"
             "--overlay"
             "${CMAKE_CURRENT_SOURCE_DIR}/build/bin/Assets/Prefabs:Prefabs"
         COMMAND ${CMAKE_COMMAND} -E touch "${IENGINE_FILTERED_RUNTIME_ASSETS_STAMP}"
         DEPENDS
             ${IENGINE_RUNTIME_ASSET_FILES}
-            ${IENGINE_EDITOR_RUNTIME_LEVEL_FILES}
+            ${IENGINE_RELEASE_LEVEL_FILES}
             ${IENGINE_EDITOR_RUNTIME_PREFAB_FILES}
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/prepare_runtime_assets.py"
         VERBATIM
