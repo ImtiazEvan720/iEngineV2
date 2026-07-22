@@ -1,6 +1,6 @@
 # iEngineV2
 
-## Short Description Of The Project
+## About The Project
 
 iEngineV2 is an experimental C++ 2D game engine built around an entity/component architecture, backend-neutral rendering, Lua scripting, Box2D physics, custom assets, and ImGui editor tooling.
 
@@ -87,14 +87,10 @@ Experimental platform scripts:
 
 - Add editor undo/redo through command-based editing
 - Improve project creation, project settings, and asset browser workflows
-- Add stronger scene/level transition workflows
-- Add better prefab editing, prefab variants, and dependency validation
-- Improve component serializer coverage and validation
 - Add collision layers, masks, and better physics debugging tools
 - Improve runtime UI systems, navigation, focus handling, and mobile touch controls
-- Improve sprite batching, render layers, camera tooling, and render-to-texture workflows
+- Improve sprite batching, render layers, camera tooling
 - Add shader/material abstraction and optional 3D/OpenGL rendering experiments
 - Stabilize WebAssembly, iOS, and Android packaging
 - Add generic networking components such as network identity, authority, transform sync, and input commands
 - Prototype host-authoritative multiplayer with client input, host simulation, snapshots, interpolation, and later prediction
-- Investigate deterministic simulation and rollback after the simpler multiplayer path works
