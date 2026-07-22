@@ -1,262 +1,67 @@
 # iEngineV2
 
-iEngineV2 is an experimental C++ game engine built around an entity/component architecture, backend-neutral rendering, Lua scripting, Box2D physics, custom assets, editor tooling, and multi-platform build experiments.
+## Short Description Of The Project
 
-The project is currently focused on building a practical 2D engine foundation with runtime/editor workflows, scriptable gameplay, UI, prefabs, custom level serialization, and future multiplayer support.
+iEngineV2 is an experimental C++ 2D game engine built around an entity/component architecture, backend-neutral rendering, Lua scripting, Box2D physics, custom assets, and ImGui editor tooling.
 
-## Architecture Overview
+The project is focused on building a practical runtime/editor workflow for creating 2D games with scriptable entities, prefabs, custom level files, UI components, configurable input, and multi-platform build experiments.
 
-```text
-Application
-  -> Window Backend
-  -> Render Backend
-  -> AssetManager
-  -> Level
-  -> Entity / Component system
-  -> PhysicsSystem
-  -> ScriptSystem
-  -> Input systems
-  -> Editor UI
-```
+## Feature List
 
-The engine separates platform/window handling, rendering, input, physics, scripting, asset loading, and editor features into dedicated systems.
-
-## ECS Model
-
-iEngineV2 uses an ECS-inspired entity/component model.
-
-### Entity
-
-An entity is a runtime object that owns a list of components.
-
-Entities support:
-
-- name
-- tag
-- guid
-- enabled state
-- destroyed state
-- parent/child hierarchy
-- display order
-- component storage
-
-Entities are intentionally lightweight. Behavior is added through components and Lua scripts.
-
-### Component
-
-A component adds data or behavior to an entity.
-
-Current component examples:
-
-- `TransformComponent`
-- `RectTransformComponent`
-- `SpriteComponent`
-- `AnimationComponent`
-- `CollisionComponent`
-- `ScriptComponent`
-- `CanvasComponent`
-- `UILabelComponent`
-- `UIButtonComponent`
-- `UIEditTextComponent`
-- `UIPanelComponent`
-- `PlayerCameraComponent`
-
-Components can implement lifecycle methods:
-
-```cpp
-onStart()
-onUpdate(float deltaTime)
-onEnable(bool value)
-onDestroy()
-```
-
-## Major Systems
-
-### Rendering
-
-Rendering is abstracted behind backend interfaces so the engine can support multiple rendering/platform implementations.
-
-Current rendering features include:
-
-- SFML backend
-- SDL3 backend
-- backend-neutral drawing API
-- sprite rendering
-- animation rendering
-- UI rendering
-- camera component support
-- render scale support
-- debug drawing
-- editor viewport support
-
-### Input
-
-Input is split into raw input, virtual input, and configurable input actions.
-
-```text
-SDL/SFML events
-  -> RawInputSystem
-  -> VirtualInputSystem
-  -> Lua / gameplay systems
-```
-
-`RawInputSystem` stores keyboard, mouse, touch, and text input from the active window backend.
-
-`VirtualInputSystem` maps raw input into engine actions such as:
-
-- `Move`
-- `Fire`
-- `Fire2`
-- `Pause`
-
-Input action definitions are loaded from:
-
-```text
-Assets/Input/actions.inputactions.xml
-```
-
-Input bindings are loaded from:
-
-```text
-Assets/Input/default.input.xml
-```
-
-Movement now uses an axis action:
-
-```xml
-<binding action="Move" key="W" axisX="0" axisY="-1"/>
-```
-
-Lua can read virtual input through:
-
-```lua
-local move = Input.getAxis2D("Move")
-```
-
-### Physics
-
-Physics is handled through Box2D.
-
-Current physics features include:
-
-- collision components
-- dynamic/static body types
-- sensor support
-- collision callbacks
-- sensor callbacks
-- Lua collision events
-- raycast support
-- linear velocity control
-- fixed rotation support
-- collider gizmo editing
-
-### Lua Scripting
-
-Lua scripts can drive runtime behavior.
-
-Script support includes:
-
-- entity access
-- component access
-- transform access
-- collision access
-- animation access
-- script properties
-- entity references by guid
-- prefab spawning
-- Lua event calls
-- UI button callbacks
-- edit text submit callbacks
-
-### Assets
-
-The asset system uses polymorphic asset classes and an asset manager.
-
-Supported or planned asset categories include:
-
-- textures
-- sounds
-- music
-- scripts
-- prefabs
-- levels
-- animations
-- tilesets
-- input action definitions
-- input bindings
-
-### Levels And Prefabs
-
-The engine uses custom serialized formats:
-
-```text
-.ilevel   level files
-.iprefab  prefab files
-.ianim    animation files
-.itile    tileset metadata files
-```
-
-Levels and prefabs are serialized through component serializers. This keeps save/load behavior closer to component ownership and reduces hardcoded level serialization logic.
-
-### Editor
-
-The editor is built with ImGui.
-
-Current editor features include:
-
-- top toolbar/menu
-- entity hierarchy
-- entity inspector
-- component drawers
-- add/remove component workflow
-- prefab panel
-- sprite palette
-- animation editor
-- tileset creator
-- file explorer
-- level manager
-- transform gizmo
-- collider gizmo
-- rect transform gizmo
-- camera preview
-- play/pause/stop controls
-- level save/load
-- prefab save/load
-
-## Current Features
-
-- ECS-inspired entity/component architecture
-- Lua scripting with entity/component bindings
-- SFML and SDL3 backend support
-- Box2D physics integration
-- Custom asset manager
-- Custom level format
-- Custom prefab format
-- Custom animation format
-- Runtime input action registry
-- Axis-based movement input
-- UI canvas, panels, labels, buttons, and edit text
-- Editor component drawers
-- Editor gizmos
-- Camera component support
+- ECS-inspired `Entity` and `Component` architecture
+- Entity names, tags, GUIDs, enabled state, destroyed state, parent/child hierarchy, and display order
+- Component lifecycle methods: `onStart`, `onUpdate`, `onEnable`, and `onDestroy`
+- Transform, RectTransform, Sprite, Animation, Collision, Script, Canvas, UI Label, UI Button, UI Edit Text, UI Panel, and Player Camera components
+- Backend abstraction for windowing, rendering, input, and ImGui integration
+- SFML and SDL3 runtime backends
+- Fixed internal resolution rendering with window scaling and letterboxing
+- Box2D physics integration with static/dynamic bodies, sensors, raycasts, collision callbacks, and Lua collision events
+- Raw input, virtual input, configurable input actions, and axis-based movement
+- Lua scripting with entity/component bindings, script properties, prefab spawning, UI callbacks, and level loading APIs
+- Polymorphic asset system for textures, sounds, music, prefabs, levels, animations, tilesets, scripts, and input config files
+- Custom runtime/editor file formats: `.ilevel`, `.iprefab`, `.ianim`, and `.itile`
+- Component serializer registry for level and prefab save/load
+- ImGui editor with hierarchy, inspector, component drawers, sprite palette, animation editor, tileset creator, prefab panel, level manager, file explorer, and viewport gizmos
+- Editor tools for transform, collider, and RectTransform editing
+- UI canvas system with panels, labels, buttons, and edit text
 - Desktop build support
-- Experimental WebAssembly build support
-- Experimental iOS build support
-- Experimental Android build support
+- Experimental WebAssembly, iOS, and Android build support
+- GitHub Actions workflows for desktop and tagged release builds
 
-## Build
+## How To Build
 
-Configure and build desktop:
+Requirements:
+
+- CMake 3.28 or newer
+- C++17 compiler
+- macOS, Windows, or Linux desktop toolchain
+- Emscripten SDK for WebAssembly builds
+- Xcode/iOS tools for iOS experiments
+- Android SDK/NDK/CMake for Android experiments
+
+Configure and build the normal desktop build:
 
 ```sh
 cmake -S . -B build
 cmake --build build
 ```
 
-Run desktop:
+Run the normal desktop build:
 
 ```sh
 ./run.sh
+```
+
+Build the desktop release package:
+
+```sh
+./build_release.sh
+```
+
+Run the desktop release build:
+
+```sh
+./run_release.sh
 ```
 
 Build WebAssembly:
@@ -271,79 +76,25 @@ Run WebAssembly locally:
 ./run_web.sh
 ```
 
-## Roadmap / TODO
+Experimental platform scripts:
 
-### Runtime Framework
+```sh
+./build_ios.sh
+./build_android.sh
+```
 
-- Add generic game state management
-- Add scene/level transition system
-- Add reusable spawn/despawn system
-- Add generic health/damage component support
-- Add collision filtering with layers and masks
-- Add timer/cooldown utilities
-- Add reusable finite state machine support
-- Add behavior tree or steering behavior support
-- Add event bus or message system between entities/components
-- Add save/load support for runtime game state
-- Add deterministic fixed update loop for simulation-heavy systems
+## Future Roadmap
 
-### Editor
-
-- Add input action editor
-- Add collision layer/mask editor
-- Improve prefab editing workflow
-- Improve UI component editing
-- Add project settings panel
-- Add undo/redo
-- Add scene validation tools
-- Add better asset browser workflows
-- Add editor layout persistence
-
-### Rendering
-
-- Improve sprite batching
-- Add explicit render layers
-- Improve animation runtime/preview consistency
-- Improve camera preview tools
-- Add render-to-texture workflows
-- Add optional OpenGL/3D rendering path
-- Add shader/material abstraction
-
-### Assets And Serialization
-
-- Expand component serializer coverage
-- Add asset dependency validation
-- Add missing asset reporting
-- Add asset import pipeline
-- Add prefab variant support
-- Add project packaging/export pipeline
-
-### Multiplayer
-
-- Add `NetworkIdentityComponent`
-- Add `NetworkAuthorityComponent`
-- Add `NetworkTransformComponent`
-- Add `InputComponent`
-- Add generic `InputCommand`
-- Add fixed network tick
-- Add host/client session flow
-- Send client input commands to host
-- Host simulates authoritative physics/gameplay
-- Host broadcasts world snapshots
-- Client applies snapshots
-- Add interpolation
-- Add client-side prediction
-- Investigate rollback after host-authoritative networking works
-
-### Platform Support
-
-- Stabilize WebAssembly build
-- Improve Android packaging
-- Improve iOS packaging
-- Add mobile touch UI workflows
-- Add platform-specific input bindings
-- Add platform-specific build validation
-
-## Project Status
-
-iEngineV2 is experimental and under active development. APIs, file formats, runtime systems, and editor workflows are expected to change as the engine evolves.
+- Add editor undo/redo through command-based editing
+- Improve project creation, project settings, and asset browser workflows
+- Add stronger scene/level transition workflows
+- Add better prefab editing, prefab variants, and dependency validation
+- Improve component serializer coverage and validation
+- Add collision layers, masks, and better physics debugging tools
+- Improve runtime UI systems, navigation, focus handling, and mobile touch controls
+- Improve sprite batching, render layers, camera tooling, and render-to-texture workflows
+- Add shader/material abstraction and optional 3D/OpenGL rendering experiments
+- Stabilize WebAssembly, iOS, and Android packaging
+- Add generic networking components such as network identity, authority, transform sync, and input commands
+- Prototype host-authoritative multiplayer with client input, host simulation, snapshots, interpolation, and later prediction
+- Investigate deterministic simulation and rollback after the simpler multiplayer path works
